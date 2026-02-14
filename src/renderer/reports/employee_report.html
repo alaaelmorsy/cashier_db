@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير الموظفين</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      :root{ --bg:#f6f8fb; --card:#ffffff; --border:#e6eaf0; --text:#0f172a; --muted:#64748b; --brand:#0b3daa; }
+      *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+      html,body{height:100%; scroll-behavior:smooth}
+      body{font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-weight:700; background:var(--bg); margin:0; color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale}
+      header{position:sticky; top:0; z-index:10; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); padding:12px 16px; border-bottom:1px solid var(--border)}
+      .title{font-weight:700}
+      .toolbar{display:flex; gap:8px}
+      
+      @media screen{
+        .btn{padding:10px 16px; border:none; background:#3b82f6; color:#fff; border-radius:8px; cursor:pointer; font-weight:700; transition:background 0.2s}
+        .btn:hover{background:#2563eb}
+        .btn:active{background:#1d4ed8}
+        #btnBack{background:#ef4444; color:#fff}
+        #btnBack:hover{background:#dc2626}
+        #btnBack:active{background:#b91c1c}
+        #loadBtn{background:#3b82f6; color:#fff}
+        #loadBtn:hover{background:#2563eb}
+        #loadBtn:active{background:#1d4ed8}
+        #exportPdfBtn{background:#8b5cf6; color:#fff}
+        #exportPdfBtn:hover{background:#7c3aed}
+        #exportPdfBtn:active{background:#6d28d9}
+        #exportExcelBtn{background:#10b981; color:#fff}
+        #exportExcelBtn:hover{background:#059669}
+        #exportExcelBtn:active{background:#047857}
+        #printReportBtn{background:#f59e0b; color:#fff}
+        #printReportBtn:hover{background:#d97706}
+        #printReportBtn:active{background:#b45309}
+        .btn[onclick*="viewInvoice"]{background:#0891b2; color:#fff; padding:6px 10px; font-size:13px}
+        .btn[onclick*="viewInvoice"]:hover{background:#0e7490}
+        .btn[onclick*="viewInvoice"]:active{background:#155e75}
+      }
+      
+      .container{max-width:1100px; margin:16px auto; padding:0 12px}
+      .muted{color:var(--muted)}
+      .range-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; flex-wrap:wrap}
+      .range-actions{display:flex; gap:8px}
+      .range-inputs{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+      
+      @media screen{
+        .input{padding:10px 12px; border:2px solid #cbd5e1; background:#fff; border-radius:8px; font-weight:700; transition:border-color 0.2s}
+        .input:focus{outline:none; border-color:#3b82f6}
+        label{font-weight:700; color:var(--text)}
+        select.input{cursor:pointer; min-width:200px}
+      }
+      
+      .section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin:12px 0}
+      .section h3{margin:0 0 12px; font-size:18px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px}
+      table{width:100%; border-collapse:collapse; table-layout:auto}
+      th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
+      th{background:#eef2ff; color:var(--brand); font-weight:700}
+      tbody tr:hover{background:#f8fafc}
+      tfoot th{background:#fff}
+
+      .grid-table{ border:2px solid #000; }
+      .grid-table th, .grid-table td{ border:1px solid #000; }
+      .grid-table tfoot th{ border-top:2px solid #000; }
+      
+      #employeeSelect{min-width:200px}
+      .collapse-toggle{cursor:pointer; user-select:none; background:none; border:none; font-size:18px; padding:0 8px; color:var(--brand); transition:transform 0.2s ease}
+      .collapse-toggle.collapsed{transform:rotate(-90deg)}
+      
+      @media print{
+        header, .range-actions, .range-bar{display:none}
+        body{background:#fff}
+        .section{box-shadow:none; border:1px solid #000}
+        .collapse-toggle{display:none}
+        .no-print{display:none}
+        #invoicesTable tbody tr td:last-child{display:none}
+        #creditNotesTable tbody tr td:last-child{display:none}
+      }
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        body.dark header { background: var(--card); border-bottom-color: var(--border); }
+        body.dark .section { background: var(--card); border-color: var(--border); }
+        body.dark .kpi { background: var(--card); border-color: var(--border); }
+        body.dark .kpi .value { color: var(--brand); }
+        body.dark .kpi .label { color: var(--muted); }
+        body.dark th { background: #1a2744; color: #93c5fd; }
+        body.dark td { color: var(--text); border-bottom-color: var(--border); }
+        body.dark table { border-color: var(--border); }
+        body.dark .summary-item { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
+        body.dark .input:focus { border-color: #3b82f6; }
+        body.dark label { color: var(--text); }
+        body.dark .badge { background: #1a1a1a; border-color: var(--border); color: var(--muted); }
+        body.dark .badge-credit { background: #2d1a0a; border-color: #92400e; color: #fdba74; }
+        body.dark .credit-row td { background: #2d1a0a; }
+        body.dark details > summary { color: var(--muted); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">تقرير الموظفين</div>
+      <div class="toolbar">
+        <button id="btnBack" class="btn">← الرجوع للتقارير</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="range-bar">
+        <div class="range-inputs">
+          <label>الموظف:</label>
+          <select id="employeeSelect" class="input" style="min-width:200px">
+            <option value="">-- اختر موظف --</option>
+          </select>
+          <label>من:</label>
+          <input type="datetime-local" id="fromAt" class="input" />
+          <label>إلى:</label>
+          <input type="datetime-local" id="toAt" class="input" />
+          <button id="loadBtn" class="btn">تطبيق</button>
+        </div>
+        <div class="range-actions">
+          <button id="exportPdfBtn" class="btn">PDF تصدير</button>
+          <button id="exportExcelBtn" class="btn">Excel تصدير</button>
+          <button id="printReportBtn" class="btn">طباعة</button>
+        </div>
+      </div>
+
+      <div class="section" id="employeeInfoCard" style="display:none">
+        <div style="text-align:center; font-size:18px; font-weight:700">
+          <span style="color:#64748b">الموظف:</span> <span id="empName"></span>
+        </div>
+      </div>
+
+      <div id="reportContent" style="display:none">
+        <div id="range" class="muted" style="margin-bottom:16px; font-size:15px; font-weight:600"></div>
+
+        <div class="section">
+          <h3>إجماليات التقرير</h3>
+          <table class="grid-table">
+            <tbody>
+              <tr>
+                <th style="width:60%">عدد الفواتير</th>
+                <td id="totalInvoices">0</td>
+              </tr>
+              <tr>
+                <th>إجمالي المبيعات</th>
+                <td id="totalSales">0.00</td>
+              </tr>
+              <tr>
+                <th>عدد المنتجات</th>
+                <td id="totalProducts">0</td>
+              </tr>
+              <tr>
+                <th>إجمالي الكمية</th>
+                <td id="totalQuantity">0</td>
+              </tr>
+              <tr style="color:#dc2626">
+                <th>خصم الفواتير الدائنة</th>
+                <td id="totalCreditDeduction">0.00</td>
+              </tr>
+              <tr style="background:#e0f2fe; font-weight:700">
+                <th>إجمالي الكمية بعد الخصم</th>
+                <td id="netQuantity">0</td>
+              </tr>
+              <tr style="background:#fef3c7; font-weight:700">
+                <th>الإجمالي الصافي</th>
+                <td id="netTotal">0.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <h3>المنتجات المباعة <button class="collapse-toggle" id="productsToggle">▼</button></h3>
+          <table class="grid-table" id="productsTable">
+            <thead>
+              <tr>
+                <th>اسم المنتج</th>
+                <th>الكمية المباعة</th>
+                <th>السعر</th>
+                <th>الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody id="productsTbody">
+              <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted)">لا توجد منتجات</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <h3>الفواتير <button class="collapse-toggle" id="invoicesToggle">▼</button></h3>
+          <table class="grid-table" id="invoicesTable">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>التاريخ</th>
+                <th>العميل</th>
+                <th>المنتجات</th>
+                <th>الإجمالي</th>
+                <th>طريقة الدفع</th>
+                <th class="no-print">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="invoicesTbody">
+              <tr><td colspan="7" style="text-align:center; padding:20px; color:var(--muted)">قم باختيار موظف وفترة للعرض</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <h3>الفواتير الدائنة (المعالجات) <button class="collapse-toggle" id="creditNotesToggle">▼</button></h3>
+          <table class="grid-table" id="creditNotesTable">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة الدائنة</th>
+                <th>التاريخ</th>
+                <th>الفاتورة الأصلية</th>
+                <th>العميل</th>
+                <th>المنتجات</th>
+                <th>الإجمالي</th>
+                <th>طريقة الدفع</th>
+                <th class="no-print">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="creditNotesTbody">
+              <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--muted)">لا توجد فواتير دائنة</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="./employee_report.js"></script>
+  </body>
+</html>

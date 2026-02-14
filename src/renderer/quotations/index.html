@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>عروض الأسعار - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      * {
+        font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 500px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">🧾 عروض الأسعار</div>
+      <nav>
+        <button id="btnBack" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+        <input id="searchInput" type="text" placeholder="🔍 بحث دقيق برقم العرض..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button id="btnRefresh" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          🔄 تحديث
+        </button>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+
+      <div class="flex justify-between items-center my-3 flex-wrap gap-3">
+        <div class="flex gap-2 items-center">
+          <span class="text-gray-600 font-medium">عدد الصفوف في الصفحة:</span>
+          <select id="pageSizeSelect" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <div id="paginationTop" class="flex gap-2 items-center"></div>
+      </div>
+
+      <div id="loading" class="text-center py-12">
+        <div class="inline-block w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <p class="mt-3 text-gray-600 font-medium">جاري التحميل...</p>
+      </div>
+
+      <div id="content" style="display:none;">
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم العرض</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">التاريخ</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العميل</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الجوال</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الموظف</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المبلغ الإجمالي</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="quotationsBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="text-center py-12 text-gray-400" style="display:none;">
+          <p class="text-lg">📋 لا توجد عروض أسعار محفوظة</p>
+        </div>
+      </div>
+
+      <div id="paginationBottom" class="flex gap-2 items-center justify-center mt-4"></div>
+    </div>
+
+    <dialog id="confirmDlg">
+      <div class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span>⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg text-white font-semibold text-center min-w-[300px] max-w-[600px] z-50 hidden"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

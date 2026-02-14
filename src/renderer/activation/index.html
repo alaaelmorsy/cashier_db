@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'">
+  <title>تفعيل البرنامج - POS SA</title>
+  <link rel="stylesheet" href="../tailwind-output.css">
+  <style>
+    /* Local Cairo font faces */
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+      font-weight: 900; font-style: normal; font-display: swap;
+    }
+
+    body {
+      font-family: "Cairo", "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    /* تعطيل الأنيميشنز للسرعة (ما عدا الإشعارات) */
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    
+    /* إشعارات Toast احترافية */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 400px;
+    }
+    
+    .toast {
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      transform: translateX(120%);
+      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease !important;
+      opacity: 0;
+    }
+    
+    .toast.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    
+    .toast.hide {
+      transform: translateX(120%);
+      opacity: 0;
+    }
+    
+    .toast-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: 2px solid #047857;
+    }
+    
+    .toast-error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      border: 2px solid #b91c1c;
+    }
+    
+    .toast-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    /* تحسينات بسيطة */
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .card-glass {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(10px);
+    }
+    
+    .logo-gradient {
+      background: linear-gradient(135deg, #0057FF, #4C85FF);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #0057FF, #4C85FF);
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #003DC7, #0057FF);
+    }
+    
+    .input-focus:focus {
+      border-color: #0057FF;
+      box-shadow: 0 0 0 3px rgba(0, 87, 255, 0.1);
+    }
+
+    /* تحسين Modal */
+    .modal-overlay {
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+
+  <!-- Toast Notifications Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- اتصال IP Modal -->
+  <div id="connModal" class="fixed inset-0 hidden items-center justify-center modal-overlay z-50">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border-2 border-blue-100">
+      <div class="flex items-center justify-between p-5 border-b-2 border-blue-50 bg-gradient-to-r from-blue-50 to-blue-25">
+        <div class="font-black text-lg text-blue-600">⚙️ إعدادات المزامنة مع الجهاز الرئيسي</div>
+        <button id="connClose" class="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">✕ إغلاق</button>
+      </div>
+      <div class="p-6 max-h-[70vh] overflow-y-auto">
+        <!-- IP Address -->
+        <div class="mb-4">
+          <label class="block mb-2 font-bold text-sm text-gray-700">🌐 عنوان IP للجهاز الرئيسي</label>
+          <input id="serverIp" placeholder="مثال: 192.168.1.100" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base input-focus outline-none" />
+          <div class="mt-2 text-xs text-gray-500">اترك فارغاً إذا كان هذا هو الجهاز الرئيسي</div>
+        </div>
+        
+        <!-- Warning Box -->
+        <div class="mb-5 p-4 bg-gradient-to-r from-orange-50 to-orange-25 border-2 border-orange-200 rounded-xl">
+          <p class="font-bold text-gray-800 mb-2 text-sm">⚠️ ملاحظة هامة:</p>
+          <ul class="m-0 pr-5 text-gray-700 leading-relaxed text-xs">
+            <li>عند إدخال IP للجهاز الرئيسي، سيصبح هذا الجهاز <strong>فرعياً</strong> تلقائياً</li>
+            <li>الجهاز الفرعي <strong>لا يحتاج</strong> إلى كود تفعيل</li>
+            <li>يجب <strong>إعادة تشغيل البرنامج</strong> بعد الحفظ لتفعيل التغييرات</li>
+          </ul>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <button id="testIpBtn" class="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-green-700">اختبار الاتصال</button>
+          <button id="saveIpBtn" class="flex-1 px-4 py-3 btn-primary text-white rounded-xl font-bold">💾 حفظ الإعدادات</button>
+        </div>
+        <div id="ipMsg" class="hidden mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="w-full max-w-md">
+    <div class="card-glass rounded-3xl shadow-2xl p-8 border-2 border-white/30">
+      
+      <!-- Brand -->
+      <div class="flex items-center justify-center gap-5 mb-4">
+        <div class="w-20 h-20 logo-gradient rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl">
+          POS
+        </div>
+        <h1 class="text-4xl font-black text-gray-800">إعداد البرنامج</h1>
+      </div>
+
+      <!-- Company Badge -->
+      <div class="text-center mb-6">
+        <div class="inline-block px-6 py-3 bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-200 rounded-full">
+          <span class="text-red-600 font-black text-base">🏢 مؤسسة تعلم التقنيات</span>
+        </div>
+      </div>
+
+      <!-- Quit Button -->
+      <div class="flex justify-center mb-6">
+        <button id="quitBtn" class="px-8 py-3 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300">
+          خروج
+        </button>
+      </div>
+
+      <!-- Activation Section -->
+      <div id="activationSection" style="display:none;">
+        <div class="mb-6">
+          <label for="code" class="block mb-3 font-bold text-sm text-gray-700 uppercase tracking-wide">
+            كود التفعيل (للجهاز الرئيسي فقط)
+          </label>
+          <div class="relative">
+            <input 
+              id="code" 
+              type="password" 
+              placeholder="• أدخل كود التفعيل المرسل من الدعم" 
+              autocomplete="off"
+              class="w-full px-5 pr-12 py-4 border-2 border-gray-200 rounded-2xl text-base input-focus outline-none bg-white shadow-sm"
+            />
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl opacity-70">🔐</div>
+          </div>
+        </div>
+
+        <button id="activateBtn" class="w-full px-6 py-4 btn-primary text-white rounded-2xl font-bold text-lg shadow-lg">
+          تفعيل الآن
+        </button>
+
+        <div class="mt-6 p-5 bg-gray-50 border border-gray-100 rounded-2xl text-center">
+          <p class="text-gray-600 text-sm font-medium leading-relaxed">
+            للحصول على كود التفعيل يرجى التواصل مع الدعم الفني.
+          </p>
+        </div>
+      </div>
+
+      <!-- Connection Settings Button -->
+      <div class="mt-6 flex justify-center">
+        <button id="openConnDialog" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 shadow-md">
+          ⚙️ إعداد الاتصال بالجهاز الرئيسي
+        </button>
+      </div>
+
+      <!-- Warning -->
+      <div class="mt-6 p-5 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl">
+        <p class="text-red-600 text-xs font-semibold leading-relaxed text-center">
+          ⚠️ تحذير: هذا البرنامج مُرخص حصرياً لمؤسسة تعلم التقنيات. أي استخدام غير مصرح به يُعتبر انتهاكاً لحقوق الملكية الفكرية.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    (async function(){
+      // إذا كان مُفعلاً بالفعل، الانتقال مباشرة لشاشة الدخول (fallback safety check)
+      try{
+        const r = await window.api.license_check();
+        if(r && r.ok){ location.replace('../login/index.html'); return; }
+      }catch(_){ /* تجاهل */ }
+
+      // فحص إذا كان متصل بجهاز بعيد (غير localhost)
+      try{
+        const cfg = await window.api.db_get_config();
+        if(cfg && cfg.ok && cfg.config){
+          const h = String(cfg.config.host||'').toLowerCase();
+          const isRemote = h && h !== '127.0.0.1' && h !== 'localhost';
+          if(isRemote){
+            // جهاز فرعي متصل بجهاز رئيسي - اذهب لشاشة الدخول
+            location.replace('../login/index.html');
+            return;
+          } else {
+            // جهاز رئيسي (localhost) - اعرض قسم التفعيل
+            document.getElementById('activationSection').style.display = '';
+          }
+        }
+      }catch(_){ }
+
+      const toastContainer = document.getElementById('toastContainer');
+      
+      function showToast(message, type = 'error', duration = 5000) {
+        // إنشاء عنصر Toast
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        const icon = type === 'success' ? '✓' : '✕';
+        toast.innerHTML = `
+          <span class="toast-icon">${icon}</span>
+          <span style="flex: 1;">${message}</span>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // إظهار Toast بعد delay صغير للأنيميشن
+        setTimeout(() => {
+          toast.classList.add('show');
+        }, 10);
+        
+        // إخفاء وإزالة Toast بعد المدة المحددة
+        if(duration > 0) {
+          setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            setTimeout(() => {
+              if(toast.parentNode) {
+                toastContainer.removeChild(toast);
+              }
+            }, 400);
+          }, duration);
+        }
+        
+        return toast;
+      }
+      
+      function showError(message, duration = 5000) {
+        if(message) showToast(message, 'error', duration);
+      }
+      
+      function showSuccess(message, duration = 4000) {
+        if(message) showToast(message, 'success', duration);
+      }
+
+      function normalize(code){
+        // إزالة المسافات والشرطات وتحويل لأحرف كبيرة
+        return String(code||'').replace(/\s|-/g,'').toUpperCase();
+      }
+
+      document.getElementById('activateBtn').addEventListener('click', async () => {
+        const raw = document.getElementById('code').value;
+        const code = normalize(raw);
+        if(!code){ 
+          showError('⚠️ يرجى إدخال كود التفعيل');
+          return;
+        }
+        
+        const res = await window.api.license_activate(code);
+        if(!res || !res.ok){ 
+          showError('❌ ' + (res && res.error ? res.error : 'فشل التفعيل'));
+          return;
+        }
+        
+        // نجاح — عرض الرسالة لمدة ثانيتين ثم الانتقال
+        showSuccess('✅ تم تفعيل البرنامج بنجاح! جاري الانتقال للدخول...', 2500);
+        setTimeout(() => {
+          location.replace('../login/index.html');
+        }, 2000);
+      });
+
+      document.getElementById('quitBtn').addEventListener('click', () => {
+        try{ window.api.app_quit(); }catch(_){ }
+      });
+
+      // إدخال بالإنتر
+      document.getElementById('code').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('activateBtn').click(); });
+
+      // ═══════════════════════════════════════════════════════════════
+      // Connection Settings Modal Logic
+      // ═══════════════════════════════════════════════════════════════
+      const connModal = document.getElementById('connModal');
+      const openConnBtn = document.getElementById('openConnDialog');
+      const connCloseBtn = document.getElementById('connClose');
+      const testIpBtn = document.getElementById('testIpBtn');
+      const saveIpBtn = document.getElementById('saveIpBtn');
+      const ipMsg = document.getElementById('ipMsg');
+
+      openConnBtn.addEventListener('click', () => {
+        connModal.classList.remove('hidden');
+        connModal.classList.add('flex');
+      });
+
+      connCloseBtn.addEventListener('click', () => {
+        connModal.classList.remove('flex');
+        connModal.classList.add('hidden');
+      });
+
+      testIpBtn.addEventListener('click', async () => {
+        const ip = document.getElementById('serverIp').value.trim();
+        const port = 3306;
+
+        if(!ip){
+          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
+          ipMsg.textContent = '⚠️ يرجى إدخال IP الجهاز الرئيسي';
+          ipMsg.classList.remove('hidden');
+          return;
+        }
+
+        testIpBtn.textContent = 'جاري الاختبار...';
+        testIpBtn.disabled = true;
+
+        try {
+          const result = await window.api.db_test({ host: ip, port: port });
+          if(result && result.ok){
+            ipMsg.className = 'mt-3 px-4 py-3 bg-green-50 border-2 border-green-200 rounded-xl text-green-600 text-center font-semibold';
+            ipMsg.textContent = '✅ تم الاتصال بنجاح بالجهاز الرئيسي';
+            ipMsg.classList.remove('hidden');
+            showSuccess('✅ تم الاتصال بنجاح بالجهاز الرئيسي');
+          } else {
+            ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
+            ipMsg.textContent = '❌ فشل الاتصال: ' + (result.error || 'خطأ غير معروف');
+            ipMsg.classList.remove('hidden');
+            showError('❌ فشل الاتصال: ' + (result.error || 'خطأ غير معروف'));
+          }
+        } catch(err) {
+          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
+          ipMsg.textContent = '❌ خطأ في الاتصال: ' + String(err);
+          ipMsg.classList.remove('hidden');
+          showError('❌ خطأ في الاتصال');
+        } finally {
+          testIpBtn.textContent = 'اختبار الاتصال';
+          testIpBtn.disabled = false;
+        }
+      });
+
+      saveIpBtn.addEventListener('click', async () => {
+        const ip = document.getElementById('serverIp').value.trim();
+        const port = 3306;
+
+        if(!ip){
+          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
+          ipMsg.textContent = '⚠️ يرجى إدخال IP الجهاز الرئيسي';
+          ipMsg.classList.remove('hidden');
+          return;
+        }
+
+        saveIpBtn.textContent = 'جاري الحفظ...';
+        saveIpBtn.disabled = true;
+
+        try {
+          // Apply DB config
+          const applyResult = await window.api.db_apply({ host: ip, port: port });
+          if(!applyResult || !applyResult.ok){
+            throw new Error(applyResult.error || 'فشل حفظ إعدادات قاعدة البيانات');
+          }
+
+          // Set device mode to secondary
+          const modeResult = await window.api.device_set_mode({
+            mode: 'secondary',
+            api_host: ip,
+            api_port: 4310
+          });
+          if(!modeResult || !modeResult.ok){
+            throw new Error(modeResult.error || 'فشل حفظ إعدادات الجهاز');
+          }
+
+          // Success
+          ipMsg.className = 'mt-3 px-4 py-3 bg-green-50 border-2 border-green-200 rounded-xl text-green-600 text-center font-semibold';
+          ipMsg.textContent = '✅ تم حفظ الإعدادات بنجاح. سيتم تحويلك لشاشة الدخول...';
+          ipMsg.classList.remove('hidden');
+          showSuccess('✅ تم حفظ الإعدادات بنجاح. جاري الانتقال...', 2500);
+
+          setTimeout(() => {
+            location.replace('../login/index.html');
+          }, 2000);
+
+        } catch(err) {
+          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
+          ipMsg.textContent = '❌ فشل الحفظ: ' + String(err.message || err);
+          ipMsg.classList.remove('hidden');
+          showError('❌ فشل الحفظ: ' + String(err.message || err));
+        } finally {
+          saveIpBtn.textContent = '💾 حفظ الإعدادات';
+          saveIpBtn.disabled = false;
+        }
+      });
+
+    })();
+  </script>
+  <script src="../theme.js"></script>
+</body>
+</html>

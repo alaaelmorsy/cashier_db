@@ -1,0 +1,1860 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>طباعة الفاتورة</title>
+    <style>
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+        font-weight: 900;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900; /* الرمز الخاص '' */
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print {
+        /* هوامش متحركة من الإعدادات مع قيم افتراضية آمنة */
+        @page { size: 80mm auto; margin: 0mm 3mm 6mm 3mm; }
+        html, body { width: auto; height: auto; overflow: visible; }
+        /* تمركز أفقي دقيق حتى مع اختلاف هوامش المشغل */
+        body{ display:flex; justify-content:center; padding-left: var(--m-left); padding-right: var(--m-right); }
+        /* امنع تقطيع الصفحات داخل الجداول/الأسطر */
+        table, tr, td, th, .ticket { page-break-inside: avoid; break-inside: avoid; }
+      }
+
+      /* إزالة الخلفيات الملونة في وضع الطباعة لتحسين الطباعة الحرارية */
+      @media print {
+        .section-badge,
+        .ticket > .section-title + .muted,
+        .ticket > .section-title + .muted + .muted,
+        .ticket > .section-title + .muted + .muted + .muted,
+        table thead th {
+          background: transparent !important;
+        }
+      }
+
+      body{ font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; margin:0; color:#000; font-weight:900; font-size:11px; letter-spacing:.08px; }
+      /* حاوية مركزية لضمان التمركز التام داخل مساحة الطباعة */
+      .page{ width: 80mm; margin: 0 auto; display: block; }
+      /* عرض أصغر للتذكرة + حافات داخلية أكبر لمنع قص الحروف على يمين الورقة */
+      .ticket{ width: 69mm; margin: 0 auto; padding: 1mm; box-sizing: border-box; border: 2px solid #0f172a; border-radius: 8px; }
+      /* امنع أي تصغير تلقائي من المتصفح */
+      html{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .center{ text-align:center; }
+      .muted{ color:#000; font-size:12px; font-weight:900; }
+      .desc-print{ color:#000; font-size:10px; font-weight:900; margin-top:2px; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+      /* مربع ثقيل يحيط بكل بند ووصفه من الأربع جهات */
+      .item-row td, .item-desc-row td{ border-bottom:0 !important; }
+      .item-row td{ border-top:2.5px solid #0f172a; padding-top: 0.5mm; padding-bottom: 0.5mm; }
+      .item-desc-row td{ border-bottom:2.5px solid #0f172a; padding-bottom: 0.5mm; }
+      .item-row td:first-child, .item-desc-row td:first-child{ border-right:2.5px solid #0f172a; }
+      .item-row td:last-child, .item-desc-row td:last-child{ border-left:2.5px solid #0f172a; }
+
+      .logo{ width:48px; height:48px; object-fit:contain; border-radius:8px; display:block; margin:0 auto 4px; border:1px solid #cbd5e1; background:#fff; }
+      h2{ margin:4px 0; font-size:16px; font-weight:800; }
+      .section-title{ display:none !important; }
+      .section-badge{ display:inline-block; margin:1px 0 2px; padding:4px 6px; background:#e5e7eb; border:1px solid #cbd5e1; border-radius:6px; font-weight:800; color:#0f172a; font-size:12px; }
+      #invType{ font-size:18px; font-weight:800; }
+
+      /* إطار خارجي ثقيل لقسم المنتجات (جدول البنود) */
+      .ticket > table:first-of-type{
+        border: 2px solid #0f172a;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 0 auto; /* تمركز الجدول داخل التذكرة */
+      }
+
+      /* صندوق ثقيل لبيانات رقم الفاتورة/التاريخ/رقم الأوردر/طريقة الدفع */
+      .ticket > .section-title + .muted,
+      .ticket > .section-title + .muted + .muted,
+      .ticket > .section-title + .muted + .muted + .muted{
+        margin: 0 !important;
+        padding: 1px 6px;
+        border-left: 2px solid #0f172a;
+        border-right: 2px solid #0f172a;
+        background: #f8fafc;
+      }
+      .ticket > .section-title + .muted{
+        border-top: 2px solid #0f172a;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        margin-top: 0px !important;
+      }
+      .ticket > .section-title + .muted + .muted{
+        border-top: 2px solid #0f172a; /* فاصل داخلي ثقيل */
+      }
+      .ticket > .section-title + .muted + .muted + .muted{
+        border-top: 2px solid #0f172a; /* فاصل داخلي ثقيل */
+        border-bottom: 2px solid #0f172a;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        margin-bottom: 0px !important;
+      }
+      /* عند وجود سطر "مدخل الفاتورة"، مدّد الصندوق الثقيل ليشمله كسطر أخير */
+      .ticket:has(> #userLine:not([hidden])) > .section-title + .muted + .muted + .muted{
+        border-bottom: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        margin-bottom: 0 !important;
+      }
+      /* طبّق نفس تخطيط الصندوق الثقيل على سطر "مدخل الفاتورة" عندما يكون ظاهرًا */
+      #userLine:not([hidden]){
+        margin: 0 !important;
+        padding: 1px 6px;
+        border-left: 2px solid #0f172a;
+        border-right: 2px solid #0f172a;
+        border-top: 2px solid #0f172a; /* فاصل داخلي ثقيل */
+        border-bottom: 2px solid #0f172a;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        background: #f8fafc;
+      }
+      table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+      th, td{ font-size:11px; padding:0px 3px; border-bottom:1px solid #cbd5e1; font-weight:900; line-height:1.1; }
+      th{ text-align:right; background:#eef2ff; color:#0b3daa; font-size:10px; padding-top: 0.5mm; padding-bottom: 0.5mm; }
+      /* ضبط أعمدة جدول البنود مع دعم إخفاء/إظهار عمود العملية ديناميكيًا */
+      /* عند وجود العملية */
+      .has-op thead th:nth-child(1), .has-op tbody td:nth-child(1){ width:28%; white-space:normal; word-break:anywhere; overflow-wrap:anywhere; }
+      .has-op thead th:nth-child(2), .has-op tbody td:nth-child(2){ width:18%; word-break:keep-all; }
+      .has-op thead th:nth-child(3), .has-op tbody td:nth-child(3){ width:16%; text-align:center; }
+      .has-op thead th:nth-child(4), .has-op tbody td:nth-child(4){ width:12%; text-align:center; }
+      .has-op thead th:nth-child(5), .has-op tbody td:nth-child(5){ width:26%; text-align:left; word-break:anywhere; }
+      /* تقليل المسافة بين اسم الصنف والعملية */
+      .has-op thead th:nth-child(1), .has-op tbody td:nth-child(1){ padding-left:1px; padding-right:0px; }
+      .has-op thead th:nth-child(2), .has-op tbody td:nth-child(2){ padding-left:1px; padding-right:1px; font-size:8px; }
+      /* عند وجود نص في عمود العملية، قلل حجم الخط أكثر لتجنب التداخل */
+      .has-op tbody td:nth-child(2):not(:empty){ font-size:7.5px; line-height:1; padding-top:1px; padding-bottom:1px; }
+      /* تقليل padding للأرقام */
+      .has-op tbody td:nth-child(3),
+      .has-op tbody td:nth-child(4),
+      .has-op tbody td:nth-child(5){ padding-left:1px; padding-right:1px; }
+
+      /* عند عدم وجود العملية (إخفاء العمود تمامًا) */
+      .no-op thead th:nth-child(1), .no-op tbody td:nth-child(1){ width:48%; white-space:normal; word-break:anywhere; overflow-wrap:anywhere; }
+      .no-op thead th:nth-child(2), .no-op tbody td:nth-child(2){ display:none; }
+      .no-op thead th:nth-child(3), .no-op tbody td:nth-child(3){ width:17%; text-align:center; }
+      .no-op thead th:nth-child(4), .no-op tbody td:nth-child(4){ width:15%; text-align:center; }
+      .no-op thead th:nth-child(5), .no-op tbody td:nth-child(5){ width:20%; text-align:left; word-break:anywhere; }
+
+      /* اجعل "الإجمالي" في سطر واحد مع تصغير بسيط للخط */
+      thead th:nth-child(5){
+        white-space: nowrap !important;
+        overflow-wrap: normal !important;
+        word-break: keep-all !important;
+        font-size: 11px !important;
+      }
+
+
+
+      /* اجعل عرض الخلايا يحسب الحواشي والحدود لتفادي القص */
+      th, td{ box-sizing:border-box; }
+
+      /* خلايا الأرقام: سطر واحد دائمًا مع تصغير تلقائي عبر JS */
+      tbody td.num{ 
+        white-space: nowrap !important;           /* لا لف */
+        overflow: visible !important;             /* السماح بالظهور حتى يتم التصغير */
+        direction: ltr;                /* اتجاه الأرقام يسار→يمين */
+        unicode-bidi: plaintext;       /* عزل الاتجاه */
+        font-variant-numeric: tabular-nums; /* محاذاة أرقام ثابتة العرض */
+        font-weight: 700 !important;   /* أرقام ثقيلة وواضحة */
+        font-size: 11px;              /* حجم افتراضي، سيتم التصغير التلقائي إذا لزم */
+        line-height: 1.1;                /* ارتفاع مناسب */
+        letter-spacing: 0;
+        text-align: inherit;           /* احفظ محاذاة العمود */
+        padding-left: 1px;           /* مساحة أفقية ضئيلة */
+        padding-right: 1px;
+        position: relative;
+      }
+      /* العنصر الداخلي num-inner */
+      tbody td.num .num-inner{
+        display: inline-block;
+        white-space: nowrap !important;
+        text-overflow: clip !important;
+      }
+      .totals td{ font-size:13px; font-weight:700; }
+      .bold{ font-weight:800; }
+      .footer{ margin-top:6px; text-align:center; font-size:10.5px; color:#000; font-weight:900; }
+      #companyInfo{ white-space:pre-wrap; font-weight:800; }
+      /* تخطيط محسّن لبيانات الشركة */
+      #companySection{
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 6px 6px 4px;
+        margin-bottom: 1px;
+        background: #f8fafc;
+      }
+      #header{ border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px !important; margin-bottom: 4px; }
+      #company{ letter-spacing: .2px; }
+      #companyInfo{ text-align: center; line-height: 1.2; }
+
+      /* تخطيط محسّن لقسم الإجماليات */
+      table.totals{
+        margin-top: 0px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+      table.totals tbody tr td{
+        padding-top: 1mm;
+        padding-bottom: 1mm;
+      }
+      table.totals tbody tr td:first-child{
+        width: 60%;
+        border-left: 1px solid #e2e8f0;
+      }
+      table.totals tbody tr td:last-child{
+        width: 40%;
+        text-align: left;
+        font-weight: 800;
+      }
+      table.totals tbody tr{
+        border-bottom: 1px dashed #e2e8f0;
+      }
+      table.totals tbody tr:last-child{
+        border-bottom: 0;
+      }
+      /* إبراز الثلاثة الأساسية: قبل الضريبة، الضريبة، شامل الضريبة */
+      table.totals tbody tr:nth-child(2) td, /* الإجمالي قبل الضريبة */
+      table.totals tbody tr:nth-child(4) td, /* ضريبة VAT (بعد وجود صفوف اختيارية) */
+      table.totals tbody tr.bold td {        /* الإجمالي شامل الضريبة */
+        background: #eef2ff;
+      }
+      /* عند وجود صفوف إضافية قبل الضريبة، حافظ على تظليل الضريبة بشكل عام */
+      #vat{ font-weight: 800; }
+      #grand{ font-weight: 900; }
+
+      /* إطار ثقيل يحدد الثلاث خانات (قبل الضريبة، الضريبة، شامل الضريبة) مع فواصل سميكة بين كل خانة */
+      table.totals{ border-collapse: collapse; }
+      /* أزل الحدود المتقطعة الافتراضية عن هذه الصفوف الثلاثة */
+      table.totals tbody tr:has(td#sub),
+      table.totals tbody tr:has(td#vat),
+      table.totals tbody tr:has(td#grand){
+        border-bottom: 0 !important;
+      }
+      /* حدود جانبية سميكة للمجموعة */
+      table.totals tbody tr:has(td#sub) td,
+      table.totals tbody tr:has(td#vat) td,
+      table.totals tbody tr:has(td#grand) td{
+        border-left: 2.5px solid #0f172a !important;
+        border-right: 2.5px solid #0f172a !important;
+      }
+      /* توحيد الإطار الجانبي لكل الصفوف الاختيارية لضمان نفس التخطيط */
+      table.totals tbody tr#extraRow td,
+      table.totals tbody tr#discRow td,
+      table.totals tbody tr#afterDiscRow td,
+      table.totals tbody tr#tobaccoFeeRow td,
+      table.totals tbody tr#couponRow td,
+      table.totals tbody tr#paidRow td,
+      table.totals tbody tr#remainRow td,
+      table.totals tbody tr#changeRow td{
+        border-left: 2.5px solid #0f172a !important;
+        border-right: 2.5px solid #0f172a !important;
+      }
+      /* إبراز الصفوف الأساسية دائمًا مهما تغيّر ترتيب الصفوف */
+      table.totals tbody tr:has(td#sub) td,
+      table.totals tbody tr:has(td#vat) td,
+      table.totals tbody tr:has(td#grand) td{
+        background: #eef2ff;
+      }
+      /* حد علوي سميك لبداية المجموعة */
+      table.totals tbody tr:has(td#sub) td{ border-top: 2.5px solid #0f172a !important; }
+      /* خط علوي بنفس السماكة فوق صف (الإجمالي قبل الضريبة) لضمان ظهور فاصل واضح */
+      table.totals tbody tr:has(td#sub) td:first-child{ border-top: 2px solid #0f172a !important; }
+      /* فاصل سميك بين (قبل الضريبة) و(الضريبة) */
+      table.totals tbody tr:has(td#vat) td{ border-top: 2.5px solid #0f172a !important; }
+      /* فاصل سميك بين (الضريبة) و(شامل الضريبة) + حد سفلي سميك لنهاية المجموعة (أو الصفوف الأخيرة عند وجود مدفوع/متبقي) */
+      table.totals tbody tr#changeRow td,
+      table.totals tbody tr#remainRow td,
+      table.totals tbody tr#paidRow td,
+      table.totals tbody tr#couponRow td,
+      table.totals tbody tr#discRow td,
+      table.totals tbody tr#afterDiscRow td,
+      table.totals tbody tr:has(td#grand) td{
+        border-top: 2.5px solid #0f172a !important;
+      }
+      table.totals tbody tr#changeRow:last-child td,
+      table.totals tbody tr#remainRow:last-child td,
+      table.totals tbody tr#paidRow:last-child td,
+      table.totals tbody tr#couponRow:last-child td,
+      table.totals tbody tr:has(td#grand):last-child td{
+        border-bottom: 2.5px solid #0f172a !important;
+      }
+      /* خط سميك ثابت أسفل صف (الإجمالي شامل الضريبة) */
+      table.totals tbody tr:has(td#grand) td{
+        border-bottom: 2.5px solid #0f172a !important;
+      }
+      /* إزالة التكرار: لا تضف حدًا علويًا للصف التالي مباشرة بعد (الإجمالي شامل الضريبة) */
+      table.totals tbody tr:has(td#grand) + tr td{
+        border-top: 0 !important;
+      }
+      .currency-symbol{ font-family:'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-size:1.7em; line-height:0; vertical-align:-0.1em; margin:0 2px; }
+.desc-title{ font-weight:800; color:#0b3daa; margin-inline-start:4px; }
+tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
+    .reprint-btn{ position:fixed; top:8px; left:8px; padding:8px 10px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15);} 
+    .export-btn{ position:fixed; top:48px; left:8px; padding:8px 10px; border:0; border-radius:8px; background:#16a34a; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15);} 
+    .whats-btn{ position:fixed; top:88px; left:8px; padding:8px 10px; border:0; border-radius:8px; background:#25D366; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15);} 
+    @media print { .reprint-btn, .export-btn, .whats-btn{ display:none } #lowStockBanner{ display:none !important; } }
+
+    /* زيادة وضوح الطباعة: جعل بيانات الفاتورة وجدول المنتجات بخط أثقل */
+    /* بيانات الفاتورة بعد عنوان القسم مباشرة (السطرين التاليين) — مثل الإجمالي شامل الضريبة */
+    .section-title + .muted,
+    .section-title + .muted + .muted,
+    #paidAtLine,
+    #roomLine { font-weight: 700; font-size: 12px; color: #0f172a; }
+
+    /* ترويسات الجدول بخط أثقل، وقيم الصفوف أوضح */
+    table thead th { font-weight: 800; }
+    table tbody td { font-weight: 700; }
+
+    /* بطاقات السائق والعميل: خط أسود ثقيل لحرارة الطابعات */
+    #driverCard, #driverCard *,
+    #custCard, #custCard *{ font-weight:800 !important; color:#0f172a !important; font-size:11px !important; line-height:1.05 !important; }
+    /* فواصل سميكة بين أسطر بطاقة العميل + خلفية خفيفة */
+    #custCard .cust-row + .cust-row{ border-top: 2.5px solid #0f172a; }
+    #custCard .cust-row{ background:#f8fafc; }
+
+    /* توحيد نوع الخط والوزن واللون والحجم على كامل الفاتورة (تم تصغيره لتقليل طول الفاتورة) */
+    *, *::before, *::after{
+      font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+      font-weight: 900 !important;
+      color: #000 !important;
+      font-size: 12px !important;
+    }
+    </style>
+  </head>
+  <body>
+    <button class="reprint-btn" id="reprintBtn" onclick="window.print()">إعادة طباعة</button>
+    <button class="export-btn" id="exportBtn">تصدير PDF</button>
+    <button class="whats-btn" id="whatsBtn">إرسال واتساب</button>
+    <div class="ticket">
+      <div id="companySection">
+        <div id="header" class="center" style="padding:6px 0;">
+          <img id="logo" class="logo" alt="" />
+          <h2 id="company">الشركة</h2>
+          <div id="companyInfo" class="muted"></div>
+        </div>
+      </div>
+
+      <div class="center"><span id="invType" class="section-badge" style="display:none;">فاتورة ضريبية مبسطة</span></div>
+      <div class="section-title">بيانات الفاتورة</div>
+      <div class="muted" style="margin:0; display:flex; justify-content:flex-start; gap:8px;">
+        <div>رقم الفاتورة: <span id="invNo"></span></div>
+      </div>
+
+      <div class="muted" style="margin:0;">
+        <div>التاريخ: <span id="invDate"></span></div>
+      </div>
+      <div class="muted" style="margin:0;">
+        <div>طريقة الدفع: <span id="invPay"></span></div>
+      </div>
+      <div class="muted" style="margin:0;" id="userLine" hidden>
+        <div>مدخل الفاتورة: <span id="cashierName"></span></div>
+      </div>
+      <div style="margin:4px 0; display:none; font-weight:700; color:#16a34a;" id="paidAtLine">💳 تاريخ الدفع: <span id="paidAt"></span></div>
+      <div class="muted" style="margin:4px 0;" id="roomLine" hidden>الغرفة: <span id="roomName"></span></div>
+
+      <div id="driverCard" style="display:none; border:1px dashed #94a3b8; border-radius:8px; padding:6px; margin-bottom:6px;">
+        <div style="font-weight:700; color:#0b3daa; margin-bottom:4px;">بيانات السائق</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div class="muted"><span style="color:#334155">الاسم:</span> <span id="drvName"></span></div>
+          <div class="muted" id="drvPhone" style="display:none"><span style="color:#334155">جوال السائق:</span> <span></span></div>
+        </div>
+      </div>
+
+      <div id="custCard" style="border:2.5px solid #0f172a; border-radius:8px; padding:0; margin-bottom:0px; overflow:hidden;">
+        <div style="font-weight:800; padding:4px 6px; background:#e5e7eb; border-bottom:2.5px solid #0f172a;" id="ccName"></div>
+        <div style="display:grid; font-size:11px;">
+          <div class="cust-row" id="ccPhone" style="display:none; padding:4px 6px;">جوال: <span></span></div>
+          <div class="cust-row" id="ccEmail" style="display:none; padding:4px 6px;">إيميل: <span></span></div>
+          <div class="cust-row" id="ccAddress" style="display:none; padding:4px 6px;">العنوان: <span></span></div>
+          <div class="cust-row" id="ccVat" style="display:none; padding:4px 6px;">الرقم الضريبي: <span></span></div>
+          <div class="cust-row" id="ccCR" style="display:none; padding:4px 6px;">السجل التجاري: <span></span></div>
+          <div class="cust-row" id="ccNat" style="display:none; padding:4px 6px;">العنوان الوطني: <span></span></div>
+          <div class="cust-row" id="ccNotes" style="display:none; padding:4px 6px;">ملاحظات: <span></span></div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>المنتج</th>
+            <th>العملية</th>
+            <th id="thPrice">سعر</th>
+            <th id="thQty">كمية</th>
+            <th>الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody id="items"></tbody>
+      </table>
+
+      <table class="totals">
+        <tbody>
+          <tr id="extraRow" style="display:none"><td>الإضافى</td><td style="text-align:left" id="extra"></td></tr>
+          <tr><td>الإجمالي قبل الضريبة</td><td style="text-align:left" id="sub"></td></tr>
+          <tr id="discRow" style="display:none"><td id="discLabel">خصم</td><td style="text-align:left; color:#b91c1c" id="disc"></td></tr>
+          <tr id="afterDiscRow" style="display:none"><td>الإجمالي بعد الخصم (قبل الضريبة)</td><td style="text-align:left" id="afterDisc"></td></tr>
+          <tr id="tobaccoFeeRow" style="display:none"><td>رسوم التبغ</td><td style="text-align:left" id="tobaccoFee"></td></tr>
+          <tr><td>ضريبة VAT</td><td style="text-align:left" id="vat"></td></tr>
+          <tr class="bold"><td>الإجمالي شامل الضريبة</td><td style="text-align:left" id="grand"></td></tr>
+          <tr id="couponRow" style="display:none"><td id="couponLabel">كوبون</td><td style="text-align:left; color:#0b3daa" id="couponVal"></td></tr>
+          <tr id="paidRow" style="display:none"><td>المبلغ المدفوع</td><td style="text-align:left" id="paid"></td></tr>
+          <tr id="remainRow" style="display:none"><td>المتبقي</td><td style="text-align:left" id="remain"></td></tr>
+          <tr id="changeRow" style="display:none"><td>الباقي</td><td style="text-align:left" id="change"></td></tr>
+        </tbody>
+      </table>
+
+      <div id="qrBox" class="center" style="margin:4px 0;">
+        <div id="qr" style="display:inline-block; transform:scale(0.9); transform-origin:center;"></div>
+      </div>
+
+
+    </div>
+
+    <script>
+      // Resize preview window to fit the invoice height and width exactly
+      function resizeWindowToTicket(){
+        try{
+          const ticket = document.querySelector('.ticket');
+          if(!ticket) return;
+          // سرعة فورية: بدون requestAnimationFrame للتسريع
+          const rect = ticket.getBoundingClientRect();
+          const frameW = window.outerWidth - window.innerWidth;
+          const frameH = window.outerHeight - window.innerHeight;
+          const targetW = Math.max(360, Math.ceil(rect.width) + (isFinite(frameW)?frameW:0));
+          // أضف مساحة صغيرة بالأسفل لتجنب قطع آخر سطر
+          const targetH = Math.max(320, Math.ceil(rect.height) + 16 + (isFinite(frameH)?frameH:0));
+          const maxW = (window.screen && window.screen.availWidth) ? window.screen.availWidth : targetW;
+          const maxH = (window.screen && window.screen.availHeight) ? window.screen.availHeight : targetH;
+          window.resizeTo(Math.min(targetW, maxW), Math.min(targetH, maxH));
+        }catch(_){ /* ignore */ }
+      }
+
+      (async function(){
+        // دالة انتظار عشوائية لتقليل مخاطر الحظر من واتساب (1-8 ثواني)
+        function randomDelay(minMs, maxMs) {
+          const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+          return new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        // دالة مساعدة لقياس عرض النص بدقة باستخدام Canvas
+        function measureTextWidth(text, fontSize, fontFamily, fontWeight){
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+          return ctx.measureText(text).width;
+        }
+
+        // تصغير تلقائي لخط الأرقام داخل خلايا .num حتى تبقى في سطر واحد
+        function autoshrinkNumericCells(root){
+          try{
+            const cells = (root||document).querySelectorAll('tbody td.num');
+            let processedCount = 0;
+            
+            cells.forEach((td, idx) => {
+              const inner = td.querySelector('.num-inner');
+              if(!inner) return;
+              
+              const originalText = inner.textContent.trim();
+              if(!originalText) return;
+              
+              // اسمح بظهور النص مؤقتاً للقياس الصحيح
+              td.style.overflow = 'visible';
+              
+              // انتظر حتى يتم حساب التخطيط
+              void td.offsetWidth;
+              
+              // احصل على عرض الخلية الفعلي
+              const tdRect = td.getBoundingClientRect();
+              const tdStyle = getComputedStyle(td);
+              const paddingLeft = parseFloat(tdStyle.paddingLeft) || 0;
+              const paddingRight = parseFloat(tdStyle.paddingRight) || 0;
+              const borderLeft = parseFloat(tdStyle.borderLeftWidth) || 0;
+              const borderRight = parseFloat(tdStyle.borderRightWidth) || 0;
+              const maxWidth = tdRect.width - paddingLeft - paddingRight - borderLeft - borderRight - 4;
+              
+              if(!maxWidth || maxWidth <= 5){
+                false && console.warn(`⚠️ maxWidth too small: ${maxWidth}px for cell ${idx}`);
+                return;
+              }
+              
+              // احصل على معلومات الخط
+              const innerStyle = getComputedStyle(inner);
+              const fontFamily = innerStyle.fontFamily || 'Cairo';
+              const fontWeight = innerStyle.fontWeight || '700';
+              
+              // ابدأ من حجم الخط الحالي
+              let size = parseFloat(innerStyle.fontSize) || 11;
+              const minSize = 3;
+              
+              // قس عرض النص بدقة باستخدام Canvas
+              let textWidth = measureTextWidth(originalText, size, fontFamily, fontWeight);
+              
+              false && console.log(`🔍 Cell ${idx}: text="${originalText}", maxWidth=${maxWidth.toFixed(2)}px, textWidth=${textWidth.toFixed(2)}px, fontSize=${size}px`);
+              
+              // إذا كان النص أكبر من العرض المتاح، صغّر الخط
+              if(textWidth > maxWidth){
+                const ratio = textWidth / maxWidth;
+                false && console.log(`📏 Cell ${idx} needs shrinking: ratio=${ratio.toFixed(2)}`);
+                
+                // احسب الحجم المثالي مباشرة
+                size = Math.max(minSize, (size / ratio) * 0.92); // 0.92 للأمان
+                inner.style.fontSize = size + 'px';
+                
+                // أعد قياس العرض
+                textWidth = measureTextWidth(originalText, size, fontFamily, fontWeight);
+                
+                false && console.log(`📐 After calculation: fontSize=${size.toFixed(2)}px, textWidth=${textWidth.toFixed(2)}px`);
+                
+                // تحسين دقيق إذا لزم الأمر
+                let guard = 0;
+                while(textWidth > maxWidth && size > minSize && guard < 30){
+                  size -= 0.15;
+                  guard++;
+                  textWidth = measureTextWidth(originalText, size, fontFamily, fontWeight);
+                }
+                
+                inner.style.fontSize = size + 'px';
+                
+                if(guard > 0){
+                  false && console.log(`🔧 Fine-tuned ${guard} times, final: fontSize=${size.toFixed(2)}px, textWidth=${textWidth.toFixed(2)}px`);
+                }
+              }
+              
+              // بعد الانتهاء، أخفِ التجاوز
+              td.style.overflow = 'hidden';
+              processedCount++;
+            });
+            
+            false && console.log(`✨ Processed ${processedCount} numeric cells`);
+          }catch(e){ 
+            false && console.error('❌ autoshrinkNumericCells error:', e);
+          }
+        }
+
+        // تصغير تلقائي لخط أسماء المنتجات الطويلة لتقليل ارتفاع الفاتورة
+        function autoshrinkProductNames(root){
+          try{
+            const cells = (root||document).querySelectorAll('tbody td.product-name');
+            cells.forEach(td => {
+              // أعِد الخط إلى القيمة الافتراضية قبل القياس
+              td.style.fontSize = '';
+              td.style.lineHeight = '';
+              const maxWidth = td.clientWidth;
+              if(!maxWidth || maxWidth <= 0) return;
+              
+              // قياس العرض الفعلي للنص
+              const tempSpan = document.createElement('span');
+              tempSpan.style.visibility = 'hidden';
+              tempSpan.style.position = 'absolute';
+              tempSpan.style.whiteSpace = 'nowrap';
+              tempSpan.style.fontSize = getComputedStyle(td).fontSize;
+              tempSpan.style.fontFamily = getComputedStyle(td).fontFamily;
+              tempSpan.style.fontWeight = getComputedStyle(td).fontWeight;
+              tempSpan.textContent = td.textContent;
+              document.body.appendChild(tempSpan);
+              
+              const textWidth = tempSpan.scrollWidth;
+              document.body.removeChild(tempSpan);
+              
+              // احسب عدد الأسطر المتوقع
+              const estimatedLines = Math.ceil(textWidth / maxWidth);
+              
+              // إذا كان النص سيأخذ أكثر من سطر واحد، صغّر الخط
+              if(estimatedLines > 1){
+                let size = parseFloat(getComputedStyle(td).fontSize) || 11;
+                const minSize = 7.5;
+                
+                // تصغير بناءً على عدد الأسطر المتوقع
+                // للنصوص التي تحتاج سطرين: صغّر قليلاً
+                // للنصوص التي تحتاج 3+ أسطر: صغّر أكثر
+                if(estimatedLines === 2){
+                  size = Math.max(minSize, size * 0.85);
+                } else if(estimatedLines === 3){
+                  size = Math.max(minSize, size * 0.75);
+                } else {
+                  size = Math.max(minSize, size * 0.65);
+                }
+                
+                td.style.fontSize = size + 'px';
+                td.style.lineHeight = '1.1';
+              }
+            });
+          }catch(_){ /* ignore */ }
+        }
+
+        // نفّذ التصغير بعد اكتمال بناء العناصر وقبل الطباعة، وأيضًا عند تغيير تخطيط الجدول
+        window.addEventListener('load', ()=>{
+          autoshrinkNumericCells();
+          autoshrinkProductNames();
+          setTimeout(()=> {
+            autoshrinkNumericCells();
+            autoshrinkProductNames();
+          }, 5);
+        });
+        window.addEventListener('resize', ()=> {
+          autoshrinkNumericCells();
+          autoshrinkProductNames();
+        });
+        window.addEventListener('beforeprint', ()=> {
+          autoshrinkNumericCells();
+          autoshrinkProductNames();
+        });
+        window.addEventListener('afterprint', ()=> {
+          autoshrinkNumericCells();
+          autoshrinkProductNames();
+        });
+        // helper to safely inject footer note
+        function setFooterNote(settings){
+          try{
+            const note = (settings && settings.invoice_footer_note || '').trim();
+            if(!note) return;
+            const box = document.getElementById('qrBox');
+            if(!box) return;
+            const p = document.createElement('div');
+            p.className = 'muted';
+            p.style.margin = '8px 0';
+            p.style.whiteSpace = 'pre-wrap';
+            p.style.overflowWrap = 'anywhere';
+            p.style.wordBreak = 'break-word';
+            p.textContent = note;
+            box.insertAdjacentElement('beforebegin', p);
+          }catch(_){ /* ignore */ }
+        }
+        // إزالة تنبيه انخفاض المخزون من شاشة المعاينة/الطباعة بناءً على طلب العميل
+        function showLowStockBanner(){ /* لم يعد هناك تنبيه في شاشة الطباعة */ }
+        // data is expected in window.__PRINT_DATA injected via query or preload
+        const params = new URLSearchParams(location.search);
+        const saleId = Number(params.get('id'));
+        try{
+          const api = (window.opener && window.opener.api) ? window.opener.api : (window.api || {});
+          
+          // 🚀 تحميل الفاتورة والإعدادات والشعار بشكل متوازي - تحسين الأداء
+          const [s, st, lg] = await Promise.all([
+            api.sales_get(saleId),
+            api.settings_get(),
+            api.settings_image_get()
+          ]);
+          const settings = (st && st.ok) ? st.item : {};
+          window.__SETTINGS__ = settings; // Cache for silent print WhatsApp
+          // Apply global print margins (mm) via CSS variables
+          try{
+            const ml = Math.max(0, Number(settings.print_margin_left_mm||0));
+            const mr = Math.max(0, Number(settings.print_margin_right_mm||0));
+            document.documentElement.style.setProperty('--m-left', ml + 'mm');
+            document.documentElement.style.setProperty('--m-right', mr + 'mm');
+          }catch(_){ /* ignore */ }
+          // Update table headers from settings
+          try{
+            const unitPriceLabel = settings.unit_price_label || 'سعر القطعة';
+            const quantityLabel = settings.quantity_label || 'عدد';
+            const thPrice = document.getElementById('thPrice');
+            const thQty = document.getElementById('thQty');
+            if(thPrice) thPrice.textContent = unitPriceLabel;
+            if(thQty) thQty.textContent = quantityLabel;
+          }catch(_){ /* ignore */ }
+          const pay = params.get('pay') || '';
+          const cash = Number(params.get('cash')||0);
+          // خريطة عربية لطرق الدفع
+          const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', refund:'إشعار دائن' };
+          const payKey = pay || (s.sale?.payment_method || '');
+          document.getElementById('invPay').textContent = payLabels[payKey] || payKey;
+          // Show cashier name from URL param if present; otherwise fallback to localStorage
+          try{
+            let cashier = '';
+            try{ cashier = String((params.get('cashier')||'').trim()); }catch(_){ cashier=''; }
+            if(!cashier){
+              const u = JSON.parse(localStorage.getItem('pos_user')||'null');
+              if(u && (u.full_name || u.username)){
+                cashier = u.full_name || u.username;
+              }
+            }
+            if(cashier){
+              const line = document.getElementById('userLine');
+              const span = document.getElementById('cashierName');
+              if(span){ span.textContent = cashier; }
+              if(line){ line.hidden = false; }
+            }
+          }catch(_){ /* ignore */ }
+          if(!s || !s.ok){ document.body.innerHTML = '<div style="padding:12px">تعذر تحميل الفاتورة</div>'; return; }
+          const sale = s.sale, items = s.items || [];
+          window.__SALE_DATA__ = sale;
+          
+          // 🚀 تحميل بيانات العميل والغرفة بشكل متوازي (المرحلة الثانية)
+          const roomId = params.get('room');
+          const hasVat = Number(sale.vat_total||0) > 0;
+          const needsCustomer = sale.customer_id && hasVat;
+          
+          const [customerData, roomData] = await Promise.all([
+            needsCustomer ? api.customers_get(sale.customer_id) : Promise.resolve(null),
+            roomId ? api.rooms_list() : Promise.resolve(null)
+          ]);
+          
+          // set order number if available
+          try{
+            // إذا تم تمرير رقم الأوردر في الرابط، استخدمه أولاً وإلا خذ من السجل
+            let ord = 0;
+            try{ ord = Number(params.get('order')||0); }catch(_){ ord = 0; }
+            if(!ord){ try{ ord = Number(sale.order_no||0); }catch(_){ ord = 0; } }
+            if(ord>0){ const el = document.getElementById('orderNo'); if(el){ el.textContent = String(ord); } }
+          }catch(_){ }
+
+          // driver block - بيانات السائق متاحة مباشرة في sale سواء من DB أو من البيانات السريعة
+          try{
+            if(sale.driver_name || sale.driver_phone){
+              const box = document.getElementById('driverCard');
+              box.style.display='block';
+              document.getElementById('drvName').textContent = sale.driver_name || '';
+              if(sale.driver_phone){
+                const ph = document.getElementById('drvPhone');
+                ph.style.display='';
+                const spans = ph.querySelectorAll('span');
+                if(spans && spans.length > 1){
+                  spans[1].textContent = sale.driver_phone; // ضع الرقم في الـ span الثانية وأبقِ التسمية
+                } else {
+                  ph.textContent = 'جوال السائق: ' + sale.driver_phone;
+                }
+              }
+            }
+          }catch(_){}
+
+          // عرض اسم الغرفة (تم تحميله مسبقاً)
+          if(roomData && roomData.ok){
+            try{
+              const R = (roomData.items||[]).find(x => String(x.id)===String(roomId));
+              if(R){
+                document.getElementById('roomName').textContent = R.name;
+                document.getElementById('roomLine').hidden = false;
+              }
+            }catch(_){ }
+          }
+
+          // النوع أعلى بيانات الفاتورة حسب الضريبة ورقم العميل (استخدام البيانات المحملة مسبقاً)
+          try{
+            const typeEl = document.getElementById('invType');
+            let isTax = false;
+            // إن كان المستند إشعار دائن أظهر الوسم المناسب بوضوح
+            if(String(sale.invoice_no||'').startsWith('CN-') || String(sale.doc_type||'')==='credit_note'){
+              // تحديد نوع الإشعار بناءً على وجود ضريبة ووجود رقم ضريبي للعميل
+              const baseNo = params.get('base_no') || sale.ref_base_invoice_no || '';
+              const cn = String(sale.invoice_no||'');
+              const hasVatAbs = Math.abs(Number(sale.vat_total||0)) > 0;
+              let label = 'إشعار دائن';
+              let hasCustomerVat = false;
+              if(customerData && customerData.ok && customerData.item && customerData.item.vat_number){ 
+                hasCustomerVat = true; 
+              }
+              if(hasVatAbs){ label = hasCustomerVat ? 'إشعار دائن للفاتورة الضريبية' : 'إشعار دائن للفاتورة الضريبية المبسطة'; }
+              typeEl.textContent = label;
+              // أضف سطرًا تحته لعرض أرقام الإشعار/الأساسية إن وُجدت
+              const below = document.createElement('div');
+              below.className = 'muted'; below.style.marginTop='4px'; below.style.fontSize='12px';
+              const cnNum = cn.replace(/^CN-?/i, '');
+              below.textContent = baseNo ? `رقم الإشعار: ${cnNum} — الفاتورة الأساسية: ${baseNo}` : `رقم الإشعار: ${cnNum}`;
+              typeEl.parentElement.appendChild(below);
+              typeEl.style.display = '';
+            } else {
+              if(hasVat){
+                // إذا كان هناك ضريبة: افتراضيًا مبسطة
+                isTax = true;
+                typeEl.textContent = 'فاتورة ضريبية مبسطة';
+              }
+              // إذا كانت الضريبة 0 لا تستعلم عن العميل لتسريع المعاينة
+              if(hasVat && customerData && customerData.ok && customerData.item && customerData.item.vat_number){
+                isTax = true;
+                typeEl.textContent = 'فاتورة ضريبية';
+              }
+              typeEl.style.display = isTax ? '' : 'none';
+            }
+            // إن كانت نسبة الضريبة = 0 في الإعدادات، أخفِ وسم نوع الفاتورة الضريبية
+            try{ if(Number(settings?.vat_percent||0) === 0){ typeEl.style.display = 'none'; } }catch(_){ }
+          }catch(_){ /* ignore */ }
+
+          function fmt(a){
+            // تنسيق المبلغ مع رمز العملة وموقعه من الإعدادات
+            const n = Number(a||0).toFixed(2);
+            try{
+              let sym = String((settings && settings.currency_symbol) || '').trim();
+              if(!sym){ sym = '﷼'; }
+              // استبدل الرموز الشائعة بالرمز الخاص للخط المضمّن إن لزم
+              // Fix double symbols: if it looks like Saudi Riyal (including the symbol itself), force single symbol
+              if(/﷼|SAR|SR|ريال|ر\.س|\uE900/i.test(sym)){ sym = '\ue900'; }
+              const symHtml = `<span class="currency-symbol">${sym}</span>`;
+              const pos = (settings && settings.currency_symbol_position) === 'before' ? 'before' : 'after';
+              return pos === 'before' ? `${symHtml} ${n}` : `${n} ${symHtml}`;
+            }catch(_){
+              return n;
+            }
+          }
+
+          // company area (prefer legal name for ZATCA)
+          document.getElementById('company').textContent = (settings.seller_legal_name || '');
+          const infoLines = [];
+          if(settings.company_location) infoLines.push(settings.company_location);
+          if(settings.company_site) infoLines.push(settings.company_site);
+          if(settings.mobile) infoLines.push('جوال: '+settings.mobile);
+          if(settings.email && (typeof settings.show_email_in_invoice === 'undefined' || settings.show_email_in_invoice)) infoLines.push('إيميل: '+settings.email);
+          if(settings.seller_vat_number) infoLines.push('الرقم الضريبي: '+settings.seller_vat_number);
+          if(settings.commercial_register) infoLines.push('السجل التجاري: '+settings.commercial_register);
+          if(settings.national_number) infoLines.push('الرقم الوطني: '+settings.national_number);
+          document.getElementById('companyInfo').textContent = infoLines.join('\n');
+
+          // insert persistent footer note before QR
+          setFooterNote(settings);
+
+          // logo (already loaded in parallel) + apply size
+          const logoEl = document.getElementById('logo');
+          try{
+            if(lg && lg.ok && lg.base64){
+              logoEl.src = `data:${lg.mime||'image/png'};base64,${lg.base64}`;
+            } else if(settings.logo_path){
+              if(settings.logo_path.startsWith('assets/')){
+                logoEl.src='../../../'+settings.logo_path; // from src/renderer/sales -> project/assets
+              }else{
+                logoEl.src='file:///'+settings.logo_path.replace(/\\/g,'/');
+              }
+            } else {
+              logoEl.style.display='none';
+            }
+            const lw = Number(settings.logo_width_px||0), lh = Number(settings.logo_height_px||0);
+            if(lw>0){ logoEl.style.width = lw + 'px'; }
+            if(lh>0){ logoEl.style.height = lh + 'px'; }
+          }catch(_){ logoEl.style.display='none'; }
+
+          // sale meta
+          // رقم الفاتورة المعروض
+          const baseNo = params.get('base_no') || sale.ref_base_invoice_no || '';
+          if(String(sale.doc_type||'')==='credit_note' || String(sale.invoice_no||'').startsWith('CN-')){
+            // في الإشعار: أظهر رقم الفاتورة الأساسية
+            if(baseNo){ document.getElementById('invNo').textContent = baseNo; }
+          } else {
+            document.getElementById('invNo').textContent = sale.invoice_no;
+          }
+          // Force Gregorian calendar in English (Gregorian)
+          // 12-hour time with AM/PM in English
+          const enGreg = new Intl.DateTimeFormat('en-GB-u-ca-gregory', { year:'numeric', month:'2-digit', day:'2-digit', hour:'numeric', minute:'2-digit', hour12:true }).format(new Date(sale.created_at));
+          document.getElementById('invDate').textContent = enGreg;
+          // Show paid timestamp if settled
+          // عرض تاريخ الدفع عند وجود قيمة في settled_at (حتى لو كان الفرق أقل من دقيقة)
+          if(sale.settled_at){
+            try{
+              const paidFmt = new Intl.DateTimeFormat('en-GB-u-ca-gregory', { year:'numeric', month:'2-digit', day:'2-digit', hour:'numeric', minute:'2-digit', hour12:true }).format(new Date(sale.settled_at));
+              document.getElementById('paidAt').textContent = paidFmt;
+              document.getElementById('paidAtLine').style.display = '';
+            }catch(_){ }
+          }
+          // كان يظهر اسم العميل هنا، نقلناه إلى بطاقة العميل فقط
+
+          // Hook export button to export thermal layout as PDF
+          try{
+            const exportBtn = document.getElementById('exportBtn');
+            if(exportBtn){
+              exportBtn.addEventListener('click', async () => {
+                try{
+                  // Clone current DOM, strip scripts/buttons to keep static values
+                  const root = document.documentElement.cloneNode(true);
+                  Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
+                  // Ensure logo uses absolute file path so it appears in PDF
+                  try{
+                    const img = root.querySelector('#logo');
+                    if(img){
+                      let absLogo = '';
+                      if(settings.logo_path){
+                        if(String(settings.logo_path).startsWith('assets/')){
+                          const rp = await api.resolve_path(settings.logo_path);
+                          if(rp && rp.ok){ absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); }
+                        }else{
+                          absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                        }
+                      }
+                      if(absLogo){ img.src = absLogo; }
+                    }
+                  }catch(_){ }
+                  const html = '<!doctype html>' + root.outerHTML;
+                  const fname = `invoice-${sale.invoice_no}.pdf`;
+                  const r = await api.pdf_export(html, { printBackground: true, saveMode: 'auto', filename: fname });
+                  if(!r || !r.ok){ alert('تعذر إنشاء PDF للفاتورة'); }
+                }catch(e){ alert('فشل التصدير إلى PDF'); }
+              });
+            }
+
+            // WhatsApp button handler
+            try{
+              const whatsBtn = document.getElementById('whatsBtn');
+              if(whatsBtn){
+                whatsBtn.addEventListener('click', () => {
+                  (async () => {
+                    try{
+                      if(window.__WA_SENDING__){
+                        alert('⏳ جاري إرسال الفاتورة... الرجاء الانتظار');
+                        return;
+                      }
+
+                      if(!navigator.onLine){
+                        if(typeof window.showWhatsAppErrorNotification === 'function'){
+                          window.showWhatsAppErrorNotification('no-internet', 'لا يمكن إرسال الفاتورة حالياً');
+                        } else {
+                          alert('❌ لا يوجد اتصال بالإنترنت!\n\nالرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.');
+                        }
+                        return;
+                      }
+
+                      const statusCheck = await api.whatsapp_status();
+                      if(!statusCheck || !statusCheck.success || !statusCheck.connected){
+                        if(typeof window.showWhatsAppErrorNotification === 'function'){
+                          window.showWhatsAppErrorNotification('not-connected', 'يرجى ربط WhatsApp أولاً');
+                        } else {
+                          alert('❌ WhatsApp غير متصل!\n\nالرجاء الذهاب إلى إدارة WhatsApp وربط الحساب أولاً.\n\nتأكد من:\n• اتصال الجهاز بالإنترنت\n• مسح رمز QR في شاشة إدارة WhatsApp');
+                        }
+                        return;
+                      }
+
+                      let rawPhone = String(window.__CUST_PHONE__ || '').trim();
+                      if(/^05\d{8}$/.test(rawPhone)){ 
+                        rawPhone = '966' + rawPhone.slice(1); 
+                      }
+                      rawPhone = rawPhone.replace(/[^\d+]/g,'');
+                      if(!rawPhone){ 
+                        alert('لا يوجد رقم جوال للعميل'); 
+                        return; 
+                      }
+
+                      window.__WA_SENDING__ = true;
+                      false && console.log('⏳ جاري إرسال الفاتورة عبر واتساب في الخلفية...');
+
+                      (async () => {
+                        try{
+                          const root = document.documentElement.cloneNode(true);
+                          Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                          Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
+                          
+                          try{
+                            const img = root.querySelector('#logo');
+                            if(img && settings.logo_path){
+                              let absLogo = '';
+                              if(String(settings.logo_path).startsWith('assets/')){
+                                const rp = await api.resolve_path(settings.logo_path);
+                                if(rp && rp.ok){ 
+                                  absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); 
+                                }
+                              }else{
+                                absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                              }
+                              if(absLogo){ img.src = absLogo; }
+                            }
+                          }catch(_){ }
+
+                          const html = '<!doctype html>' + root.outerHTML;
+                          const fname = `invoice-${sale.invoice_no}.pdf`;
+                          
+                          const pdfResult = await api.pdf_export(html, { 
+                            printBackground: true, 
+                            saveMode: 'temp', 
+                            filename: fname
+                          });
+                          
+                          if(!pdfResult || !pdfResult.ok){ 
+                            false && console.error('❌ تعذر إنشاء PDF للفاتورة');
+                            alert('❌ فشل في إنشاء ملف PDF للفاتورة');
+                            return; 
+                          }
+
+                          false && console.log('PDF created temporarily at:', pdfResult.path);
+                          const company = (settings && settings.seller_legal_name) ? 
+                                         settings.seller_legal_name : 'فاتورة';
+                          const invNo = String(sale.invoice_no||'');
+                          const caption = `فاتورة رقم ${invNo} من ${company}`;
+                          
+                          false && console.log('Sending to phone:', rawPhone);
+                          
+                          // انتظار عشوائي (1-8 ثواني) لتقليل مخاطر الحظر
+                          false && console.log('⏳ انتظار عشوائي قبل الإرسال...');
+                          await randomDelay(1000, 8000);
+                          false && console.log('✅ انتهى الانتظار، جاري الإرسال...');
+                          
+                          const sendResult = await api.whatsapp_send_file(
+                            rawPhone, 
+                            pdfResult.path, 
+                            fname, 
+                            caption
+                          );
+
+                          if(sendResult && sendResult.success){
+                            false && console.log('✅ تم إرسال الفاتورة عبر WhatsApp بنجاح!');
+                            alert('✅ تم إرسال الفاتورة عبر WhatsApp بنجاح!');
+                            
+                            try {
+                              if(typeof api !== 'undefined' && api.emit_whatsapp_invoice_sent){
+                                api.emit_whatsapp_invoice_sent({
+                                  message: 'تم إرسال الفاتورة عبر واتساب للعميل',
+                                  invoiceNo: invNo
+                                });
+                              }
+                            } catch(_) {}
+                          } else {
+                            const errMsg = sendResult?.error || 'خطأ غير معروف';
+                            false && console.error('❌ فشل الإرسال:', errMsg);
+                            alert('❌ فشل إرسال الفاتورة: ' + errMsg);
+                          }
+                          
+                          // Clean up temp PDF after sending
+                          try {
+                            await api.file_delete(pdfResult.path);
+                            false && console.log('🗑️ تم حذف الملف المؤقت');
+                          } catch(_) {}
+
+                        }catch(e){ 
+                          false && console.error('❌ خطأ في إرسال الفاتورة:', e);
+                          alert('❌ خطأ في إرسال الفاتورة: ' + (e.message || e));
+                        } finally {
+                          window.__WA_SENDING__ = false;
+                        }
+                      })();
+
+                    }catch(e){ 
+                      false && console.error('WhatsApp validation error:', e);
+                      alert('تعذر التحقق من إعدادات WhatsApp: ' + (e.message || e)); 
+                    }
+                  })();
+                });
+              }
+            }catch(_){ }
+          }catch(_){ /* ignore */ }
+
+          // تصغير الأرقام الطويلة قبل تحديد حجم النافذة
+          try{
+            false && console.log('🚀 Starting autoshrink sequence...');
+            
+            // استدعاء فوري أول
+            false && console.log('📞 Call 1: immediate');
+            autoshrinkNumericCells();
+            autoshrinkProductNames();
+            
+            // استدعاءات متعددة بتأخيرات مختلفة لضمان التطبيق
+            setTimeout(()=>{
+              false && console.log('📞 Call 2: after 0ms');
+              autoshrinkNumericCells();
+              autoshrinkProductNames();
+            }, 0);
+            
+            setTimeout(()=>{
+              false && console.log('📞 Call 3: after 20ms');
+              autoshrinkNumericCells();
+              autoshrinkProductNames();
+            }, 20);
+            
+            setTimeout(()=>{
+              false && console.log('📞 Call 4: after 50ms');
+              autoshrinkNumericCells();
+              autoshrinkProductNames();
+            }, 50);
+            
+            setTimeout(()=>{
+              false && console.log('📞 Call 5: after 100ms');
+              autoshrinkNumericCells();
+              autoshrinkProductNames();
+            }, 100);
+            
+            setTimeout(()=>{
+              false && console.log('📞 Call 6: after 200ms (final)');
+              autoshrinkNumericCells();
+              autoshrinkProductNames();
+            }, 200);
+          }catch(_){ /* ignore */ }
+
+          // After building invoice content, resize preview window to fit
+          resizeWindowToTicket();
+
+          // Check and notify parent window about WhatsApp status
+          try{
+            if(settings && settings.whatsapp_on_print){
+              const urlParams = new URLSearchParams(window.location.search);
+              const isReprint = urlParams.get('reprint') === '1';
+              
+              if(!isReprint){
+                (async () => {
+                  try{
+                    if(!navigator.onLine){
+                      if(window.opener && typeof window.opener.showWhatsAppErrorNotification === 'function'){
+                        window.opener.showWhatsAppErrorNotification('no-internet', 'لن يتم إرسال هذه الفاتورة عبر واتساب');
+                      }
+                    } else {
+                      const statusCheck = await api.whatsapp_status();
+                      if(!statusCheck || !statusCheck.success || !statusCheck.connected){
+                        if(window.opener && typeof window.opener.showWhatsAppErrorNotification === 'function'){
+                          window.opener.showWhatsAppErrorNotification('not-connected', 'لن يتم إرسال هذه الفاتورة عبر واتساب');
+                        }
+                      }
+                    }
+                  }catch(_){}
+                })();
+              }
+            }
+          }catch(_){}
+
+          // Auto-send PDF to WhatsApp after manual print completes
+          try{
+            if(settings && settings.whatsapp_on_print){
+              // Check if this is the first copy (to avoid sending duplicate WhatsApp messages)
+              const urlParams = new URLSearchParams(window.location.search);
+              const copyNumber = urlParams.get('copy');
+              const isReprint = urlParams.get('reprint') === '1';
+              const isFirstCopy = !copyNumber || copyNumber === '1';
+              
+              if(isReprint){
+                false && console.log('⏭️ Skipping WhatsApp afterprint handler for reprint');
+              } else if(!isFirstCopy){
+                false && console.log(`⏭️ Skipping WhatsApp afterprint handler for copy #${copyNumber}`);
+              } else {
+                const timestamp = Date.now();
+                false && console.log(`🔧 [${timestamp}] Registering WhatsApp afterprint handler (copy #${copyNumber || '1'})`);
+                
+                window.addEventListener('afterprint', async () => {
+                const eventTime = Date.now();
+                false && console.log(`🔔 [${eventTime}] afterprint event fired! (${eventTime - timestamp}ms after registration)`);
+                
+                // Check if already sent or sending
+                if(window.__WA_SENT__ || window.__WA_SENDING__){
+                  false && console.log(`⏭️ [${eventTime}] WhatsApp send already in progress or completed, skipping (SENT=${window.__WA_SENT__}, SENDING=${window.__WA_SENDING__})`);
+                  return;
+                }
+                
+                window.__WA_SENDING__ = true;
+                window.__WA_SENT__ = true;
+                false && console.log(`⏳ [${eventTime}] بدء إرسال الفاتورة عبر واتساب بعد الطباعة...`);
+                
+                try{
+                  // Verify content is ready
+                  if(!window.__CONTENT_READY__){
+                    false && console.log('⚠️ Content not ready, skipping WhatsApp send');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return;
+                  }
+
+                  if(!navigator.onLine){
+                    console.error('❌ لا يوجد اتصال بالإنترنت - تم إلغاء الإرسال التلقائي للواتساب');
+                    if(typeof window.showWhatsAppErrorNotification === 'function'){
+                      window.showWhatsAppErrorNotification('no-internet', 'لم يتم إرسال الفاتورة - يرجى المحاولة يدوياً');
+                    }
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return;
+                  }
+
+                  const statusCheck = await api.whatsapp_status();
+                  if(!statusCheck || !statusCheck.success || !statusCheck.connected){
+                    console.error('❌ WhatsApp not connected, skipping auto-send');
+                    if(typeof window.showWhatsAppErrorNotification === 'function'){
+                      window.showWhatsAppErrorNotification('not-connected', 'لم يتم إرسال الفاتورة - يرجى المحاولة يدوياً');
+                    }
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return;
+                  }
+
+                  let rawPhone = String(window.__CUST_PHONE__ || '').trim();
+                  if(/^05\d{8}$/.test(rawPhone)){ 
+                    rawPhone = '966' + rawPhone.slice(1); 
+                  }
+                  rawPhone = rawPhone.replace(/[^\d+]/g,'');
+                  if(!rawPhone){ 
+                    false && console.log('❌ No customer phone, skipping WhatsApp send');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return; 
+                  }
+
+                  false && console.log(`📄 [${Date.now()}] Creating PDF for invoice... (invoice_no: ${sale.invoice_no})`);
+                  false && console.log(`📊 [${Date.now()}] DOM has ${document.querySelectorAll('#items tr').length} item rows`);
+                  const root = document.documentElement.cloneNode(true);
+                  false && console.log(`📋 [${Date.now()}] Cloned DOM has ${root.querySelectorAll('#items tr').length} item rows`);
+                  Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
+                  
+                  try{
+                    const img = root.querySelector('#logo');
+                    if(img && settings.logo_path){
+                      let absLogo = '';
+                      if(String(settings.logo_path).startsWith('assets/')){
+                        const rp = await api.resolve_path(settings.logo_path);
+                        if(rp && rp.ok){ 
+                          absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); 
+                        }
+                      }else{
+                        absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                      }
+                      if(absLogo){ img.src = absLogo; }
+                    }
+                  }catch(_){ }
+
+                  const html = '<!doctype html>' + root.outerHTML;
+                  const fname = `invoice-${sale.invoice_no}.pdf`;
+                  
+                  false && console.log(`📝 [${Date.now()}] Generating PDF with filename: ${fname}`);
+                  const pdfResult = await api.pdf_export(html, { 
+                    printBackground: true, 
+                    saveMode: 'temp', 
+                    filename: fname
+                  });
+                  
+                  if(!pdfResult || !pdfResult.ok){ 
+                    false && console.error('❌ Failed to generate PDF for auto-send');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return; 
+                  }
+
+                  false && console.log(`✅ [${Date.now()}] PDF generated at: ${pdfResult.path}`);
+                  const company = (settings && settings.seller_legal_name) ? 
+                                 settings.seller_legal_name : 'فاتورة';
+                  const invNo = String(sale.invoice_no||'');
+                  const caption = `فاتورة رقم ${invNo} من ${company}`;
+                  
+                  false && console.log(`📤 [${Date.now()}] Sending PDF via WhatsApp to: ${rawPhone}`);
+                  false && console.log(`📤 [${Date.now()}] File path: ${pdfResult.path}`);
+                  false && console.log(`📤 [${Date.now()}] File name: ${fname}`);
+                  
+                  // انتظار عشوائي (1-8 ثواني) لتقليل مخاطر الحظر
+                  false && console.log(`⏳ [${Date.now()}] انتظار عشوائي قبل الإرسال التلقائي...`);
+                  await randomDelay(1000, 8000);
+                  false && console.log(`✅ [${Date.now()}] انتهى الانتظار، جاري الإرسال...`);
+                  
+                  const sendResult = await api.whatsapp_send_file(
+                    rawPhone, 
+                    pdfResult.path, 
+                    fname, 
+                    caption
+                  );
+
+                  if(sendResult && sendResult.success){
+                    console.log(`✅ [${Date.now()}] تم إرسال الفاتورة عبر واتساب تلقائيًا بنجاح!`);
+                    
+                    try {
+                      if(typeof api !== 'undefined' && api.emit_whatsapp_invoice_sent){
+                        api.emit_whatsapp_invoice_sent({
+                          message: 'تم إرسال الفاتورة عبر واتساب للعميل',
+                          invoiceNo: invNo
+                        });
+                      }
+                    } catch(_) {}
+                  } else {
+                    const errorMsg = sendResult?.error || 'خطأ غير معروف';
+                    console.error(`❌ [${Date.now()}] فشل الإرسال التلقائي:`, errorMsg);
+                    if(typeof window.showWhatsAppErrorNotification === 'function'){
+                      const reason = errorMsg.includes('not connected') || errorMsg.includes('غير متصل') ? 'not-connected' : 'no-internet';
+                      window.showWhatsAppErrorNotification(reason, 'فشل إرسال الفاتورة - ' + errorMsg);
+                    }
+                  }
+                  
+                  // Clean up temp PDF
+                  false && console.log(`🗑️ [${Date.now()}] Cleaning up temp file...`);
+                  try {
+                    await api.file_delete(pdfResult.path);
+                    false && console.log(`✅ [${Date.now()}] Temp file deleted`);
+                  } catch(_) {
+                    false && console.log(`⚠️ [${Date.now()}] Failed to delete temp file`);
+                  }
+                }catch(e){ 
+                  const errorMsg = e?.message || String(e);
+                  console.error(`❌ [${Date.now()}] خطأ في الإرسال التلقائي عبر واتساب:`, e);
+                  if(typeof window.showWhatsAppErrorNotification === 'function'){
+                    const reason = errorMsg.includes('not connected') || errorMsg.includes('غير متصل') ? 'not-connected' : 'no-internet';
+                    window.showWhatsAppErrorNotification(reason, 'خطأ في إرسال الفاتورة - ' + errorMsg);
+                  }
+                  window.__WA_SENDING__ = false;
+                  window.__WA_SENT__ = false;
+                }finally{
+                  false && console.log(`🏁 [${Date.now()}] WhatsApp send handler finished`);
+                  window.__WA_SENDING__ = false;
+                }
+              }, { once: true });
+              }
+            }
+          }catch(_){ /* ignore */ }
+
+          // If logo loads later and changes height, resize again
+          try{
+            const logo = document.getElementById('logo');
+            if(logo){ logo.addEventListener('load', ()=>setTimeout(resizeWindowToTicket, 5), { once:true }); }
+          }catch(_){ }
+
+          // Reprint button: if silent_print enabled, override inline onclick to avoid dialog
+          try{
+            const reBtn = document.getElementById('reprintBtn');
+            if(reBtn && settings && settings.silent_print){
+              reBtn.onclick = async (ev) => {
+                ev.preventDefault(); ev.stopPropagation();
+                try{
+                  const roomParam = params.get('room') || '';
+                  const copies = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
+                  for(let i=1;i<=copies;i++){
+                    let cashier = '';
+                    try{ const u = JSON.parse(localStorage.getItem('pos_user')||'null'); if(u && (u.full_name || u.username)){ cashier = u.full_name || u.username; } }catch(_){ }
+                    await api.print_invoice_silent({ id: saleId, pay: (pay || (s.sale?.payment_method || '')), cash: String(cash), room: roomParam, format: 'thermal', cashier });
+                  }
+                  // تم حذف كود إرسال الرسالة النصية على واتساب
+                }catch(_){ /* ignore */ }
+                return false;
+              };
+            }
+          }catch(_){ /* ignore */ }
+
+          // customer card block (nice layout)
+          try{
+            const card = document.getElementById('custCard');
+            const ccName = document.getElementById('ccName');
+            const ccPhone = document.getElementById('ccPhone');
+            const ccEmail = document.getElementById('ccEmail');
+            const ccAddress = document.getElementById('ccAddress');
+            const ccVat = document.getElementById('ccVat');
+            const ccCR = document.getElementById('ccCR');
+            const ccNat = document.getElementById('ccNat');
+            const ccNotes = document.getElementById('ccNotes');
+            
+            console.log('🔍 Checking customer data:', { customer_id: sale.customer_id, customer_name: sale.customer_name });
+            
+            if(sale.customer_id){
+              // 🚀 استخدام بيانات العميل من قاعدة البيانات عند توفر customer_id، وإلا استخدام لقطة الفاتورة
+              let customerData = null;
+              // Use the same api instance that already falls back to window.api
+              console.log('📡 Fetching customer from API:', sale.customer_id);
+              const c = await api.customers_get(sale.customer_id);
+              console.log('📡 API Response:', c);
+              if(c && c.ok && c.item){
+                customerData = c.item;
+                console.log('✅ Got customer data from API:', customerData);
+              } else {
+                console.warn('⚠️ Failed to get customer data from API');
+              }
+              if(!customerData && sale.customer_name){
+                customerData = {
+                  name: sale.customer_name,
+                  phone: sale.customer_phone,
+                  email: sale.customer_email,
+                  address: sale.customer_address,
+                  vat_number: sale.customer_vat_number || sale.customer_vat,
+                  cr_number: sale.customer_cr_number,
+                  national_address: sale.customer_national_address,
+                  notes: sale.customer_notes
+                };
+                console.log('✅ Using fast data for customer:', customerData);
+              }
+              
+              if(customerData){
+                const { name, phone, email, address, vat_number, cr_number, national_address, notes } = customerData;
+                console.log('📝 Displaying customer card:', { name, phone, email, address, vat_number, cr_number });
+                card.style.display='';
+                // عرض اسم العميل مع وسم "اسم العميل"
+                if(name){ ccName.textContent = 'اسم العميل: ' + name; ccName.style.display=''; } else { ccName.style.display='none'; }
+                if(phone){ ccPhone.style.display=''; ccPhone.querySelector('span').textContent = phone; }
+                if(email){ ccEmail.style.display=''; ccEmail.querySelector('span').textContent = email; }
+                if(address){ ccAddress.style.display=''; ccAddress.querySelector('span').textContent = address; }
+                if(vat_number){ ccVat.style.display=''; ccVat.querySelector('span').textContent = vat_number; }
+                if(cr_number){ ccCR.style.display=''; ccCR.querySelector('span').textContent = cr_number; }
+                if(national_address){ ccNat.style.display=''; ccNat.querySelector('span').textContent = national_address; }
+                if(notes){ ccNotes.style.display=''; ccNotes.querySelector('span').textContent = notes; }
+                // Cache customer phone globally for WhatsApp button
+                try{ window.__CUST_PHONE__ = (phone || '').trim(); }catch(_){ }
+                // Auto WhatsApp: set initial flag
+                try{ window.__WA_SENT__ = false; }catch(_){ }
+              } else {
+                console.warn('⚠️ No customer data found, hiding card');
+                card.style.display='none';
+              }
+            } else {
+              console.warn('⚠️ No customer_id in sale, hiding card');
+              card.style.display='none';
+            }
+          }catch(err){ console.error('❌ Error in customer card block:', err); }
+
+          const tbody = document.getElementById('items');
+          tbody.innerHTML = '';
+          // اضبط حالة العمود (العملية) حسب البيانات: إن لم توجد أي عملية، أخفِ العمود ووسّع الأعمدة الأخرى
+          try{
+            const itemsTable = document.querySelector('.ticket > table:first-of-type');
+            const hasOp = Array.isArray(items) && items.some(it => String(it.operation_name||'').trim() !== '');
+            if(itemsTable){
+              itemsTable.classList.remove('has-op','no-op');
+              itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
+            }
+          }catch(_){ /* ignore */ }
+          const isCredit = String(sale.doc_type||'')==='credit_note' || String(sale.invoice_no||'').startsWith('CN-');
+          items.forEach(it => {
+            // سنضيف عناصر span داخل الخلايا الرقمية لتفادي تأثير الحواف والحدود أثناء القياس إذا لزم لاحقاً
+            // الصف الأساسي للبند
+            const tr = document.createElement('tr');
+            tr.className = 'item-row';
+            const opCell = it.operation_name ? it.operation_name : '';
+            // في تفاصيل البنود: السعر والإجمالي بدون رمز العملة — اعرض موجبة لإشعار الدائن
+            const priceVal = Number(it.price||0);
+            const lineVal = Number(it.line_total||0);
+            const dispPrice = isCredit ? Math.abs(priceVal) : priceVal;
+            const dispLine = isCredit ? Math.abs(lineVal) : lineVal;
+            // Normalize qty from possible Arabic digits and separators
+            let rawQty = it.qty;
+            let qtyNum = 0;
+            try{
+              let s = (rawQty==null ? '' : String(rawQty)).trim();
+              if(s){
+                const map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9','−':'-'};
+                s = s.replace(/[٠-٩۰-۹−]/g, ch => map[ch] || ch);
+                s = s.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ''); // strip bidi control chars
+                s = s.replace(/[٬\s]/g,''); // thousands/grouping
+                s = s.replace(/[٫,]/g,'.');   // decimal to dot
+                s = s.replace(/[^0-9.\-]/g,''); // keep only digits, dot, minus
+                const t = parseFloat(s);
+                qtyNum = Number.isFinite(t) ? t : (typeof rawQty === 'number' ? rawQty : Number(rawQty||0));
+              } else {
+                qtyNum = (typeof rawQty === 'number') ? rawQty : Number(rawQty||0);
+              }
+            }catch(_){ qtyNum = (typeof rawQty === 'number') ? rawQty : Number(rawQty||0); }
+            qtyNum = isCredit ? Math.abs(qtyNum) : qtyNum;
+            // Quantity: no decimals if integer; otherwise show exactly 3 decimals
+            const qtyTxt = Number.isInteger(qtyNum) ? String(qtyNum) : qtyNum.toFixed(3);
+            tr.innerHTML = `<td class="product-name">${it.name}</td><td>${opCell}</td><td class="num"><span class="num-inner">${dispPrice.toFixed(2)}</span></td><td class="num"><span class="num-inner">${qtyTxt}</span></td><td class="num"><span class="num-inner">${dispLine.toFixed(2)}</span></td>`;
+            tbody.appendChild(tr);
+
+            // صف للوصف في السطر التالي يغطي كامل عرض الجدول
+            const trDesc = document.createElement('tr');
+            trDesc.className = 'item-desc-row';
+            const descExtra = Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:8px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : '';
+            const empName = it.employee_name ? `<div style='font-size:9px; color:#64748b; margin-top:2px;'>الموظف: ${it.employee_name}</div>` : '';
+            trDesc.innerHTML = (it.description || Number(it.is_tobacco||0) || it.employee_name)
+              ? `<td colspan="5"><div class="desc-print">${descExtra}${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div></td>`
+              : `<td colspan="5"></td>`;
+            tbody.appendChild(trDesc);
+          });
+
+          document.getElementById('sub').innerHTML = fmt(isCredit ? Math.abs(Number(sale.sub_total||0)) : Number(sale.sub_total||0));
+          // extra value row
+          const extraVal = Number(sale.extra_value||0);
+          if(extraVal > 0){
+            document.getElementById('extraRow').style.display='';
+            document.getElementById('extra').innerHTML = fmt(extraVal);
+          }
+          // استخدم الخصم المحفوظ فقط، وأخفِ صف الكوبون لمنع الازدواجية
+          if(Number(sale.discount_amount||0) > 0){
+            document.getElementById('discRow').style.display='';
+            const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+            document.getElementById('discLabel').textContent = label;
+            const dispDisc = Math.abs(Number(sale.discount_amount||0));
+            document.getElementById('disc').innerHTML = fmt(dispDisc);
+          }
+          const baseAfter = sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0));
+          document.getElementById('afterDisc').innerHTML = fmt(isCredit ? Math.abs(Number(baseAfter||0)) : Number(baseAfter||0));
+          if(Number(sale.discount_amount||0) > 0){ document.getElementById('afterDiscRow').style.display=''; }
+          try{ document.getElementById('couponRow').style.display='none'; }catch(_){ }
+          // إخفاء صف الضريبة بالكامل إذا كانت نسبة الضريبة = 0 في الإعدادات
+          try{
+            if(Number(settings?.vat_percent||0) === 0){
+              const vatRow = document.getElementById('vat')?.closest('tr');
+              if(vatRow){ vatRow.style.display = 'none'; }
+              // إعادة تسمية الإجماليات بما يتوافق مع عدم وجود ضريبة
+              try{
+                const subLabel = document.getElementById('sub')?.previousElementSibling;
+                if(subLabel){ subLabel.textContent = 'المجموع'; }
+                const afterDiscRowEl = document.getElementById('afterDiscRow');
+                if(afterDiscRowEl){ afterDiscRowEl.style.display = 'none'; }
+                const grandLabel = document.getElementById('grand')?.previousElementSibling;
+                if(grandLabel){ grandLabel.innerHTML = '<b>الإجمالي</b>'; }
+              }catch(_){ }
+            }
+          }catch(_){ /* ignore */ }
+
+          // في حالة طباعة إشعار دائن، اعرض الخصم من الفاتورة الأساسية إذا لم يكن مخزنًا على الإشعار
+          try{
+            const isCredit = String(sale.doc_type||'')==='credit_note' || String(sale.invoice_no||'').startsWith('CN-');
+            if(isCredit && !(Number(sale.discount_amount||0) > 0)){
+              const baseId = Number(params.get('base')||0);
+              let baseSale = null;
+              if(baseId){ const br = await api.sales_get(baseId); if(br && br.ok){ baseSale = br.sale; } }
+              if(!baseSale){
+                const baseNo = params.get('base_no') || sale.ref_base_invoice_no || '';
+                if(baseNo){
+                  const lr = await api.sales_list({ invoice_no: baseNo });
+                  if(lr && lr.ok && lr.items && lr.items.length){
+                    const bid = lr.items[0].id;
+                    const br2 = await api.sales_get(bid);
+                    if(br2 && br2.ok){ baseSale = br2.sale; }
+                  }
+                }
+              }
+              if(baseSale){
+                const bExtra = Number(baseSale.extra_value||0);
+                const bDisc = Number(baseSale.discount_amount||0);
+                if(bExtra > 0){
+                  document.getElementById('extraRow').style.display='';
+                  document.getElementById('extra').innerHTML = fmt(bExtra);
+                }
+                if(bDisc > 0){
+                  document.getElementById('discRow').style.display='';
+                  const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+                  document.getElementById('discLabel').textContent = blabel;
+                  document.getElementById('disc').innerHTML = fmt(Math.abs(bDisc));
+                  document.getElementById('afterDisc').innerHTML = fmt(Math.abs(baseSale.total_after_discount ?? (Number(baseSale.sub_total||0) - bDisc)));
+                  document.getElementById('afterDiscRow').style.display='';
+                }
+              }
+            }
+          }catch(_){ }
+
+          // إظهار رسوم التبغ إن تم حفظها ضمن حسابات السلة
+          try{
+            const feeRow = document.getElementById('tobaccoFeeRow');
+            const feeVal = document.getElementById('tobaccoFee');
+            // في إشعار الدائن، تكون القيم سالبة؛ اعرض القيمة المطلقة
+            const rawTf = Number(sale.tobacco_fee || 0);
+            const tf = (String(sale.doc_type||'')==='credit_note' || String(sale.invoice_no||'').startsWith('CN-')) ? Math.abs(rawTf) : rawTf;
+            if(feeRow && feeVal){
+              if(tf > 0){
+                feeRow.style.display='';
+                try{
+                  feeVal.innerHTML = fmt(tf);
+                }catch(_){ feeVal.textContent = fmt(tf); }
+              }
+              else { feeRow.style.display='none'; feeVal.textContent=''; }
+            }
+          }catch(_){}
+          document.getElementById('vat').innerHTML = fmt(isCredit ? Math.abs(Number(sale.vat_total||0)) : Number(sale.vat_total||0));
+          document.getElementById('grand').innerHTML = fmt(isCredit ? Math.abs(Number(sale.grand_total||0)) : Number(sale.grand_total||0));
+
+          // بعد تعبئة الجدول بالكامل، تأكد من ضبط كافة الخلايا الرقمية وأسماء المنتجات
+          autoshrinkNumericCells(document);
+          autoshrinkProductNames(document);
+          // في إشعار الدائن: اظهر القيم موجبة في صف المبلغ المدفوع والمتبقي/الباقي أيضاً
+          try{
+            if(isCredit){
+              const paidEl = document.getElementById('paid');
+              const remEl = document.getElementById('remain');
+              const changeEl = document.getElementById('change');
+              if(paidEl){ paidEl.innerHTML = paidEl.textContent.replace('-',''); }
+              if(remEl){ remEl.innerHTML = remEl.textContent.replace('-',''); }
+              if(changeEl){ changeEl.innerHTML = changeEl.textContent.replace('-',''); }
+            }
+          }catch(_){ }
+
+          // paid/remaining & notes
+          try{
+            const paidRow = document.getElementById('paidRow');
+            const remainRow = document.getElementById('remainRow');
+            const paidEl = document.getElementById('paid');
+            const remEl = document.getElementById('remain');
+            const changeEl = document.getElementById('change');
+            const changeRow = document.getElementById('changeRow');
+            const grand = Number(sale.grand_total||0);
+            const isMixed = (pay||'')==='mixed';
+
+            const dbPaid = Number(sale.paid_amount||0);
+            const dbRemain = Number(sale.remaining_amount||0);
+
+            if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
+              if(dbPaid > 0){ paidEl.innerHTML = fmt(dbPaid); paidRow.style.display=''; } else { try{ paidRow.style.display='none'; }catch(_){} }
+              if(dbRemain > 0){ remEl.innerHTML = fmt(dbRemain); remainRow.style.display=''; } else { try{ remainRow.style.display='none'; }catch(_){} }
+            } else if(!isMixed){
+              let paid = 0, remain = 0, change = 0;
+              const entered = Number(cash);
+              const pm = (pay||'');
+              if(pm === 'cash'){
+                if(entered > 0){
+                  paid = entered;
+                  if(entered >= grand){
+                    change = Number((entered - grand).toFixed(2));
+                    remain = 0;
+                  } else {
+                    remain = Number((Math.max(0, grand - entered)).toFixed(2));
+                    change = 0;
+                  }
+                }
+              } else if(pm === 'card' || pm === 'tamara' || pm === 'tabby'){
+                if(entered > 0){
+                  paid = entered;
+                  if(entered >= grand){
+                    change = Number((entered - grand).toFixed(2));
+                    remain = 0;
+                  } else {
+                    remain = Number((Math.max(0, grand - entered)).toFixed(2));
+                    change = 0;
+                  }
+                } else {
+                  paid = grand;
+                  remain = 0;
+                  change = 0;
+                }
+              } else {
+                paid = 0;
+                remain = Number(grand.toFixed(2));
+              }
+              if(pm === 'credit'){
+                paidEl.innerHTML = fmt(0);
+                paidRow.style.display='';
+                remEl.innerHTML = fmt(grand);
+                remainRow.style.display='';
+              } else {
+                if(remain>0){
+                  paidEl.innerHTML = fmt(paid);
+                  paidRow.style.display='';
+                  remEl.innerHTML = fmt(remain);
+                  remainRow.style.display='';
+                } else if(change>0){ 
+                  changeEl.innerHTML = fmt(change); 
+                  changeRow.style.display=''; 
+                }
+              }
+            } else {
+              try{
+                paidRow.style.display='none';
+                remainRow.style.display='none';
+                changeRow.style.display='none';
+              }catch(_){ }
+            }
+            // عرض تفاصيل مختلط: نقدي + شبكة
+            try{
+              if(isMixed){
+                // حاول أولاً استخدام بيانات الشاشة
+                let mp = null; try{ mp = window.opener?.__mixed_payment || null; }catch(_){ }
+                // إن لم تتوفر، استخدم القيم المخزنة
+                if(!mp){
+                  const cashSplit = Number(sale.pay_cash_amount||0);
+                  const cardSplit = Number(sale.pay_card_amount||0);
+                  if(cashSplit>0 || cardSplit>0){ mp = { cash: cashSplit, card: cardSplit }; }
+                }
+                if(mp){
+                  const totals = document.querySelector('.totals tbody');
+                  const r1 = document.createElement('tr'); r1.innerHTML = `<td>المدفوع كاش</td><td style=\"text-align:left\">${fmt(mp.cash)}</td>`; totals.insertBefore(r1, document.getElementById('couponRow'));
+                  const r2 = document.createElement('tr'); r2.innerHTML = `<td>المدفوع شبكة</td><td style=\"text-align:left\">${fmt(mp.card)}</td>`; totals.insertBefore(r2, document.getElementById('couponRow'));
+                }
+              }
+            }catch(_){ }
+          }catch(_){ /* ignore */ }
+
+          // show invoice notes if any
+          if(sale.notes){
+            const n = document.createElement('div');
+            n.className = 'muted'; n.style.whiteSpace='pre-wrap'; n.textContent = 'ملاحظات: ' + sale.notes;
+            document.querySelector('.ticket').appendChild(n);
+          }
+
+          // ZATCA QR for thermal as well (offline generation)
+          try{
+            // Fast path: no VAT → skip QR generation and mark as ready
+            try{ if(Number(settings?.vat_percent||0) === 0){ window.__QR_READY = true; window.__NO_VAT_FAST__ = true; } }catch(_){ }
+            const qrBox = document.getElementById('qr');
+            if(Number(settings?.vat_percent||0) > 0 && settings.seller_legal_name && settings.seller_vat_number){
+              function toTLV(tag, value){
+                const enc = new TextEncoder(); const valBytes = enc.encode(value||'');
+                return [tag, valBytes.length, ...valBytes];
+              }
+              function genZatcaBase64(seller, vatNo, issueISO, total, vat){
+                const parts = [];
+                const _seller = String(seller||'');
+                const _vat = String(vatNo||'');
+                const _iso = String(issueISO||'');
+                const _total = (Number(total||0)).toFixed(2);
+                const _vatt = (Number(vat||0)).toFixed(2);
+                parts.push(...toTLV(1, _seller));
+                parts.push(...toTLV(2, _vat));
+                parts.push(...toTLV(3, _iso));
+                parts.push(...toTLV(4, _total));
+                parts.push(...toTLV(5, _vatt));
+                const arr = new Uint8Array(parts); let bin='';
+                for(let i=0;i<arr.length;i++){ bin += String.fromCharCode(arr[i]); }
+                return btoa(bin);
+              }
+              const issueISO = new Date(sale.created_at).toISOString();
+              const b64 = genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
+              // Try SVG first (crisp for print), then fallback to PNG data URL, then Base64 text
+              try{
+                const svg = await api.qr_to_svg(b64, { width: 120, margin: 1 });
+                if(svg && typeof svg === 'string'){
+                  const div = document.createElement('div');
+                  div.style.width='120px'; div.style.height='120px';
+                  div.innerHTML = svg;
+                  qrBox.appendChild(div);
+                  window.__QR_READY = true;
+                } else {
+                  const dataUrl = await api.qr_to_data_url(b64, { errorCorrectionLevel: 'M', width: 120, margin: 1 });
+                  if(dataUrl){
+                    const img = document.createElement('img'); img.width=120; img.height=120; img.alt='QR';
+                    img.src = dataUrl; qrBox.appendChild(img);
+                    // image load event will be awaited by main, but mark as ready too
+                    img.addEventListener('load', () => { window.__QR_READY = true; }, { once: true });
+                  } else {
+                    throw new Error('QR generation failed');
+                  }
+                }
+              }catch(e){
+                const pre = document.createElement('pre');
+                pre.textContent = 'ZATCA QR (Base64):\n' + b64;
+                pre.style.fontSize = '10px';
+                pre.style.direction = 'ltr';
+                qrBox.appendChild(pre);
+                window.__QR_READY = true;
+              }
+            }
+          }catch(_){ /* ignore */ }
+
+          const __FAST_NO_VAT__ = Number(settings?.vat_percent||0) === 0;
+          
+          // التحقق من اكتمال البيانات قبل الطباعة
+          try{
+            const errors = [];
+            
+            // التحقق من رقم الفاتورة
+            if(!sale.invoice_no || String(sale.invoice_no).trim() === ''){
+              errors.push('رقم الفاتورة');
+            }
+            
+            // التحقق من التاريخ
+            if(!sale.created_at){
+              errors.push('التاريخ');
+            }
+            
+            // التحقق من طريقة الدفع
+            if(!sale.payment_method || String(sale.payment_method).trim() === ''){
+              errors.push('طريقة الدفع');
+            }
+            
+            // التحقق من وجود منتجات
+            if(!items || items.length === 0){
+              errors.push('المنتجات');
+            }
+            
+            // التحقق من الإجمالي
+            if(!sale.grand_total || Number(sale.grand_total) <= 0){
+              errors.push('الإجمالي');
+            }
+            
+            // إذا كانت هناك بيانات ناقصة، سجل تحذير فقط ولا توقف الطباعة
+            if(errors.length > 0){
+              false && console.warn('⚠️ بيانات ناقصة، سيتم المتابعة بالطباعة:', errors);
+            }
+          }catch(e){
+            false && console.error('خطأ في التحقق من البيانات:', e);
+          }
+          
+          // إعلام main.js أن المحتوى جاهز للطباعة الصامتة
+          try{ window.__CONTENT_READY__ = false; }catch(_){ }
+          try{
+            const __step = () => {
+              try{
+                const invNoEl = document.getElementById('invNo');
+                const invDateEl = document.getElementById('invDate');
+                const invPayEl = document.getElementById('invPay');
+                const tbody = document.querySelector('table tbody');
+                const ok = Boolean(
+                  invNoEl && invNoEl.textContent && invNoEl.textContent.trim() &&
+                  invDateEl && invDateEl.textContent && invDateEl.textContent.trim() &&
+                  invPayEl && invPayEl.textContent && invPayEl.textContent.trim() &&
+                  tbody && tbody.children && tbody.children.length > 0
+                );
+                if(ok){
+                  try{ window.__CONTENT_READY__ = true; }catch(_){ }
+                  return;
+                }
+              }catch(_){ }
+              setTimeout(() => {
+                try{ requestAnimationFrame(__step); }catch(_){ __step(); }
+              }, 25);
+            };
+            requestAnimationFrame(() => {
+              requestAnimationFrame(__step);
+            });
+          }catch(_){ }
+          
+          // 🚀 طباعة تلقائية فور اكتمال البيانات (حد أقصى 800ms)
+          const MAX_WAIT = 800;
+          const CHECK_INTERVAL = 50;
+          const startTime = Date.now();
+          
+          function checkDataReady(){
+            const invNoEl = document.getElementById('invNo');
+            const invDateEl = document.getElementById('invDate');
+            const invPayEl = document.getElementById('invPay');
+            const tbody = document.querySelector('table tbody');
+            
+            return invNoEl?.textContent?.trim() &&
+                   invDateEl?.textContent?.trim() &&
+                   invPayEl?.textContent?.trim() &&
+                   tbody?.children?.length > 0;
+          }
+          
+          function executePrint(){
+            const elapsed = Date.now() - startTime;
+            false && console.log(`🖨️ [${Date.now()}] Data ready after ${elapsed}ms`);
+            
+            const invNoEl = document.getElementById('invNo');
+            const invDateEl = document.getElementById('invDate');
+            const invPayEl = document.getElementById('invPay');
+            const tbody = document.querySelector('table tbody');
+            
+            const domErrors = [];
+            if(!invNoEl || !invNoEl.textContent.trim()){
+              domErrors.push('رقم الفاتورة لم يظهر في الصفحة');
+            }
+            if(!invDateEl || !invDateEl.textContent.trim()){
+              domErrors.push('التاريخ لم يظهر في الصفحة');
+            }
+            if(!invPayEl || !invPayEl.textContent.trim()){
+              domErrors.push('طريقة الدفع لم تظهر في الصفحة');
+            }
+            if(!tbody || tbody.children.length === 0){
+              domErrors.push('المنتجات لم تظهر في الصفحة');
+            }
+            
+            if(domErrors.length > 0){
+              false && console.error('❌ فشل التحقق من DOM:', domErrors);
+              alert('خطأ في عرض الفاتورة:\n' + domErrors.join('\n'));
+              return;
+            }
+            
+            if(!(settings && settings.silent_print)){
+              false && console.log(`🖨️ [${Date.now()}] Calling window.print() now`);
+              window.print();
+            } else {
+              false && console.log(`⏭️ [${Date.now()}] Skipping window.print() - silent_print is enabled`);
+            }
+          }
+          
+          const checkInterval = setInterval(() => {
+            if(checkDataReady()){
+              clearInterval(checkInterval);
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  executePrint();
+                });
+              });
+            } else if(Date.now() - startTime >= MAX_WAIT){
+              clearInterval(checkInterval);
+              false && console.warn(`⚠️ [${Date.now()}] Max wait time reached (${MAX_WAIT}ms), printing anyway`);
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  executePrint();
+                });
+              });
+            }
+          }, CHECK_INTERVAL);
+          
+          // Notify opener after printing so kitchen can print next
+          try{
+            window.addEventListener('afterprint', ()=>{
+              false && console.log(`📨 [${Date.now()}] Notifying opener window (this is NOT the WhatsApp handler)`);
+              try{ if(window.opener){ window.opener.postMessage({ type:'invoice-after-print' }, '*'); } }catch(_){ }
+            });
+          }catch(_){ }
+        }catch(e){
+          document.body.innerHTML = '<div style="padding:12px">حدث خطأ أثناء التحضير للطباعة</div>';
+        }
+      })();
+    </script>
+  </body>
+</html>

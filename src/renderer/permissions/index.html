@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>إدارة الصلاحيات</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .perm-body {
+        display: none;
+      }
+      .perm-body.open {
+        display: block;
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">🔐 إدارة الصلاحيات</div>
+      <nav>
+        <button id="backBtn" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ الرئيسية
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-5">
+        <div class="flex flex-wrap gap-4 items-center">
+          <label class="text-sm font-semibold text-gray-700">المستخدم:</label>
+          <select id="userSelect" class="flex-1 min-w-[250px] px-4 py-2.5 border border-gray-300 rounded-lg"></select>
+          <span id="status" class="text-sm text-gray-500"></span>
+        </div>
+      </div>
+
+      <div id="permsWrap">
+        <div id="permsGrid" class="space-y-3"></div>
+        <div class="flex gap-3 mt-6 pt-5 border-t border-gray-200 flex-wrap">
+          <button id="selectAllBtn" class="flex-1 min-w-[120px] px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">
+            ✓ تحديد الكل
+          </button>
+          <button id="clearAllBtn" class="flex-1 min-w-[120px] px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">
+            ✕ إلغاء الكل
+          </button>
+          <button id="saveBtn" class="flex-1 min-w-[120px] px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            💾 حفظ الصلاحيات
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

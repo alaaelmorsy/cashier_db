@@ -1,0 +1,2308 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>الإعدادات - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;
+      }
+      /* Professional Theme Variables */
+      :root {
+        /* Primary Colors - Modern Professional Palette */
+        --primary: #6366f1;
+        --primary-50: #eef2ff;
+        --primary-100: #e0e7ff;
+        --primary-500: #6366f1;
+        --primary-600: #5b21b6;
+        --primary-700: #4c1d95;
+        --primary-900: #312e81;
+
+        /* Secondary Colors */
+        --secondary: #f59e0b;
+        --success: #10b981;
+        --success-50: #ecfdf5;
+        --success-500: #10b981;
+        --success-600: #059669;
+        --warning: #f59e0b;
+        --warning-50: #fffbeb;
+        --warning-500: #f59e0b;
+        --danger: #ef4444;
+        --danger-50: #fef2f2;
+        --danger-500: #ef4444;
+        --danger-600: #dc2626;
+
+        /* Interface Colors */
+        --white: #ffffff;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+
+        /* Backgrounds */
+        --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --bg-card: rgba(255, 255, 255, 0.95);
+        --bg-card-hover: rgba(255, 255, 255, 1);
+        --bg-surface: rgba(255, 255, 255, 0.9);
+
+        /* Shadows */
+        --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+        /* Spacing */
+        --space-1: 0.25rem;
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+        --space-5: 1.25rem;
+        --space-6: 1.5rem;
+        --space-8: 2rem;
+        --space-10: 2.5rem;
+        --space-12: 3rem;
+        --space-16: 4rem;
+        --space-20: 5rem;
+
+        /* Border Radius */
+        --radius-sm: 0.375rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
+        --radius-2xl: 1.25rem;
+        --radius-3xl: 1.5rem;
+        --radius-full: 9999px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html, body { 
+        height: 100%; 
+      }
+
+      body {
+        font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg-body);
+        min-height: 100vh;
+        color: var(--gray-900);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Header */
+      header {
+        background: var(--bg-surface);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 200;
+        box-shadow: var(--shadow-lg);
+        padding: var(--space-2) var(--space-6);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        font-weight: 800;
+      }
+
+      .brand-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+        color: var(--white);
+        box-shadow: var(--shadow-md);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .brand > div {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .brand > div > div:first-child {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--gray-900);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      }
+
+      nav .btn.back {
+        background: linear-gradient(135deg, var(--gray-100), var(--gray-50));
+        color: var(--gray-700);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.1s ease;
+        padding: var(--space-2) var(--space-3);
+        font-size: 13px;
+      }
+
+      nav .btn.back:hover {
+        background: linear-gradient(135deg, var(--gray-200), var(--gray-100));
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+
+      /* Layout */
+      .wrap {
+        max-width: 100%;
+        margin: calc(var(--space-10) + 58px) auto var(--space-4);
+        padding: 0 var(--space-6);
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        border-radius: var(--radius-2xl);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.1s ease;
+        margin-bottom: var(--space-3);
+      }
+
+      .card:hover {
+        background: var(--bg-card-hover);
+        box-shadow: var(--shadow-2xl);
+        transform: translateY(-2px);
+      }
+
+      .card-body {
+        padding: var(--space-4);
+      }
+
+      .section {
+        display: grid;
+        gap: var(--space-3);
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+
+      .section-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-lg);
+        display: grid;
+        place-items: center;
+        color: var(--white);
+        background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+        box-shadow: var(--shadow-md);
+        font-size: 16px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--gray-900);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      }
+
+      .section-desc {
+        font-size: 12px;
+        color: var(--gray-600);
+        margin-top: 0;
+        font-weight: 500;
+      }
+
+      .divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--gray-200), transparent);
+        margin: var(--space-2) 0 var(--space-3);
+      }
+
+      /* Form */
+      label {
+        font-weight: 600;
+        color: var(--gray-700);
+        font-size: 13px;
+        margin-bottom: var(--space-1);
+        display: block;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: var(--space-3);
+      }
+
+      @media (max-width: 1200px) {
+        .form-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      input, select, button, textarea {
+        font-family: inherit;
+        font-size: 14px;
+      }
+
+      input, select, textarea {
+        width: 100%;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        color: var(--gray-900);
+        outline: none;
+        transition: all 0.2s ease;
+        resize: vertical;
+        box-shadow: var(--shadow-sm);
+        font-size: 13px;
+      }
+
+      input:focus, select:focus, textarea:focus {
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        transform: translateY(-1px);
+      }
+
+      select {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, var(--gray-500) 50%), 
+                         linear-gradient(135deg, var(--gray-500) 50%, transparent 50%);
+        background-position: calc(100% - 16px) calc(1em + 2px), 
+                           calc(100% - 11px) calc(1em + 2px);
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+      }
+
+      /* Rows and switches */
+      .row {
+        display: flex;
+        gap: var(--space-4);
+      }
+      
+      .row > * {
+        flex: 1;
+      }
+
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(99, 102, 241, 0.05));
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+      }
+
+      .switch:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(99, 102, 241, 0.08));
+        box-shadow: var(--shadow-sm);
+      }
+
+      input[type="checkbox"], input[type="radio"] {
+        accent-color: var(--primary-500);
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Feedback */
+      .error {
+        color: var(--danger-600);
+        background: var(--danger-50);
+        border: 1px solid var(--danger-500);
+        padding: var(--space-4) var(--space-5);
+        border-radius: var(--radius-xl);
+        min-height: 48px;
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+        font-weight: 600;
+      }
+      
+      .error:empty {
+        display: none;
+      }
+
+      .success {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--success-600);
+        background: var(--success-50);
+        border: 1px solid var(--success-500);
+        padding: var(--space-4) var(--space-6);
+        border-radius: var(--radius-xl);
+        min-width: 280px;
+        text-align: center;
+        box-shadow: var(--shadow-2xl);
+        z-index: 1000;
+        font-weight: 700;
+        backdrop-filter: blur(10px);
+      }
+
+      /* Logo */
+      .logo-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+
+      .logo-row img {
+        width: 60px;
+        height: 60px;
+        border-radius: var(--radius-lg);
+        object-fit: contain;
+        border: 2px solid var(--gray-200);
+        background: #fff;
+        box-shadow: var(--shadow-md);
+      }
+
+      .logo-help {
+        font-size: 11px;
+        color: var(--gray-500);
+        line-height: 1.4;
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-4);
+        border: 1px solid var(--gray-300);
+        background: var(--white);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--gray-700);
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.1s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn.primary {
+        background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+        border-color: transparent;
+        color: var(--white);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .btn.primary:hover {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        box-shadow: var(--shadow-xl);
+        transform: translateY(-2px);
+      }
+
+      .btn.secondary {
+        background: linear-gradient(135deg, var(--gray-500), var(--gray-600));
+        color: var(--white);
+        border-color: transparent;
+      }
+
+      .btn.ghost {
+        background: transparent;
+        border: 1px solid var(--gray-300);
+      }
+
+      .btn.danger {
+        background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
+        border-color: transparent;
+        color: var(--white);
+      }
+
+      .actions {
+        display: flex;
+        gap: var(--space-3);
+        justify-content: flex-start;
+        margin-top: var(--space-4);
+      }
+
+      /* Payment methods dropdown */
+      .pm-dropdown {
+        position: relative;
+        width: 100%;
+      }
+
+      .pm-dropdown-trigger {
+        width: 100%;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        color: var(--gray-900);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .pm-dropdown-trigger:hover {
+        border-color: var(--gray-400);
+      }
+
+      .pm-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 100%;
+        margin-top: 4px;
+        background: var(--white);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        max-height: 240px;
+        overflow-y: auto;
+        display: none;
+        z-index: 100;
+      }
+
+      .pm-dropdown-menu.show {
+        display: block;
+      }
+
+      .pm-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .pm-dropdown-item:hover {
+        background: var(--gray-50);
+      }
+
+      .pm-dropdown-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
+
+      .pm-dropdown-arrow {
+        font-size: 10px;
+        color: var(--gray-500);
+      }
+
+      /* Utilities */
+      .mt-6 { margin-top: var(--space-6); }
+      .mt-8 { margin-top: var(--space-8); }
+      .mt-12 { margin-top: var(--space-12); }
+      .mt-16 { margin-top: var(--space-16); }
+
+      /* Dialog Enhancement */
+      dialog {
+        background: var(--bg-card);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius-2xl);
+        box-shadow: var(--shadow-2xl);
+        backdrop-filter: blur(20px);
+        animation: dialogSlideIn 0.3s ease-out;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        padding: 0;
+      }
+
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(6px);
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes dialogSlideIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -60%) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      /* Enhanced details/summary styling */
+      details {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+
+      details[open] {
+        box-shadow: var(--shadow-sm);
+      }
+
+      summary {
+        transition: all 0.2s ease;
+        user-select: none;
+      }
+
+      summary:hover {
+        background: var(--gray-100) !important;
+        transform: translateX(2px);
+      }
+
+      /* Email modal specific styles */
+      #dailyEmailDlg .form-grid input[type="time"] {
+        font-family: 'Cairo', monospace;
+        font-weight: 600;
+        letter-spacing: 1px;
+      }
+
+      #dailyEmailDlg .switch {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.05));
+        border-color: rgba(16, 185, 129, 0.2);
+      }
+
+      #dailyEmailDlg .switch:hover {
+        border-color: rgba(16, 185, 129, 0.3);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(52, 211, 153, 0.08));
+      }
+
+      /* Responsive adjustments for dialog */
+      @media (max-width: 768px) {
+        dialog {
+          width: 95vw !important;
+          min-width: unset !important;
+          max-width: 95vw !important;
+          max-height: 95vh;
+        }
+
+        #dailyEmailDlg .form-grid {
+          grid-template-columns: 1fr !important;
+        }
+
+        #dailyEmailDlg .actions {
+          flex-direction: column;
+        }
+
+        #dailyEmailDlg .actions button {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        dialog {
+          width: 98vw !important;
+          height: 95vh;
+          max-height: 95vh;
+        }
+      }
+      /* تعطيل جميع التأثيرات */
+      *{animation:none !important; transition:none !important;}
+      header, .card, .success{backdrop-filter:none !important;}
+      .card:hover{transform:none !important; box-shadow: var(--shadow-xl); background: var(--bg-card);}
+      .switch:hover{box-shadow:none; background: linear-gradient(135deg, rgba(99, 102, 241, 0.02), rgba(99, 102, 241, 0.05));}
+      input:focus, select:focus, textarea:focus{transform:none !important;}
+      .btn:hover{transform:none !important;}
+      .btn:active{transform:none !important;}
+
+      /* Theme Variables - Override for Dark and Gray Themes */
+      :root.dark,
+      html.dark {
+        --bg-body: #000000;
+        --bg-card: rgba(13, 13, 13, 0.95);
+        --bg-card-hover: rgba(26, 26, 26, 1);
+        --bg-surface: rgba(13, 13, 13, 0.9);
+        --gray-50: #1a1a1a;
+        --gray-100: #262626;
+        --gray-200: #333333;
+        --gray-300: #4a4a4a;
+        --gray-400: #6b6b6b;
+        --gray-500: #999999;
+        --gray-600: #cccccc;
+        --gray-700: #e5e5e5;
+        --gray-800: #f0f0f0;
+        --gray-900: #ffffff;
+      }
+
+      :root.theme-gray,
+      html.theme-gray {
+        --bg-body: linear-gradient(135deg, #b5b2ac 0%, #a8a59f 100%);
+        --bg-card: #c5c2bc;
+        --bg-card-hover: #c5c2bc;
+        --bg-surface: #bbb8b2;
+        --gray-50: #d4d0ca;
+        --gray-100: #c8c4bd;
+        --gray-200: #bbb8b2;
+        --gray-300: #aeaba5;
+        --gray-400: #9a938b;
+        --gray-500: #6b6560;
+        --gray-600: #544f4a;
+        --gray-700: #3f3a36;
+        --gray-800: #2d2a27;
+        --gray-900: #1a1715;
+        --primary: #6366f1;
+        --primary-500: #6366f1;
+        --primary-600: #4f46e5;
+      }
+
+      /* Gray Theme Specific Overrides for Settings Page */
+      html.theme-gray body,
+      :root.theme-gray body {
+        background: var(--bg-body) !important;
+      }
+
+      html.theme-gray .card,
+      :root.theme-gray .card {
+        background: var(--bg-card) !important;
+        border-color: var(--gray-300) !important;
+      }
+
+      html.theme-gray .card:hover,
+      :root.theme-gray .card:hover {
+        background: var(--bg-card-hover) !important;
+      }
+
+      html.theme-gray header,
+      :root.theme-gray header {
+        background: var(--bg-surface) !important;
+        border-color: var(--gray-300) !important;
+      }
+
+      html.theme-gray .modal-container,
+      :root.theme-gray .modal-container {
+        background: var(--bg-card) !important;
+      }
+
+      html.theme-gray input,
+      html.theme-gray select,
+      html.theme-gray textarea,
+      :root.theme-gray input,
+      :root.theme-gray select,
+      :root.theme-gray textarea {
+        background: var(--gray-50) !important;
+        border-color: var(--gray-300) !important;
+      }
+
+      html.theme-gray .switch,
+      :root.theme-gray .switch {
+        background: var(--gray-100) !important;
+        border-color: var(--gray-300) !important;
+      }
+
+      html.theme-gray .wrap,
+      :root.theme-gray .wrap {
+        background: transparent !important;
+      }
+
+      html.theme-gray .section,
+      :root.theme-gray .section {
+        background: transparent !important;
+      }
+
+      html.theme-gray .card-body,
+      :root.theme-gray .card-body {
+        background: transparent !important;
+      }
+
+      html.theme-gray .form-grid,
+      html.theme-gray .row,
+      html.theme-gray .logo-row,
+      :root.theme-gray .form-grid,
+      :root.theme-gray .row,
+      :root.theme-gray .logo-row {
+        background: transparent !important;
+      }
+
+      html.theme-gray .section-header,
+      html.theme-gray .section-desc,
+      html.theme-gray .divider,
+      :root.theme-gray .section-header,
+      :root.theme-gray .section-desc,
+      :root.theme-gray .divider {
+        background: transparent !important;
+      }
+
+      html.theme-gray div,
+      html.theme-gray form,
+      :root.theme-gray div,
+      :root.theme-gray form {
+        background-color: transparent !important;
+      }
+
+      html.theme-gray .card div,
+      html.theme-gray .card form,
+      :root.theme-gray .card div,
+      :root.theme-gray .card form {
+        background: transparent !important;
+      }
+
+      /* Ensure all direct children of card have gray background */
+      html.theme-gray .card > *,
+      :root.theme-gray .card > * {
+        background: transparent !important;
+      }
+
+      /* Make all text black in gray theme for settings page */
+      html.theme-gray,
+      html.theme-gray body,
+      html.theme-gray h1,
+      html.theme-gray h2,
+      html.theme-gray h3,
+      html.theme-gray h4,
+      html.theme-gray h5,
+      html.theme-gray h6,
+      html.theme-gray p,
+      html.theme-gray span,
+      html.theme-gray div,
+      html.theme-gray label,
+      html.theme-gray a,
+      html.theme-gray li,
+      html.theme-gray small,
+      html.theme-gray .section-title,
+      html.theme-gray .section-desc,
+      html.theme-gray .logo-help,
+      html.theme-gray .brand > div > div,
+      :root.theme-gray,
+      :root.theme-gray body,
+      :root.theme-gray h1,
+      :root.theme-gray h2,
+      :root.theme-gray h3,
+      :root.theme-gray h4,
+      :root.theme-gray h5,
+      :root.theme-gray h6,
+      :root.theme-gray p,
+      :root.theme-gray span,
+      :root.theme-gray div,
+      :root.theme-gray label,
+      :root.theme-gray a,
+      :root.theme-gray li,
+      :root.theme-gray small,
+      :root.theme-gray .section-title,
+      :root.theme-gray .section-desc,
+      :root.theme-gray .logo-help,
+      :root.theme-gray .brand > div > div {
+        color: #2d2a27 !important;
+      }
+
+      /* Reset Modal Styles */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-4);
+      }
+      .modal-overlay.active {
+        display: flex;
+      }
+      .modal-container {
+        background: white;
+        border-radius: var(--radius-2xl);
+        box-shadow: var(--shadow-2xl);
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: auto;
+      }
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-6);
+        border-bottom: 1px solid var(--gray-200);
+      }
+      .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin: 0;
+      }
+      .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-full);
+        border: none;
+        background: var(--gray-100);
+        color: var(--gray-600);
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      .modal-close:hover {
+        background: var(--gray-200);
+        color: var(--gray-900);
+      }
+      .modal-body {
+        padding: var(--space-6);
+      }
+      .modal-warning {
+        background: var(--warning-50);
+        border: 1px solid var(--warning-500);
+        color: var(--gray-800);
+        padding: var(--space-4);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-6);
+        font-weight: 600;
+      }
+      .checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+      .checkbox-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border: 2px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        background: white;
+      }
+      .checkbox-item:hover {
+        border-color: var(--primary-500);
+        background: var(--primary-50);
+      }
+      .checkbox-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-top: 2px;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .checkbox-label {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        flex: 1;
+      }
+      .checkbox-title {
+        font-weight: 700;
+        color: var(--gray-900);
+        font-size: 1rem;
+      }
+      .checkbox-desc {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+      }
+      .modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--space-3);
+        padding: var(--space-6);
+        border-top: 1px solid var(--gray-200);
+        background: var(--gray-50);
+      }
+
+      /* Tabs System - Sidebar Layout */
+      .tabs-container {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        background: var(--bg-card);
+        border-radius: var(--radius-2xl);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin-bottom: var(--space-6);
+        overflow: hidden;
+        min-height: 600px;
+      }
+
+      .tabs-nav {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        background: var(--gray-50);
+        border-left: 1px solid var(--gray-200);
+        padding: var(--space-4);
+        overflow-y: auto;
+        scrollbar-width: thin;
+      }
+
+      .tabs-nav::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .tabs-nav::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: 2px;
+      }
+
+      .tab-button {
+        width: 100%;
+        padding: var(--space-3) var(--space-4);
+        background: transparent;
+        border: none;
+        border-right: 3px solid transparent;
+        border-radius: var(--radius-md);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--gray-600);
+        cursor: pointer;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: var(--space-3);
+        text-align: right;
+      }
+
+      .tab-button:hover {
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--gray-900);
+      }
+
+      .tab-button.active {
+        background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+        color: var(--white);
+        border-right-color: transparent;
+        box-shadow: var(--shadow-md);
+      }
+
+      .tab-button .tab-icon {
+        font-size: 20px;
+        min-width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .tabs-content {
+        background: var(--white);
+        overflow-y: auto;
+        max-height: 80vh;
+      }
+
+      .tab-panel {
+        display: none;
+        padding: var(--space-6);
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
+
+      .tab-panel .section {
+        margin-bottom: var(--space-8);
+      }
+
+      .tab-panel .section:last-child {
+        margin-bottom: 0;
+      }
+
+      .subsection {
+        margin-bottom: var(--space-6);
+      }
+
+      .subsection:last-child {
+        margin-bottom: 0;
+      }
+
+      .subsection-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: var(--space-3);
+        padding-bottom: var(--space-2);
+        border-bottom: 2px solid var(--gray-100);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+        margin-bottom: var(--space-4);
+      }
+
+      .form-row.single {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row:last-child {
+        margin-bottom: 0;
+      }
+
+      @media (max-width: 768px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .tabs-container {
+          grid-template-columns: 200px 1fr;
+        }
+
+        .tabs-nav {
+          padding: var(--space-3);
+        }
+
+        .tab-button {
+          padding: var(--space-2) var(--space-3);
+          font-size: 14px;
+        }
+
+        .tab-button .tab-icon {
+          font-size: 18px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .tabs-container {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+        }
+
+        .tabs-nav {
+          flex-direction: row;
+          border-left: none;
+          border-bottom: 1px solid var(--gray-200);
+          padding: var(--space-2);
+          gap: var(--space-2);
+          overflow-x: auto;
+        }
+
+        .tab-button {
+          min-width: 120px;
+          padding: var(--space-2) var(--space-3);
+          font-size: 13px;
+          border-right: none;
+          border-bottom: 3px solid transparent;
+        }
+
+        .tab-button.active {
+          border-right-color: transparent;
+          border-bottom-color: var(--primary-500);
+        }
+
+        .tab-panel {
+          padding: var(--space-4);
+        }
+      }
+
+      /* Dark Mode Support - Keep buttons with natural colors */
+      .dark .btn.primary {
+        background: linear-gradient(135deg, var(--primary-500), var(--primary-600)) !important;
+        color: var(--white) !important;
+        border-color: transparent !important;
+      }
+
+      .dark .btn.primary:hover {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700)) !important;
+      }
+
+      .dark .btn.danger {
+        background: linear-gradient(135deg, var(--danger-500), var(--danger-600)) !important;
+        color: var(--white) !important;
+        border-color: transparent !important;
+      }
+
+      .dark .btn.danger:hover {
+        background: linear-gradient(135deg, var(--danger-600), #b91c1c) !important;
+      }
+
+      .dark .btn.secondary {
+        background: linear-gradient(135deg, var(--gray-500), var(--gray-600)) !important;
+        color: var(--white) !important;
+        border-color: transparent !important;
+      }
+
+      .dark .btn.secondary:hover {
+        background: linear-gradient(135deg, var(--gray-600), var(--gray-700)) !important;
+      }
+
+      /* Keep inline-styled green buttons */
+      .dark .btn[style*="background: linear-gradient(135deg, #10b981"] {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        color: white !important;
+      }
+
+      .dark .btn[style*="background: linear-gradient(135deg, #10b981, #34d399"] {
+        background: linear-gradient(135deg, #10b981, #34d399) !important;
+        color: white !important;
+      }
+
+      .dark .btn[style*="background: linear-gradient(135deg, #10b981, #22c55e"] {
+        background: linear-gradient(135deg, #10b981, #22c55e) !important;
+        color: white !important;
+      }
+
+      /* Removed - let buttons keep their natural colors */
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="brand-badge">POS</div>
+        <div>
+          <div>إعدادات النظام</div>
+          <div class="section-desc">تحكم كامل في هوية المتجر، الضرائب، الطباعة والمدفوعات</div>
+        </div>
+      </div>
+      <nav>
+        <button class="btn back" onclick="history.back()">⬅ العودة</button>
+      </nav>
+    </header>
+
+    <div class="wrap">
+      <div class="section">
+        <div id="error" class="error"></div>
+        <div id="ok" class="success" style="display:none;">تم الحفظ بنجاح</div>
+
+        <!-- Tabs Container -->
+        <div class="tabs-container">
+          <!-- Tabs Navigation (Sidebar) -->
+          <div class="tabs-nav">
+            <button class="tab-button active" data-tab="tab-general">
+              <span class="tab-icon">🏢</span>
+              <span>عام</span>
+            </button>
+            <button class="tab-button" data-tab="tab-tax">
+              <span class="tab-icon">💰</span>
+              <span>الضرائب</span>
+            </button>
+            <button class="tab-button" data-tab="tab-print">
+              <span class="tab-icon">🖨️</span>
+              <span>الطباعة</span>
+            </button>
+            <button class="tab-button" data-tab="tab-payment">
+              <span class="tab-icon">💳</span>
+              <span>المدفوعات</span>
+            </button>
+            <button class="tab-button" data-tab="tab-operations">
+              <span class="tab-icon">⚙️</span>
+              <span>العمليات</span>
+            </button>
+            <button class="tab-button" data-tab="tab-ui">
+              <span class="tab-icon">👁️</span>
+              <span>الواجهة</span>
+            </button>
+            <button class="tab-button" data-tab="tab-advanced">
+              <span class="tab-icon">🔧</span>
+              <span>متقدم</span>
+            </button>
+          </div>
+
+          <!-- Tabs Content Area -->
+          <div class="tabs-content">
+            <!-- Tab Panel 1: General -->
+            <div id="tab-general" class="tab-panel active">
+              
+              <!-- البيانات العامة -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #6366f1, #4f46e5)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 21H21M5 21V7L13 3L21 7V21M9 9H11V11H9V9ZM9 13H11V15H9V13ZM13 9H15V11H13V9ZM13 13H15V15H13V13Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">البيانات العامة</div>
+                    <div class="section-desc">معلومات المتجر للتعاملات والفواتير</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+
+                <!-- اسم المتجر -->
+                <div class="subsection">
+                  <div class="subsection-title">اسم المتجر</div>
+                  <div class="form-row">
+                    <div>
+                      <label>اسم المبيعات (عربي)</label>
+                      <input id="f_seller_legal" placeholder="الاسم القانوني المسجل" />
+                    </div>
+                    <div>
+                      <label>اسم المبيعات (English)</label>
+                      <input id="f_seller_legal_en" placeholder="Sales name in English" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- العنوان -->
+                <div class="subsection">
+                  <div class="subsection-title">العنوان والموقع</div>
+                  <div class="form-row">
+                    <div>
+                      <label>موقع الشركة (العنوان)</label>
+                      <input id="f_company_location" placeholder="المدينة - الحي - الشارع" />
+                    </div>
+                    <div>
+                      <label>العنوان (English)</label>
+                      <input id="f_company_location_en" placeholder="City - District - Street" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- معلومات الاتصال -->
+                <div class="subsection">
+                  <div class="subsection-title">معلومات الاتصال</div>
+                  <div class="form-row">
+                    <div>
+                      <label>الجوال</label>
+                      <input id="f_mobile" placeholder="05xxxxxxxx" />
+                    </div>
+                    <div>
+                      <label>الموقع الإلكتروني</label>
+                      <input id="f_company_site" placeholder="https://" />
+                    </div>
+                  </div>
+                  <div class="form-row single">
+                    <div>
+                      <label>البريد الإلكتروني</label>
+                      <input id="f_email" type="email" placeholder="example@domain.com" />
+                    </div>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_email_in_invoice" type="checkbox" />
+                    <label for="f_show_email_in_invoice">إظهار البريد الإلكتروني في الفواتير (الحرارية و A4)</label>
+                  </div>
+                </div>
+
+                <!-- ملاحظات الفاتورة -->
+                <div class="subsection">
+                  <div class="subsection-title">ملاحظات الفاتورة</div>
+                  <div>
+                    <label>ملاحظات أسفل الفاتورة</label>
+                    <textarea id="f_invoice_footer_note" rows="3" placeholder="مثال: سياسة الاسترجاع خلال 7 أيام..."></textarea>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- الهوية والشعار -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #f59e0b, #f97316)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L2 7V10C2 16 12 22 12 22S22 16 22 10V7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M8 11L10.5 13.5L16 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">الهوية البصرية</div>
+                    <div class="section-desc">شعار المتجر والصور الافتراضية</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+
+                <!-- شعار المتجر -->
+                <div class="subsection">
+                  <div class="subsection-title">شعار المتجر</div>
+                  <div class="logo-row">
+                    <img id="logoPreview" alt="" />
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                      <div style="display:flex; gap:8px;">
+                        <button id="pickLogo" class="btn">اختيار الشعار</button>
+                        <button id="removeLogo" class="btn secondary">إزالة الشعار</button>
+                      </div>
+                      <div class="logo-help">يفضل صورة مربعة .png أو .jpg بحجم لا يقل عن 256×256 لنتيجة أوضح</div>
+                    </div>
+                  </div>
+                  <div class="form-row" style="margin-top: var(--space-4);">
+                    <div>
+                      <label>عرض الشعار (px)</label>
+                      <input id="f_logo_w" type="number" min="24" max="512" step="1" placeholder="120" />
+                    </div>
+                    <div>
+                      <label>طول الشعار (px)</label>
+                      <input id="f_logo_h" type="number" min="24" max="512" step="1" placeholder="120" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- الصورة الافتراضية للمنتجات -->
+                <div class="subsection">
+                  <div class="subsection-title">الصورة الافتراضية للمنتجات</div>
+                  <div class="logo-row">
+                    <img id="defProdImgPreview" alt="" />
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                      <div style="display:flex; gap:8px;">
+                        <button id="pickDefProdImg" class="btn">اختيار الصورة الافتراضية</button>
+                        <button id="removeDefProdImg" class="btn secondary">إزالة الصورة الافتراضية</button>
+                      </div>
+                      <div class="logo-help">الحد الأقصى للحجم 1 ميجابايت. يفضل .png</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 2: Tax -->
+            <div id="tab-tax" class="tab-panel">
+              
+              <!-- الضرائب -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #8b5cf6, #a78bfa)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M16 13H8M16 17H8M10 9H9H8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">إعدادات الضرائب</div>
+                    <div class="section-desc">نسبة الضريبة وطريقة احتسابها والبيانات الرسمية</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+
+                <!-- نسبة الضريبة -->
+                <div class="subsection">
+                  <div class="subsection-title">نسبة الضريبة المضافة</div>
+                  <div class="form-row single">
+                    <div>
+                      <label>نسبة الضريبة VAT %</label>
+                      <input id="f_vat" type="number" min="0" step="0.01" placeholder="15" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- طريقة الحساب -->
+                <div class="subsection">
+                  <div class="subsection-title">طريقة احتساب الضريبة</div>
+                  <div class="switch">
+                    <input id="f_prices_inc" type="checkbox" />
+                    <label for="f_prices_inc">أسعار البيع شاملة الضريبة (حسب السعودية)</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_cost_inc_vat" type="checkbox" />
+                    <label for="f_cost_inc_vat">سعر التكلفة (الشراء) شامل الضريبة</label>
+                  </div>
+                </div>
+
+                <!-- البيانات الضريبية -->
+                <div class="subsection">
+                  <div class="subsection-title">البيانات الضريبية والرسمية</div>
+                  <div class="form-row">
+                    <div>
+                      <label>الرقم الضريبي (ZATCA)</label>
+                      <input id="f_seller_vat" placeholder="رقم التسجيل الضريبي" />
+                    </div>
+                    <div>
+                      <label>رقم السجل التجاري</label>
+                      <input id="f_commercial_register" placeholder="رقم السجل التجاري" />
+                    </div>
+                  </div>
+                  <div class="form-row single">
+                    <div>
+                      <label>الرقم الوطني</label>
+                      <input id="f_national_number" placeholder="الرقم الوطني" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- الربط الإلكتروني -->
+                <div class="subsection">
+                  <div class="subsection-title">الربط الإلكتروني مع الهيئة</div>
+                  <div class="switch">
+                    <input id="f_zatca_enabled" type="checkbox" />
+                    <label for="f_zatca_enabled">تفعيل الربط الإلكتروني مع هيئة الزكاة والضريبة والجمارك (ZATCA)</label>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 3: Print -->
+            <div id="tab-print" class="tab-panel">
+              
+              <!-- الطباعة -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #ec4899, #f472b6)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 9V2H18V9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M6 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V11C2 10.4696 2.21071 9.96086 2.58579 9.58579C2.96086 9.21071 3.46957 9 4 9H20C20.5304 9 21.0391 9.21071 21.4142 9.58579C21.7893 9.96086 22 10.4696 22 11V16C22 16.5304 21.7893 17.0391 21.4142 17.4142C21.0391 17.7893 20.5304 18 20 18H18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M18 14H6V22H18V14Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">الطباعة</div>
+                    <div class="section-desc">نوع الطابعة وخيارات الإخراج</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>تنسيق الفاتورة الافتراضي</label>
+                    <select id="f_print_format">
+                      <option value="thermal">حراري</option>
+                      <option value="a4">A4</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>عدد النسخ</label>
+                    <input id="f_print_copies" type="number" min="1" step="1" value="1" placeholder="1" />
+                  </div>
+                  <div>
+                    <label>هامش يمين (مم)</label>
+                    <input id="f_print_margin_right_mm" type="number" min="0" step="0.5" placeholder="6" />
+                  </div>
+                  <div>
+                    <label>هامش يسار (مم)</label>
+                    <input id="f_print_margin_left_mm" type="number" min="0" step="0.5" placeholder="6" />
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div class="switch">
+                    <input id="f_silent_print" type="checkbox" />
+                    <label for="f_silent_print">طباعة صامتة</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_change" type="checkbox" checked />
+                    <label for="f_show_change">إظهار الباقي</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_barcode_a4" type="checkbox" />
+                    <label for="f_show_barcode_a4">إظهار باركود الصنف في فاتورة A4</label>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>مسمى سعر القطعة في فاتورة A4</label>
+                    <input id="f_unit_price_label" type="text" placeholder="سعر القطعة" maxlength="64" />
+                  </div>
+                  <div>
+                    <label>مسمى العدد في فاتورة A4</label>
+                    <input id="f_quantity_label" type="text" placeholder="عدد" maxlength="64" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- واتساب -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #25d366, #128c7e)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">واتساب</div>
+                    <div class="section-desc">إرسال الفواتير تلقائياً عبر واتساب</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="switch">
+                  <input id="f_whatsapp_auto" type="checkbox" />
+                  <label for="f_whatsapp_auto">إرسال الفاتورة عبر واتساب تلقائياً بعد الطباعة</label>
+                </div>
+                <div class="switch">
+                  <input id="f_whatsapp_auto_connect" type="checkbox" />
+                  <label for="f_whatsapp_auto_connect">الاتصال بواتساب تلقائياً عند فتح البرنامج (إذا كانت هناك جلسة محفوظة)</label>
+                </div>
+              </div>
+
+              <!-- قيود الطباعة -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #f59e0b, #d97706)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 15V3M12 15L16 11M12 15L8 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">قيود الطباعة</div>
+                    <div class="section-desc">شروط يجب تحقيقها قبل الطباعة</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div class="switch">
+                    <input id="f_require_payment_before_print" type="checkbox" />
+                    <label for="f_require_payment_before_print">طلب اختيار طريقة الدفع قبل الطباعة</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_require_customer_before_print" type="checkbox" />
+                    <label for="f_require_customer_before_print">إلزام اختيار العميل قبل طباعة الفاتورة</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_require_phone_min_10" type="checkbox" />
+                    <label for="f_require_phone_min_10">منع إدخال رقم جوال أقل من 10 أرقام</label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 4: Payment -->
+            <div id="tab-payment" class="tab-panel">
+              
+              <!-- طرق الدفع -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #06b6d4, #67e8f9)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="1" y1="10" x2="23" y2="10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">طرق الدفع</div>
+                    <div class="section-desc">تفعيل طرق الدفع والطريقة الافتراضية</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>طرق الدفع المفعّلة</label>
+                    <div class="pm-dropdown">
+                      <div class="pm-dropdown-trigger" id="pmDropdownTrigger">
+                        <span id="pmDropdownText">اختر طرق الدفع</span>
+                        <span class="pm-dropdown-arrow">▼</span>
+                      </div>
+                      <div class="pm-dropdown-menu" id="pmDropdownMenu">
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="cash" id="pm_cash" checked />
+                          <label for="pm_cash" style="margin:0; cursor:pointer;">كاش</label>
+                        </div>
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="card" id="pm_card" />
+                          <label for="pm_card" style="margin:0; cursor:pointer;">شبكة (مدى)</label>
+                        </div>
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="credit" id="pm_credit" />
+                          <label for="pm_credit" style="margin:0; cursor:pointer;">آجل</label>
+                        </div>
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="mixed" id="pm_mixed" />
+                          <label for="pm_mixed" style="margin:0; cursor:pointer;">مختلط</label>
+                        </div>
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="tamara" id="pm_tamara" />
+                          <label for="pm_tamara" style="margin:0; cursor:pointer;">تمارا</label>
+                        </div>
+                        <div class="pm-dropdown-item">
+                          <input type="checkbox" class="pm" value="tabby" id="pm_tabby" />
+                          <label for="pm_tabby" style="margin:0; cursor:pointer;">تابي</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label>طريقة الدفع الافتراضية</label>
+                    <select id="f_default_payment">
+                      <option value="">بدون افتراضي</option>
+                      <option value="cash">كاش</option>
+                      <option value="card">شبكة (مدى)</option>
+                      <option value="credit">آجل</option>
+                      <option value="mixed">مختلط</option>
+                      <option value="tamara">تمارا</option>
+                      <option value="tabby">تابي</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- العملة -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #34d399)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 1V23M17 5H9.5C8.57 5 7.69 5.37 7.05 6.05C6.37 6.69 6 7.57 6 8.5S6.37 10.31 7.05 10.95C7.69 11.63 8.57 12 9.5 12H14.5C15.43 12 16.31 12.37 16.95 13.05C17.63 13.69 18 14.57 18 15.5S17.63 17.31 16.95 17.95C16.31 18.63 15.43 19 14.5 19H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">إعدادات العملة</div>
+                    <div class="section-desc">رمز العملة وموقعه في المبالغ</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>رمز العملة</label>
+                    <input id="f_currency_code" placeholder="SAR" />
+                  </div>
+                  <div>
+                    <label>رمز العملة (نصي)</label>
+                    <input id="f_currency_symbol" placeholder="﷼" />
+                  </div>
+                  <div>
+                    <label>موضع الرمز</label>
+                    <select id="f_currency_pos">
+                      <option value="after">الرمز بعد المبلغ (مثال: 100 ﷼)</option>
+                      <option value="before">الرمز قبل المبلغ (مثال: ﷼ 100)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 5: Operations -->
+            <div id="tab-operations" class="tab-panel">
+              
+              <!-- عمليات النظام -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #ef4444, #f87171)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+                      <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.2569 9.77251 19.9859C9.5799 19.7148 9.31074 19.5063 9 19.38C8.69838 19.2469 8.36381 19.2072 8.03941 19.266C7.71502 19.3248 7.41568 19.4795 7.18 19.71L7.12 19.77C6.93425 19.956 6.71368 20.1035 6.47088 20.2041C6.22808 20.3048 5.96783 20.3566 5.705 20.3566C5.44217 20.3566 5.18192 20.3048 4.93912 20.2041C4.69632 20.1035 4.47575 19.956 4.29 19.77C4.10405 19.5843 3.95653 19.3637 3.85588 19.1209C3.75523 18.8781 3.70343 18.6178 3.70343 18.355C3.70343 18.0922 3.75523 17.8319 3.85588 17.5891C3.95653 17.3463 4.10405 17.1257 4.29 16.94L4.35 16.88C4.58054 16.6443 4.73519 16.345 4.794 16.0206C4.85282 15.6962 4.81312 15.3616 4.68 15.06C4.55324 14.7642 4.34276 14.512 4.07447 14.3343C3.80618 14.1566 3.49179 14.0613 3.17 14.06H3C2.46957 14.06 1.96086 13.8493 1.58579 13.4742C1.21071 13.0991 1 12.5904 1 12.06C1 11.5296 1.21071 11.0209 1.58579 10.6458C1.96086 10.2707 2.46957 10.06 3 10.06H3.09C3.42099 10.0523 3.742 9.94512 4.01309 9.75251C4.28417 9.5599 4.49268 9.29074 4.62 8.98C4.75312 8.67838 4.79282 8.34381 4.734 8.01941C4.67519 7.69502 4.52054 7.39568 4.29 7.16L4.23 7.1C4.04405 6.91425 3.89653 6.69368 3.79588 6.45088C3.69523 6.20808 3.64343 5.94783 3.64343 5.685C3.64343 5.42217 3.69523 5.16192 3.79588 4.91912C3.89653 4.67632 4.04405 4.45575 4.23 4.27L4.29 4.21C4.47575 4.02405 4.69632 3.87653 4.93912 3.77588C5.18192 3.67523 5.44217 3.62343 5.705 3.62343C5.96783 3.62343 6.22808 3.67523 6.47088 3.77588C6.71368 3.87653 6.93425 4.02405 7.12 4.21L7.18 4.27C7.41568 4.50054 7.71502 4.65519 8.03941 4.714C8.36381 4.77282 8.69838 4.73312 9 4.6C9.29074 4.47324 9.5599 4.26276 9.77251 3.99447C9.96512 3.74618 10.0723 3.42399 10.08 3.09V3C10.08 2.46957 10.2907 1.96086 10.6658 1.58579C11.0409 1.21071 11.5496 1 12.08 1C12.6104 1 13.1191 1.21071 13.4942 1.58579C13.8693 1.96086 14.08 2.46957 14.08 3V3.09C14.0877 3.42099 14.1949 3.742 14.3875 4.01309C14.5801 4.28417 14.8493 4.49268 15.14 4.62C15.4416 4.75312 15.7762 4.79282 16.1006 4.734C16.425 4.67519 16.7243 4.52054 16.96 4.29L17.02 4.23C17.2058 4.04405 17.4263 3.89653 17.6691 3.79588C17.9119 3.69523 18.1722 3.64343 18.435 3.64343C18.6978 3.64343 18.9581 3.69523 19.2009 3.79588C19.4437 3.89653 19.6643 4.04405 19.85 4.23C20.036 4.41575 20.1835 4.63632 20.2841 4.87912C20.3848 5.12192 20.4366 5.38217 20.4366 5.645C20.4366 5.90783 20.3848 6.16808 20.2841 6.41088C20.1835 6.65368 20.036 6.87425 19.85 7.06L19.79 7.12C19.5595 7.35568 19.4048 7.65502 19.346 7.97941C19.2872 8.30381 19.3269 8.63838 19.46 8.94C19.5868 9.22974 19.7972 9.49890 20.0655 9.71151C20.3338 9.92412 20.6482 10.0723 20.97 10.08H21C21.5304 10.08 22.0391 10.2907 22.4142 10.6658C22.7893 11.0409 23 11.5496 23 12.08C23 12.6104 22.7893 13.1191 22.4142 13.4942C22.0391 13.8693 21.5304 14.08 21 14.08H20.91C20.579 14.0877 20.2569 14.1949 19.9859 14.3875C19.7148 14.5801 19.5063 14.8493 19.38 15.14C19.2469 15.4416 19.2072 15.7762 19.266 16.1006C19.3248 16.425 19.4795 16.7243 19.71 16.96L19.77 17.02C19.956 17.2058 20.1035 17.4263 20.2041 17.6691C20.3048 17.9119 20.3566 18.1722 20.3566 18.435C20.3566 18.6978 20.3048 18.9581 20.2041 19.2009C20.1035 19.4437 19.956 19.6643 19.77 19.85C19.5843 20.036 19.3637 20.1835 19.1209 20.2841C18.8781 20.3848 18.6178 20.4366 18.355 20.4366C18.0922 20.4366 17.8319 20.3848 17.5891 20.2841C17.3463 20.1835 17.1257 20.036 16.94 19.85L16.88 19.79C16.6443 19.5595 16.345 19.4048 16.0206 19.346C15.6962 19.2872 15.3616 19.3269 15.06 19.46" stroke="white" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">عمليات النظام</div>
+                    <div class="section-desc">سلوك الأسعار والمخزون</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div class="switch">
+                    <input id="f_op_price_manual" type="checkbox" />
+                    <label for="f_op_price_manual">السماح بتعديل سعر العملية يدوياً</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_allow_zero_stock" type="checkbox" />
+                    <label for="f_allow_zero_stock">السماح ببيع الصنف عندما المخزون = 0</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_cart_separate_duplicate_lines" type="checkbox" />
+                    <label for="f_cart_separate_duplicate_lines">إضافة نفس الصنف كسطر جديد في السلة</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_weight_mode_enabled" type="checkbox" />
+                    <label for="f_weight_mode_enabled">وضع الوزن من المبلغ المدفوع (يُحسب الوزن = المبلغ ÷ سعر الوحدة)</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_electronic_scale_enabled" type="checkbox" />
+                    <label for="f_electronic_scale_enabled">⚖️ تفعيل الميزان الإلكتروني</label>
+                  </div>
+                  <div>
+                    <label for="f_electronic_scale_type">نوع الميزان الإلكتروني</label>
+                    <select id="f_electronic_scale_type">
+                      <option value="weight">ميزان الوزن (Weight Scale)</option>
+                      <option value="price">ميزان السعر (Price Scale)</option>
+                    </select>
+                    <div class="section-desc">اختر نوع الميزان: ميزان الوزن يُخرج الوزن، ميزان السعر يُخرج السعر المحسوب.</div>
+                  </div>
+                  <div>
+                    <label for="f_low_stock_threshold">حد تنبيه انخفاض المخزون</label>
+                    <input id="f_low_stock_threshold" type="number" min="0" step="1" placeholder="5" />
+                    <div class="section-desc">سيظهر تحذير عند طباعة الفاتورة إذا كان مخزون أي صنف أقل من أو يساوي هذا الرقم.</div>
+                  </div>
+                  <div class="switch">
+                    <input id="f_low_stock_email_enabled" type="checkbox" />
+                    <label for="f_low_stock_email_enabled">تفعيل إرسال تنبيه المخزون بالبريد</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_low_stock_alerts" type="checkbox" />
+                    <label for="f_show_low_stock_alerts">إظهار تنبيهات المخزون في شاشة البيع</label>
+                  </div>
+                  <div>
+                    <label>ساعة الإقفال اليومية</label>
+                    <input id="f_closing_hour" type="time" step="60" placeholder="03:00" />
+                    <div class="section-desc">ستُستخدم لتحديد بداية ونهاية اليوم التقاريري.</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 6: UI -->
+            <div id="tab-ui" class="tab-panel">
+              
+              <!-- إظهار/إخفاء العناصر -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #8b5cf6, #a78bfa)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">إعدادات الواجهة</div>
+                    <div class="section-desc">إظهار أو إخفاء عناصر الواجهة</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>ثيم التطبيق</label>
+                    <select id="f_app_theme">
+                      <option value="light">فاتح</option>
+                      <option value="gray">رصاصي</option>
+                      <option value="dark">داكن</option>
+                      <option value="auto">تلقائي (حسب النظام)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div class="switch">
+                    <input id="f_hide_product_images" type="checkbox" />
+                    <label for="f_hide_product_images">إخفاء صور المنتجات في شاشة فاتورة جديدة</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_quotation_button" type="checkbox" />
+                    <label for="f_show_quotation_button">إظهار زر عرض السعر في شاشة المبيعات</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_selling_units" type="checkbox" />
+                    <label for="f_show_selling_units">إظهار وحدات البيع في شاشة المنتجات (كرتون، علبة، إلخ)</label>
+                  </div>
+                  <div class="switch">
+                    <input id="f_show_employee_selector" type="checkbox" />
+                    <label for="f_show_employee_selector">إظهار قائمة اختيار الموظف لكل منتج في الفاتورة</label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tab Panel 7: Advanced -->
+            <div id="tab-advanced" class="tab-panel">
+              
+              <!-- التقارير والنسخ الاحتياطي -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #059669)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M17 8L12 3L7 8M12 3V15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">التقارير والنسخ الاحتياطي</div>
+                    <div class="section-desc">إعداد التقارير اليومية والنسخ الاحتياطية</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">
+                  <button id="btnDailyEmail" class="btn primary" style="white-space: nowrap;">
+                    📧 إعداد التقرير اليومي
+                  </button>
+                  <button id="btn_backup_local" class="btn" style="white-space: nowrap; font-weight: 600; background: linear-gradient(135deg, #10b981, #34d399); color: white; border: none;">
+                    💾 حفظ نسخة احتياطية
+                  </button>
+                </div>
+              </div>
+
+              <!-- استعادة النظام -->
+              <div class="section" id="recoverySection" style="display:none">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #dc2626, #b91c1c)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21.5 2L17.5 6L21.5 10L15 16.5L7.5 9L14 2.5L21.5 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M2 22L7 17L9 19L4 24L2 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">استعادة النظام</div>
+                    <div class="section-desc">عمليات خطرة: لا يمكن التراجع عنها</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">
+                  <button id="btnResetSales" class="btn danger">حذف البيانات وإعادة الترقيم</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Save Actions (Fixed) -->
+        <section class="card">
+          <div class="card-body">
+            <div class="actions" style="justify-content: space-between;">
+              <button id="checkUpdateBtn" class="btn" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">🔄 تحديث البرنامج</button>
+              <button id="saveBtn" class="btn primary">💾 حفظ جميع الإعدادات</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Daily email modal -->
+    <dialog id="dailyEmailDlg" style="border:0; border-radius:var(--radius-2xl); padding:0; max-width: 600px; width: 90vw; min-width: 400px; max-height: 90vh; overflow-y: auto;">
+      <div class="card" style="margin:0; box-shadow: var(--shadow-2xl);">
+        <div class="card-header">
+          <div class="section-header">
+            <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #34d399)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M22 6L12 13L2 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="section-title">إعداد إرسال التقرير اليومي</div>
+              <div class="section-desc">تكوين البريد الإلكتروني للحصول على تقارير مبيعات يومية تلقائية</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="section" style="gap: var(--space-5);">
+            <!-- تفعيل الخدمة -->
+            <div class="switch">
+              <input type="checkbox" id="em_enabled"/>
+              <label for="em_enabled" style="font-weight: 700; color: var(--gray-800);">تفعيل إرسال التقرير اليومي تلقائياً</label>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- إعدادات التوقيت -->
+            <div class="form-grid">
+              <div>
+                <label>⏰ وقت الإرسال اليومي</label>
+                <div class="row" style="gap: var(--space-2); align-items: center;">
+                  <input id="em_time" type="time" style="font-size: 16px; text-align: center;" />
+                  <button id="em_send_daily" class="btn" style="white-space: nowrap; font-weight: 600;">📧 إرسال التقرير الآن</button>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
+                <div style="font-size: 12px; color: var(--gray-600); line-height: 1.4;">
+                  💡 سيتم إرسال تقرير المبيعات اليومي في التوقيت المحدد كل يوم
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- إعدادات إرسال نسخة قاعدة البيانات -->
+            <div class="switch">
+              <input type="checkbox" id="bk_enabled" />
+              <label for="bk_enabled" style="font-weight: 700; color: var(--gray-800);">تفعيل إرسال نسخة قاعدة البيانات يومياً</label>
+            </div>
+            <div class="form-grid">
+              <div>
+                <label>⏰ وقت إرسال النسخة اليومية</label>
+                <div class="row" style="gap: var(--space-2); align-items: center;">
+                  <input id="bk_time" type="time" style="font-size: 16px; text-align: center;" />
+                  <button id="em_send_backup" class="btn" style="white-space: nowrap; font-weight: 600;">📦 إرسال نسخة الآن</button>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
+                <div style="font-size: 12px; color: var(--gray-600); line-height: 1.4;">
+                  💡 سيتم إرسال ملف النسخة الاحتياطية المضغوط (.zip) يوميًا في التوقيت المحدد.
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- إعدادات البريد الإلكتروني -->
+            <div class="form-grid">
+              <div>
+                <label>📧 البريد الإلكتروني المرسل</label>
+                <input id="em_user" type="email" placeholder="example@gmail.com" />
+              </div>
+              <div>
+                <label>🔑 كلمة مرور التطبيق</label>
+                <input id="em_pass" type="password" placeholder="كلمة مرور التطبيق من Gmail" />
+              </div>
+            </div>
+
+            <!-- إعدادات الخادم المتقدمة -->
+            <details style="margin-top: var(--space-4);">
+              <summary style="font-weight: 600; color: var(--gray-700); cursor: pointer; padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+                ⚙️ إعدادات الخادم المتقدمة (اختيارية)
+              </summary>
+              <div class="form-grid" style="margin-top: var(--space-4);">
+                <div>
+                  <label>🌐 خادم البريد</label>
+                  <input id="em_host" placeholder="smtp.gmail.com" />
+                </div>
+                <div>
+                  <label>🔌 رقم المنفذ</label>
+                  <input id="em_port" type="number" placeholder="587" />
+                </div>
+              </div>
+              <div class="switch" style="margin-top: var(--space-4);">
+                <input type="checkbox" id="em_secure"/>
+                <label for="em_secure">🔒 استخدام اتصال آمن (TLS/SSL)</label>
+              </div>
+            </details>
+
+            <!-- معلومات مفيدة -->
+            <div style="background: linear-gradient(135deg, var(--warning-50), rgba(245, 158, 11, 0.1)); border: 1px solid var(--warning-500); border-radius: var(--radius-lg); padding: var(--space-4); margin-top: var(--space-4);">
+              <div style="font-weight: 600; color: var(--warning-600); margin-bottom: var(--space-2);">📋 ملاحظات مهمة:</div>
+              <ul style="font-size: 13px; color: var(--gray-700); line-height: 1.6; margin-right: var(--space-4);">
+                <li>للاستخدام مع Gmail، ينصح باستخدام المنفذ 587 بدون اتصال آمن</li>
+                <li>يجب إنشاء كلمة مرور تطبيق من إعدادات حساب Google</li>
+                <li>التقرير سيحتوي على ملخص المبيعات اليومية والمنتجات الأكثر مبيعاً</li>
+              </ul>
+            </div>
+
+            <!-- أزرار التحكم -->
+            <div class="actions" style="justify-content: flex-end; margin-top: var(--space-6); gap: var(--space-3);">
+              <button class="btn" id="em_cancel" style="min-width: 120px;">❌ إلغاء</button>
+              <button class="btn primary" id="em_save" style="min-width: 120px;">💾 حفظ الإعدادات</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Backup DB modal -->
+    <dialog id="backupEmailDlg" style="border:0; border-radius:var(--radius-2xl); padding:0; max-width: 520px; width: 90vw; min-width: 360px;">
+      <div class="card" style="margin:0; box-shadow: var(--shadow-2xl);">
+        <div class="card-header">
+          <div class="section-header">
+            <div class="section-icon" style="background:linear-gradient(135deg, #6366f1, #4f46e5)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 12V2M12 12L8 8M12 12L16 8M4 14V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V14" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="section-title">إرسال نسخة قاعدة البيانات</div>
+              <div class="section-desc">سيتم إنشاء نسخة SQL مضغوطة (.gz) وإرسالها بالبريد</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="section" style="gap: var(--space-5);">
+            <div>
+              <label>البريد المستلم</label>
+              <input id="bk_to" type="email" placeholder="example@domain.com" />
+            </div>
+            <div style="font-size: 12px; color: var(--gray-600); background: var(--gray-50); border:1px solid var(--gray-200); padding: var(--space-3); border-radius: var(--radius-lg);">
+              يجب ضبط إعدادات SMTP في نافذة "إعداد التقرير اليومي" أولاً (البريد المرسل وكلمة المرور والخادم).
+            </div>
+            <div class="actions" style="justify-content: flex-end; gap: var(--space-3);">
+              <button class="btn" id="bk_cancel">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Local backup modal -->
+    <dialog id="localBackupDlg" style="border:0; border-radius:var(--radius-2xl); padding:0; max-width: 620px; width: 90vw; min-width: 380px;">
+      <div class="card" style="margin:0; box-shadow: var(--shadow-2xl);">
+        <div class="card-header">
+          <div class="section-header">
+            <div class="section-icon" style="background:linear-gradient(135deg, #0ea5e9, #0284c7)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4H20V20H4V4Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 4V2H16V4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 12H16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="section-title">إعداد الحفظ المحلي للنسخة الاحتياطية</div>
+              <div class="section-desc">حدد مجلد الحفظ والوقت اليومي لإنشاء نسخة قاعدة البيانات تلقائياً</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="section" style="gap: var(--space-5);">
+            <div class="switch">
+              <input type="checkbox" id="lb_enabled" />
+              <label for="lb_enabled" style="font-weight: 700; color: var(--gray-800);">تفعيل الحفظ اليومي تلقائياً</label>
+            </div>
+
+            <div class="form-grid">
+              <div>
+                <label>⏰ وقت الحفظ اليومي</label>
+                <input id="lb_time" type="time" style="font-size: 16px; text-align: center;" />
+              </div>
+              <div style="display:flex; align-items:center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
+                <div style="font-size: 12px; color: var(--gray-600); line-height: 1.6;">
+                  يتم إنشاء ملف .dump باسم يحتوي على التاريخ والوقت داخل المجلد المحدد في التوقيت اليومي.
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label>📁 مجلد حفظ قاعدة البيانات</label>
+              <div class="row" style="gap: var(--space-3); align-items: center;">
+                <input id="lb_folder" type="text" placeholder="اختر المجلد" readonly style="flex:1; background: var(--gray-50);" />
+                <button id="lb_pick_dir" class="btn" style="white-space: nowrap;">اختيار المجلد</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="actions" style="justify-content: space-between; gap: var(--space-3);">
+              <div class="row" style="gap: var(--space-2);">
+                <button class="btn secondary" id="lb_cancel" style="min-width: 120px;">إلغاء</button>
+                <button class="btn" id="lb_save" style="min-width: 140px;">حفظ الإعدادات</button>
+              </div>
+              <button class="btn primary" id="lb_backup_now" style="min-width: 150px; background: linear-gradient(135deg, #10b981, #22c55e); color: white; border: none;">💾 حفظ الآن</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal-overlay">
+      <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-body" style="padding: 40px 30px; text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+          <h2 style="color: #dc2626; margin-bottom: 15px; font-size: 24px;">تأكيد عملية الحذف</h2>
+          <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+            هل أنت متأكد من حذف البيانات المحددة؟<br>
+            <strong style="color: #dc2626;">لا يمكن التراجع عن هذه العملية!</strong>
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="cancelConfirmBtn" class="btn secondary" style="min-width: 120px;">إلغاء</button>
+            <button id="proceedDeleteBtn" class="btn danger" style="min-width: 120px;">نعم، احذف</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="successToast" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; min-width: 400px; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 20px 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); display: none; animation: slideDown 0.4s ease;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <div style="font-size: 32px;">✅</div>
+        <div>
+          <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">تمت العملية بنجاح</div>
+          <div id="successToastContent" style="font-size: 14px; opacity: 0.95; line-height: 1.5;"></div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      @keyframes slideDown {
+        from {
+          transform: translateX(-50%) translateY(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes slideUp {
+        from {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(-50%) translateY(-100px);
+          opacity: 0;
+        }
+      }
+    </style>
+
+    <!-- Reset Options Modal -->
+    <div id="resetModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">🗑️ حذف البيانات وإعادة الترقيم</h3>
+          <button id="closeModal" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-warning">
+            ⚠️ تحذير: لا يمكن التراجع عن هذه العملية. اختر ما تريد حذفه:
+          </div>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetSales" checked />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف فواتير البيع</span>
+                <span class="checkbox-desc">حذف جميع فواتير المبيعات وإعادة الترقيم من 1</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetPurchaseInvoices" checked />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف فواتير الشراء</span>
+                <span class="checkbox-desc">حذف جميع فواتير الشراء وتفاصيلها</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetPurchases" checked />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف المصروفات البسيطة</span>
+                <span class="checkbox-desc">حذف جميع عمليات الشراء البسيطة</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetSupplierBalance" checked />
+              <span class="checkbox-label">
+                <span class="checkbox-title">تصفير أرصدة الموردين</span>
+                <span class="checkbox-desc">إعادة رصيد جميع الموردين إلى صفر</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetProducts" />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف كل المنتجات</span>
+                <span class="checkbox-desc">حذف جميع المنتجات والأنواع الرئيسية والعمليات</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetCustomers" />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف كل العملاء</span>
+                <span class="checkbox-desc">حذف جميع بيانات العملاء من النظام</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetQuotations" />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف عروض الأسعار</span>
+                <span class="checkbox-desc">حذف جميع عروض الأسعار المحفوظة</span>
+              </span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" id="chkResetShifts" />
+              <span class="checkbox-label">
+                <span class="checkbox-title">حذف الشفتات</span>
+                <span class="checkbox-desc">حذف جميع الشفتات وسجلات الفتح والإغلاق</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelResetBtn" class="btn secondary">إلغاء</button>
+          <button id="confirmResetBtn" class="btn danger">تنفيذ الحذف</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update Modal -->
+    <dialog id="updateModal" style="border:0; border-radius:var(--radius-2xl); padding:0; max-width: 520px; width: 90vw; min-width: 360px;">
+      <div class="card" style="margin:0; box-shadow: var(--shadow-2xl);">
+        <div class="card-header">
+          <div class="section-header">
+            <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #059669)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 10C21 10 18.995 7.26822 17.3662 5.63824C15.7373 4.00827 13 2 13 2M3 14C3 14 5.00527 16.7318 6.63424 18.3618C8.26321 19.9917 11 22 11 22M20 2L13 9M4 22L11 15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="section-title">تحديث البرنامج</div>
+              <div class="section-desc">البحث عن آخر إصدار متاح</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="updateStatus" style="text-align: center; padding: var(--space-8) var(--space-4);">
+            <div style="font-size: 48px; margin-bottom: var(--space-4);">🔍</div>
+            <div style="font-size: 16px; color: var(--gray-700); font-weight: 600; margin-bottom: var(--space-2);">جاري البحث عن التحديثات...</div>
+            <div id="updateMessage" style="font-size: 13px; color: var(--gray-500);"></div>
+            <div id="updateProgress" style="margin-top: var(--space-4); display: none;">
+              <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div id="updateProgressBar" style="background: linear-gradient(90deg, #10b981, #34d399); height: 100%; width: 0%; transition: width 0.3s;"></div>
+              </div>
+              <div id="updateProgressText" style="font-size: 12px; color: var(--gray-600); margin-top: var(--space-2);"></div>
+            </div>
+          </div>
+          <div class="actions" style="justify-content: center; margin-top: var(--space-4); gap: var(--space-3);">
+            <button class="btn" id="updateCancelBtn" style="min-width: 120px;">إغلاق</button>
+            <button class="btn primary" id="updateDownloadBtn" style="min-width: 120px; display: none;">تحميل التحديث</button>
+            <button class="btn primary" id="updateInstallBtn" style="min-width: 120px; display: none;">تثبيت الآن</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+    <script src="../appointment-notifications.js"></script>
+
+    <script>
+      // Tabs Switcher
+      (function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+        
+        // Get last active tab from localStorage or default to 'tab-general'
+        const lastActiveTab = localStorage.getItem('settings_active_tab') || 'tab-general';
+        
+        // Function to switch tabs
+        function switchTab(tabId) {
+          // Remove active class from all buttons and panels
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabPanels.forEach(panel => panel.classList.remove('active'));
+          
+          // Add active class to selected tab and panel
+          const selectedButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+          const selectedPanel = document.getElementById(tabId);
+          
+          if (selectedButton && selectedPanel) {
+            selectedButton.classList.add('active');
+            selectedPanel.classList.add('active');
+            
+            // Save to localStorage
+            localStorage.setItem('settings_active_tab', tabId);
+          }
+        }
+        
+        // Add click listeners to all tab buttons
+        tabButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            const tabId = button.getAttribute('data-tab');
+            switchTab(tabId);
+          });
+        });
+        
+        // Restore last active tab on page load
+        switchTab(lastActiveTab);
+      })();
+    </script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

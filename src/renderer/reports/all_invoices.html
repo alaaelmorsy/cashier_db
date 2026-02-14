@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير جميع الفواتير</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      :root{ --bg:#f6f8fb; --card:#ffffff; --border:#e6eaf0; --text:#0f172a; --muted:#64748b; --brand:#0b3daa; }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-weight:700; background:var(--bg); margin:0; color:var(--text)}
+      header{position:sticky; top:0; z-index:10; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); padding:12px 16px; border-bottom:1px solid var(--border)}
+      .title{font-weight:700}
+      .toolbar{display:flex; gap:8px}
+      
+      @media screen{
+        .btn{padding:8px 12px; border:none; background:#3b82f6; color:#fff; border-radius:8px; cursor:pointer; font-weight:700; transition:background 0.2s; font-size:13px; white-space:nowrap}
+        .btn:hover{background:#2563eb}
+        .btn:active{background:#1d4ed8}
+        #btnBack{background:#ef4444; color:#fff}
+        #btnBack:hover{background:#dc2626}
+        #btnBack:active{background:#b91c1c}
+        #applyRangeBtn{background:#3b82f6; color:#fff}
+        #applyRangeBtn:hover{background:#2563eb}
+        #applyRangeBtn:active{background:#1d4ed8}
+        #exportPdfBtn{background:#8b5cf6; color:#fff}
+        #exportPdfBtn:hover{background:#7c3aed}
+        #exportPdfBtn:active{background:#6d28d9}
+        #exportExcelBtn{background:#10b981; color:#fff}
+        #exportExcelBtn:hover{background:#059669}
+        #exportExcelBtn:active{background:#047857}
+        #printReportBtn{background:#f59e0b; color:#fff}
+        #printReportBtn:hover{background:#d97706}
+        #printReportBtn:active{background:#b45309}
+      }
+      @media screen{
+        .container{max-width:98%; margin:16px auto; padding:0 12px}
+      }
+      @media print{
+        .container{max-width:1100px; margin:16px auto; padding:0 12px}
+      }
+      .muted{color:var(--muted)}
+      .range-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; flex-wrap:wrap}
+      .range-actions{display:flex; gap:8px; flex-wrap:wrap}
+      .range-inputs{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+      
+      @media screen{
+        .input{padding:8px 10px; border:2px solid #cbd5e1; background:#fff; border-radius:8px; font-weight:700; transition:border-color 0.2s; font-size:13px}
+        .input:focus{outline:none; border-color:#3b82f6}
+        label{font-weight:700; color:var(--text); font-size:13px}
+        select.input{cursor:pointer; min-width:140px!important}
+        input[type="datetime-local"].input{min-width:160px}
+      }
+      .section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; overflow:hidden}
+      .section h3{margin:0 0 8px; font-size:16px}
+      table{width:100%; border-collapse:collapse}
+      th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
+      th{background:#eef2ff; color:var(--brand); font-weight:600}
+      tfoot th{background:#fff}
+      @media (max-width: 640px){ .btn{padding:8px 10px} th,td{padding:8px} .range-bar{flex-direction:column; align-items:stretch} .range-actions{justify-content:space-between} }
+      .badge{display:inline-block; padding:2px 6px; border-radius:6px; font-size:11px; border:1px solid var(--border); background:#fff; color:var(--muted)}
+      .credit-row td{background:#fff7ed}
+
+      /* شبكة كاملة للجداول (عرض الشاشة) */
+      .grid-table{ border:1px solid #000; border-collapse:collapse; }
+      .grid-table th, .grid-table td{ border:1px solid #000; }
+      .grid-table tfoot th{ border-top:2px solid #000; }
+      
+      @media screen{
+        .grid-table{table-layout:fixed; width:100%; font-size:14px}
+        .grid-table th, .grid-table td{padding:10px 8px; word-wrap:break-word; overflow-wrap:break-word}
+        .grid-table th:nth-child(1), .grid-table td:nth-child(1){width:7%; white-space:nowrap; word-wrap:normal; overflow-wrap:normal; text-align:center}
+        .grid-table th:nth-child(2), .grid-table td:nth-child(2){width:7%}
+        .grid-table th:nth-child(3), .grid-table td:nth-child(3){width:9%}
+        .grid-table th:nth-child(4), .grid-table td:nth-child(4){width:12%}
+        .grid-table th:nth-child(5), .grid-table td:nth-child(5){width:11%}
+        .grid-table th:nth-child(6), .grid-table td:nth-child(6){width:9%}
+        .grid-table th:nth-child(7), .grid-table td:nth-child(7){width:11%}
+        .grid-table th:nth-child(8), .grid-table td:nth-child(8){width:9%}
+        .grid-table th:nth-child(9), .grid-table td:nth-child(9){width:11%}
+        .grid-table th:nth-child(10), .grid-table td:nth-child(10){width:7%}
+        .grid-table tfoot th{font-size:14px; padding:10px 8px}
+      }
+      
+      /* طباعة: إخفاء عمود "عرض" وضبط المقاس 80x297mm */
+      @media print {
+        header, .range-actions, .range-inputs { display: none !important; }
+        /* إخفاء عمود "عرض" (آخر عمود) في الرأس، الجسم، والذيل */
+        table thead th:last-child,
+        table tbody td:last-child,
+        table tfoot th:last-child { display: none !important; }
+        /* إخفاء عمود "نوع المستند" (العمود الثاني) في جدول جميع الفواتير */
+        .grid-table thead th:nth-child(2),
+        .grid-table tbody td:nth-child(2),
+        .grid-table tfoot th:nth-child(2) { display: none !important; }
+
+        
+        /* إزالة المقاس الحراري في الطباعة العامة لضمان عرض A4 عند التصدير */
+        @page { margin: 1cm; }
+        html, body { width: auto; max-width: none; margin: 0; padding: 0; }
+        .container { max-width: 1100px; margin: 16px auto; padding: 0 12px; }
+        div[style*="overflow:auto"]{ overflow: visible !important; }
+        table { table-layout: fixed; font-size: 8px !important; line-height: 1.15; }
+        th, td { padding: 1px 2px; }
+        /* تحسين الالتفاف: السماح للنصوص العربية بالالتفاف ومنع التفاف الأرقام */
+        .grid-table th, .grid-table td { word-break: break-word; overflow-wrap: anywhere; white-space: normal; }
+        .num, .num * { white-space: nowrap !important; word-break: keep-all !important; overflow-wrap: normal !important; direction: ltr; text-align: left; }
+        /* السماح بالتفاف التاريخ فقط في الطباعة */
+        .grid-table tbody td:nth-child(4).num { white-space: normal !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+        /* طباعة: اجعل التاريخ في سطر والوقت في سطر تحته */
+        .grid-table .date-cell .date-part{ display:block; }
+        .grid-table .date-cell .time-part{ display:block; }
+        /* توزيع أعمدة مضغوط للطباعة: اجعل الأعمدة الرقمية على قد الرقم بالضبط */
+        .grid-table{ table-layout:auto !important; }
+        .grid-table th, .grid-table td{ width:auto !important; }
+        /* رقم الفاتورة مضغوط */
+        .grid-table thead th:nth-child(1),
+        .grid-table tbody td:nth-child(1){ width:1% !important; white-space:nowrap !important; }
+        /* الأعمدة الرقمية (قبل الضريبة/الضريبة/الإجمالي) مضغوطة */
+        .grid-table thead th:nth-child(7),
+        .grid-table tbody td:nth-child(7),
+        .grid-table tfoot th:nth-child(7),
+        .grid-table thead th:nth-child(8),
+        .grid-table tbody td:nth-child(8),
+        .grid-table tfoot th:nth-child(8),
+        .grid-table thead th:nth-child(9),
+        .grid-table tbody td:nth-child(9),
+        .grid-table tfoot th:nth-child(9){ width:1% !important; white-space:nowrap !important; }
+        /* خانة التاريخ تبقى قابلة للالتفاف على سطرين */
+        .grid-table tbody td:nth-child(5){ white-space:normal !important; }
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print{
+        @page{ margin-left: 8mm; margin-right: 8mm; }
+        body{ padding-left: var(--m-left); padding-right: var(--m-right); }
+        *, *::before, *::after{
+          font-family: 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          font-size: 8px !important;
+        }
+      }
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        body.dark header { background: var(--card); border-bottom-color: var(--border); }
+        body.dark .section { background: var(--card); border-color: var(--border); }
+        body.dark .kpi { background: var(--card); border-color: var(--border); }
+        body.dark .kpi .value { color: var(--brand); }
+        body.dark .kpi .label { color: var(--muted); }
+        body.dark th { background: #1a2744; color: #93c5fd; }
+        body.dark td { color: var(--text); border-bottom-color: var(--border); }
+        body.dark table { border-color: var(--border); }
+        body.dark .summary-item { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
+        body.dark .input:focus { border-color: #3b82f6; }
+        body.dark label { color: var(--text); }
+        body.dark .badge { background: #1a1a1a; border-color: var(--border); color: var(--muted); }
+        body.dark .badge-credit { background: #2d1a0a; border-color: #92400e; color: #fdba74; }
+        body.dark .credit-row td { background: #2d1a0a; }
+        body.dark details > summary { color: var(--muted); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">تقرير جميع الفواتير</div>
+      <div class="toolbar">
+        <button id="btnBack" class="btn">الرجوع</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="range-bar">
+        <div class="range-inputs">
+          <label for="userSelect">المستخدم:</label>
+          <select id="userSelect" class="input"></select>
+          <label for="fromAt">من:</label>
+          <input id="fromAt" class="input" type="datetime-local" />
+          <label for="toAt">إلى:</label>
+          <input id="toAt" class="input" type="datetime-local" />
+          <button id="applyRangeBtn" class="btn">تطبيق</button>
+        </div>
+        <div class="range-actions">
+          <button id="exportPdfBtn" class="btn">تصدير PDF</button>
+          <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+          <button id="printReportBtn" class="btn">طباعة التقرير</button>
+        </div>
+      </div>
+      <div class="muted" id="range"></div>
+
+      <div class="section">
+        <h3>جميع الفواتير ضمن الفترة</h3>
+        <div>
+          <table class="grid-table">
+            <thead>
+              <tr>
+                <th>رقم</th>
+                <th>نوع المستند</th>
+                <th>المستخدم</th>
+                <th>العميل</th>
+                <th>التاريخ</th>
+                <th>طريقة الدفع</th>
+                <th>المبلغ قبل الضريبة</th>
+                <th>الضريبة</th>
+                <th>الإجمالي</th>
+                <th>عرض</th>
+              </tr>
+            </thead>
+            <tbody id="invTbody"></tbody>
+            <tfoot>
+              <tr>
+                <th colspan="6">الإجماليات</th>
+                <th id="sumPre">0.00</th>
+                <th id="sumVat">0.00</th>
+                <th id="sumGrand">0.00</th>
+                <th title="عدد الفواتير"><span class="muted">عدد الفواتير:</span> <b id="sumCount">0</b></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>إجماليات طرق الدفع</h3>
+        <div id="payTotals" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:10px;"></div>
+      </div>
+
+    </div>
+    <script>
+      // إخفاء زر العودة إذا كان هناك زر الرجوع
+      window.addEventListener('DOMContentLoaded', function() {
+        const btnBack = document.getElementById('btnBack');
+        if (btnBack) {
+          document.querySelectorAll('a, button').forEach(function(el) {
+            if (el !== btnBack && el.textContent.includes('العودة')) {
+              el.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./print-margins.js"></script>
+    <script src="./all_invoices.js"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "environment": "sandbox",
+  "endpoints": {
+    "sandbox": "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal",
+    "simulation": "https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation",
+    "production": "https://gw-fatoora.zatca.gov.sa/e-invoicing/core"
+  },
+  "certificates": {
+    "privateKey": null,
+    "certificate": null,
+    "csr": null
+  },
+  "credentials": {
+    "username": null,
+    "password": null,
+    "otp": null
+  },
+  "companyData": {
+    "organizationName": "Shawarma Hamzah Jameel Ikram",
+    "vatNumber": "300238587100003",
+    "commercialRegistration": "4031067948",
+    "businessCategory": "restaurant",
+    "address": {
+      "street": "شارع",
+      "building": "4444",
+      "city": "Mecca",
+      "postalCode": "55555",
+      "district": "fdhfdhfd",
+      "country": "SA"
+    }
+  }
+}

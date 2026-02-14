@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>إدارة المواعيد - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { 
+        display:none; 
+      }
+      .error:not(:empty) {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        min-width: 300px;
+        max-width: 600px;
+        box-shadow: 0 10px 40px rgba(220, 38, 38, 0.3);
+        animation: slideInDown 0.3s ease-out;
+      }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 99998;
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99997;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 2147483647;
+        min-width: 300px;
+        max-width: 500px;
+        text-align: center;
+        display: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        pointer-events: auto;
+      }
+      .toast.show { 
+        display: block;
+        animation: slideInDown 0.3s ease-out;
+      }
+      @keyframes slideInDown {
+        from {
+          transform: translateX(-50%) translateY(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .status-booked { background: #fef08a; color: #854d0e; }
+      .status-confirmed { background: #bfdbfe; color: #1e40af; }
+      .status-cancelled { background: #fecaca; color: #991b1b; }
+      .status-completed { background: #86efac; color: #166534; }
+      .suggestion-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s;
+      }
+      .suggestion-item:hover {
+        background: #f3f4f6;
+      }
+      .suggestion-item:last-child {
+        border-bottom: none;
+      }
+      .suggestion-item.selected {
+        background: #e0e7ff;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">📅 إدارة المواعيد</div>
+      <nav>
+        <button onclick="window.location.href='../main/index.html'" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+        <input id="q" placeholder="🔍 البحث باسم العميل أو رقم الجوال..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="flex gap-2 flex-wrap items-center">
+          <div class="flex gap-2 items-center">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">من تاريخ:</label>
+            <input id="dateFrom" type="date" class="px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div class="flex gap-2 items-center">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">إلى تاريخ:</label>
+            <input id="dateTo" type="date" class="px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <select id="statusFilter" class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">جميع الحالات</option>
+            <option value="booked">محجوز</option>
+            <option value="confirmed">مؤكد</option>
+            <option value="cancelled">ملغى</option>
+            <option value="completed">تم</option>
+          </select>
+          <button id="addBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            ➕ حجز موعد جديد
+          </button>
+          <button id="refreshBtn" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium" style="display:none;">
+            🔄 تحديث
+          </button>
+        </div>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+
+      <div class="flex justify-between items-center my-3 flex-wrap gap-3">
+        <div class="flex gap-2 items-center">
+          <span class="text-gray-600 font-medium">عدد الصفوف في الصفحة:</span>
+          <select id="pageSize" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">الكل</option>
+          </select>
+        </div>
+        <div id="pagerTop" class="flex gap-2 items-center"></div>
+      </div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">اسم العميل</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم الجوال</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">التاريخ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الوقت</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العربون</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الملاحظات</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="pagerBottom" class="flex gap-2 items-center justify-center mt-4"></div>
+    </div>
+
+    <dialog id="dlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span id="dlgTitle">📅 حجز موعد جديد</span>
+      </div>
+      <div id="dialogError" class="text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg mx-6 mt-4 mb-0 text-center font-medium" style="display:none;"></div>
+      <div class="p-6 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">اختيار العميل</label>
+          <div class="flex gap-2">
+            <div class="flex-1 relative">
+              <input 
+                id="f_customer_search" 
+                type="text" 
+                placeholder="🔍 ابحث عن عميل (الاسم أو الجوال)..."
+                autocomplete="off"
+                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input type="hidden" id="f_customer" />
+              <div id="customerSuggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden mt-1"></div>
+            </div>
+            <button id="newCustomerBtn" class="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium">
+              ➕ عميل جديد
+            </button>
+          </div>
+        </div>
+        
+        <div id="newCustomerForm" style="display:none;" class="p-4 bg-blue-50 rounded-lg space-y-3 border-2 border-blue-200">
+          <h4 class="font-bold text-blue-900 mb-2">➕ إضافة عميل جديد</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">اسم العميل</label>
+              <input id="nc_name" placeholder="أدخل اسم العميل..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">رقم الجوال *</label>
+              <input id="nc_phone" placeholder="مثال: 0501234567" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">البريد الإلكتروني</label>
+              <input id="nc_email" type="email" placeholder="customer@example.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">العنوان</label>
+              <input id="nc_address" placeholder="أدخل العنوان..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <div class="flex gap-2 justify-end">
+            <button id="cancelNewCustomerBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium text-sm">إلغاء</button>
+            <button id="saveNewCustomerBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm">✓ حفظ العميل</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">تاريخ الموعد *</label>
+            <input id="f_date" type="date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">وقت الموعد *</label>
+            <input id="f_time" type="time" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">عربون تأكيد الحجز (ريال)</label>
+          <input id="f_deposit" type="number" step="0.01" min="0" placeholder="0.00" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div id="statusSection">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">الحالة</label>
+          <select id="f_status" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="booked">محجوز</option>
+            <option value="confirmed">مؤكد</option>
+            <option value="cancelled">ملغى</option>
+            <option value="completed">تم</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">ملاحظات (اختياري)</label>
+          <textarea id="f_notes" placeholder="أي ملاحظات إضافية..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-y"></textarea>
+        </div>
+
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="dlgSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ الموعد</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div id="confirmHeader" class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="../appointment-notifications.js"></script>
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

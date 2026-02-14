@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>الموظفون - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">👥 إدارة الموظفين</div>
+      <nav>
+        <button id="btnBack" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+        <input id="q" type="text" placeholder="🔍 البحث بالاسم..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button id="btnAdd" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+          ➕ إضافة موظف
+        </button>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white" id="employeesTable">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">اسم الموظف</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">تاريخ الإضافة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <dialog id="dlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span id="dlgTitle">➕ إضافة موظف جديد</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <form id="form">
+          <input type="hidden" id="empId" />
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">اسم الموظف الكامل</label>
+            <input id="empName" type="text" placeholder="أدخل اسم الموظف..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+          </div>
+        </form>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="btnCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="btnSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div id="confirmHeader" class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد الحذف</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">🗑️</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText">هل أنت متأكد من حذف هذا الموظف؟<br>لا يمكن التراجع عن هذا الإجراء.</div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="btnConfirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="btnConfirmDelete" class="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium">🗑️ حذف نهائياً</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+      const btnBack = document.getElementById('btnBack');
+      const btnAdd = document.getElementById('btnAdd');
+      const btnCancel = document.getElementById('btnCancel');
+      const btnSave = document.getElementById('btnSave');
+      const dlg = document.getElementById('dlg');
+      const dlgTitle = document.getElementById('dlgTitle');
+      const form = document.getElementById('form');
+      const empId = document.getElementById('empId');
+      const empName = document.getElementById('empName');
+      const tbody = document.getElementById('tbody');
+      const errorEl = document.getElementById('error');
+      const searchInput = document.getElementById('q');
+      const confirmDlg = document.getElementById('confirmDlg');
+      const btnConfirmCancel = document.getElementById('btnConfirmCancel');
+      const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+      const toast = document.getElementById('toast');
+      
+      let deleteTargetId = null;
+
+      btnBack.onclick = () => { window.location.href = '../main/index.html'; };
+
+      function showToast(message, bgColor = '#16a34a', duration = 3000){
+        if(!toast) return;
+        toast.style.background = bgColor;
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, duration);
+      }
+
+      btnAdd.onclick = () => {
+        empId.value = '';
+        empName.value = '';
+        dlgTitle.textContent = '➕ إضافة موظف جديد';
+        try { dlg.showModal(); } catch(_) { try { dlg.close(); dlg.showModal(); } catch(__){} }
+        setTimeout(() => empName.focus(), 0);
+      };
+
+      btnCancel.onclick = () => {
+        dlg.close();
+      };
+
+      btnSave.onclick = async () => {
+        const name = empName.value.trim();
+        if (!name) {
+          showError('❌ الرجاء إدخال اسم الموظف');
+          return;
+        }
+
+        const id = empId.value;
+        try {
+          let result;
+          if (id) {
+            result = await window.api.employees_update(Number(id), { name });
+          } else {
+            result = await window.api.employees_add({ name });
+          }
+
+          if (result && result.ok) {
+            dlg.close();
+            showToast('✓ تم حفظ بيانات الموظف بنجاح', '#16a34a', 2000);
+            loadEmployees();
+          } else {
+            showError('❌ ' + (result?.error || 'حدث خطأ في حفظ البيانات'));
+          }
+        } catch (err) {
+          console.error(err);
+          showError('❌ حدث خطأ في الاتصال');
+        }
+      };
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        setTimeout(() => { errorEl.textContent = ''; }, 4000);
+      }
+
+      async function loadEmployees() {
+        const q = searchInput.value.trim();
+        const query = {};
+        if (q) query.term = q;
+
+        try {
+          const result = await window.api.employees_list(query);
+          if (result && result.ok) {
+            renderEmployees(result.items || []);
+          } else {
+            showError('❌ ' + (result?.error || 'فشل تحميل البيانات'));
+          }
+        } catch (err) {
+          console.error(err);
+          showError('❌ خطأ في الاتصال');
+        }
+      }
+
+      function renderEmployees(items) {
+        if (items.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="text-center py-12 text-gray-500">
+                <svg class="w-20 h-20 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" stroke-width="2"/>
+                  <path d="M3 21V19C3 16.7909 4.79086 15 7 15H11C13.2091 15 15 16.7909 15 19V21" stroke="currentColor" stroke-width="2"/>
+                  <path d="M16 11H22M19 8V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div class="font-medium">لا توجد بيانات موظفين</div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = items.map((emp, idx) => {
+          let date = '-';
+          if (emp.created_at) {
+            const d = new Date(emp.created_at);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            date = `${year}-${month}-${day} ${hours}:${minutes}`;
+          }
+          return `
+            <tr class="border-b border-gray-100 last:border-b-0">
+              <td class="px-4 py-3 text-gray-700 font-medium">${idx + 1}</td>
+              <td class="px-4 py-3 text-gray-900 font-semibold">${emp.name}</td>
+              <td class="px-4 py-3 text-gray-700" dir="ltr" style="text-align: right;">${date}</td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-2">
+                  <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-id="${emp.id}">✏️ تعديل</button>
+                  <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="delete" data-id="${emp.id}">🗑️ حذف</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      tbody.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const id = Number(btn.dataset.id);
+        const act = btn.dataset.act;
+
+        if (act === 'edit') {
+          try {
+            const result = await window.api.employees_get(id);
+            if (result && result.ok) {
+              empId.value = result.item.id;
+              empName.value = result.item.name;
+              dlgTitle.textContent = '✏️ تعديل بيانات الموظف';
+              try { dlg.showModal(); } catch(_) { try { dlg.close(); dlg.showModal(); } catch(__){} }
+              setTimeout(() => empName.focus(), 0);
+            } else {
+              showError('❌ ' + (result?.error || 'فشل جلب البيانات'));
+            }
+          } catch (err) {
+            console.error(err);
+            showError('❌ خطأ في الاتصال');
+          }
+        }
+
+        if (act === 'delete') {
+          deleteTargetId = id;
+          try { confirmDlg.showModal(); } catch(_) { try { confirmDlg.close(); confirmDlg.showModal(); } catch(__){} }
+        }
+      });
+
+      btnConfirmCancel.onclick = () => {
+        confirmDlg.close();
+        deleteTargetId = null;
+      };
+
+      btnConfirmDelete.onclick = async () => {
+        if (!deleteTargetId) return;
+        
+        confirmDlg.close();
+
+        try {
+          const result = await window.api.employees_delete(deleteTargetId);
+          if (result && result.ok) {
+            showToast('✓ تم حذف الموظف بنجاح', '#16a34a', 2000);
+            loadEmployees();
+          } else {
+            showError('❌ ' + (result?.error || 'فشل الحذف'));
+          }
+        } catch (err) {
+          console.error(err);
+          showError('❌ خطأ في الاتصال');
+        } finally {
+          deleteTargetId = null;
+        }
+      };
+
+      let searchTimeout;
+      searchInput.oninput = () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadEmployees, 300);
+      };
+
+      loadEmployees();
+    </script>
+    <script src="../theme.js"></script>
+  </body>
+</html>

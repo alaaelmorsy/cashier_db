@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>التقرير اليومي</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      :root{
+        --bg:#f6f8fb; --card:#ffffff; --border:#e6eaf0; --text:#0f172a; --muted:#64748b; --brand:#0b3daa;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-weight:700; background:var(--bg); margin:0; color:var(--text)}
+      header{position:sticky; top:0; z-index:10; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); padding:12px 16px; border-bottom:1px solid var(--border)}
+      .title{font-weight:700}
+      .toolbar{display:flex; gap:8px}
+      
+      @media screen{
+        .btn{padding:10px 16px; border:none; background:#3b82f6; color:#fff; border-radius:8px; cursor:pointer; font-weight:700; transition:background 0.2s}
+        .btn:hover{background:#2563eb}
+        .btn:active{background:#1d4ed8}
+        #btnBack{background:#ef4444; color:#fff}
+        #btnBack:hover{background:#dc2626}
+        #btnBack:active{background:#b91c1c}
+        #exportPdfBtn{background:#8b5cf6; color:#fff}
+        #exportPdfBtn:hover{background:#7c3aed}
+        #exportPdfBtn:active{background:#6d28d9}
+        #exportExcelBtn{background:#10b981; color:#fff}
+        #exportExcelBtn:hover{background:#059669}
+        #exportExcelBtn:active{background:#047857}
+        #printReportBtn{background:#f59e0b; color:#fff}
+        #printReportBtn:hover{background:#d97706}
+        #printReportBtn:active{background:#b45309}
+      }
+      .container{max-width:1100px; margin:16px auto; padding:0 12px}
+      .muted{color:var(--muted)}
+      .range-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0}
+      .range-actions{display:flex; gap:8px}
+      .section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0}
+      .section h3{margin:0 0 8px; font-size:16px}
+      .kpis{display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin:12px 0}
+      .kpi{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px}
+      .kpi .value{font-size:22px; font-weight:700; color:var(--brand)}
+      .kpi .label{font-size:12px; color:var(--muted); margin-top:4px}
+      table{width:100%; border-collapse:collapse}
+      th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
+      th{background:#eef2ff; color:var(--brand); font-weight:600}
+      .grid{display:grid; gap:10px}
+      .summary-list{display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px}
+      .summary-item{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px}
+      .summary-item b{display:block; font-size:16px; margin-top:4px}
+      details > summary{list-style:none; cursor:pointer; color:var(--muted); margin:-4px 0 8px; position:relative; padding-right:16px}
+      details > summary::-webkit-details-marker{display:none}
+      details > summary::before{content:'▸'; position:absolute; right:0; top:0; color:#94a3b8; transform:translateY(2px); transition:transform .2s}
+      details[open] > summary::before{transform:rotate(90deg) translateX(2px)}
+      @media (max-width: 640px){ .btn{padding:8px 10px} th,td{padding:8px} }
+      .badge{display:inline-block; padding:2px 6px; border-radius:6px; font-size:11px; border:1px solid var(--border); background:#fff; color:var(--muted)}
+      .badge-credit{background:#fff7ed; border-color:#fdba74; color:#c2410c}
+      .credit-row td{background:#fff7ed}
+      /* شبكة كاملة داخل الملخص التفصيلي (على الشاشة والمعاينة والتصدير) */
+      .summary-section table{ border:1px solid #000; border-collapse:collapse; }
+      .summary-section th, .summary-section td{ border:1px solid #000; }
+      .summary-section tfoot th{ border-top:2px solid #000; }
+
+      /* هوامش الطباعة: نصف سنتيمتر يمين ويسار */
+      @page { margin-left: 0.5cm; margin-right: 0.5cm; }
+
+      /* تخطيط معاينة للفواتير والإشعارات الدائنة مطابق لتقرير الفترة */
+      .tbl-inv, .tbl-cn{ border:1px solid #cbd5e1; border-collapse:collapse; table-layout: auto; }
+      .tbl-inv th, .tbl-inv td, .tbl-cn th, .tbl-cn td{ border:1px solid #e2e8f0; padding:6px 8px; }
+
+      /* أعمدة قصيرة مضغوطة (لا تلتف) */
+      .tbl-inv th:nth-child(1), .tbl-inv td:nth-child(1),
+      .tbl-inv th:nth-child(4), .tbl-inv td:nth-child(4),
+      .tbl-inv th:nth-child(5), .tbl-inv td:nth-child(5),
+      .tbl-cn th:nth-child(1), .tbl-cn td:nth-child(1),
+      .tbl-cn th:nth-child(4), .tbl-cn td:nth-child(4),
+      .tbl-cn th:nth-child(5), .tbl-cn td:nth-child(5){
+        white-space: nowrap;
+        width: 1%;
+      }
+
+      /* أعمدة العميل والتاريخ قابلة للالتفاف لتستوعب البيانات */
+      .tbl-inv th:nth-child(2), .tbl-inv td:nth-child(2),
+      .tbl-inv th:nth-child(3), .tbl-inv td:nth-child(3),
+      .tbl-cn th:nth-child(2), .tbl-cn td:nth-child(2),
+      .tbl-cn th:nth-child(3), .tbl-cn td:nth-child(3){
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      /* احتواء رقم العميل داخل الخلية على الشاشة أيضًا */
+      .tbl-inv th:nth-child(2), .tbl-inv td:nth-child(2),
+      .tbl-cn th:nth-child(2), .tbl-cn td:nth-child(2){
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-wrap: break-word;
+        word-break: break-all;
+        line-break: anywhere;
+        max-width: 100%;
+        overflow: hidden;
+        direction: ltr;
+        unicode-bidi: plaintext;
+        text-align: left;
+      }
+
+      /* إخفاء عمود "عرض" أثناء الطباعة كإجراء احتياطي */
+      @media print{
+        .tbl-inv thead th:last-child, .tbl-inv tbody td:last-child, .tbl-inv tfoot th:last-child{ display:none !important; }
+        .tbl-cn thead th:last-child, .tbl-cn tbody td:last-child, .tbl-cn tfoot th:last-child{ display:none !important; }
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print{
+        @page{ margin-left: 8mm; margin-right: 8mm; }
+        body{ padding-left: var(--m-left); padding-right: var(--m-right); }
+        *, *::before, *::after{
+          font-family: 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          font-size: 14px !important;
+        }
+        /* تصغير قسم الربحية في الطباعة */
+        .profitability-section{
+          margin: 3px 0 !important;
+          padding: 4px 8px !important;
+        }
+        .profitability-section h3{
+          font-size: 11px !important;
+          margin: 0 0 3px 0 !important;
+        }
+        .profitability-section .kpis{
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 4px !important;
+          margin: 0 !important;
+        }
+        .profitability-section .kpi{
+          padding: 3px 6px !important;
+          min-width: auto !important;
+          flex: 1 !important;
+        }
+        .profitability-section .kpi .value{
+          font-size: 11px !important;
+        }
+        .profitability-section .kpi .label{
+          font-size: 8px !important;
+          margin-top: 1px !important;
+          line-height: 1.1 !important;
+        }
+      }
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        
+        body.dark header {
+          background: var(--card);
+          border-bottom-color: var(--border);
+        }
+        
+        body.dark .section {
+          background: var(--card);
+          border-color: var(--border);
+        }
+        
+        body.dark .kpi {
+          background: var(--card);
+          border-color: var(--border);
+        }
+        
+        body.dark .kpi .value {
+          color: var(--brand);
+        }
+        
+        body.dark .kpi .label {
+          color: var(--muted);
+        }
+        
+        body.dark th {
+          background: #1a2744;
+          color: #93c5fd;
+        }
+        
+        body.dark td {
+          color: var(--text);
+          border-bottom-color: var(--border);
+        }
+        
+        body.dark table {
+          border-color: var(--border);
+        }
+        
+        body.dark .summary-item {
+          background: var(--card);
+          border-color: var(--border);
+          color: var(--text);
+        }
+        
+        body.dark .badge {
+          background: #1a1a1a;
+          border-color: var(--border);
+          color: var(--muted);
+        }
+        
+        body.dark .badge-credit {
+          background: #2d1a0a;
+          border-color: #92400e;
+          color: #fdba74;
+        }
+        
+        body.dark .credit-row td {
+          background: #2d1a0a;
+        }
+        
+        body.dark details > summary {
+          color: var(--muted);
+        }
+        
+        body.dark .tbl-inv,
+        body.dark .tbl-cn {
+          border-color: var(--border);
+        }
+        
+        body.dark .tbl-inv th,
+        body.dark .tbl-inv td,
+        body.dark .tbl-cn th,
+        body.dark .tbl-cn td {
+          border-color: var(--border);
+          color: var(--text);
+        }
+        
+        body.dark .tbl-inv th,
+        body.dark .tbl-cn th {
+          background: #1a2744;
+          color: #93c5fd;
+        }
+        
+        body.dark .summary-section table {
+          border-color: var(--border);
+        }
+        
+        body.dark .summary-section th,
+        body.dark .summary-section td {
+          border-color: var(--border);
+          color: var(--text);
+        }
+        
+        body.dark .summary-section th {
+          background: #1a2744;
+          color: #93c5fd;
+        }
+        
+        body.dark .summary-section tfoot th {
+          border-top-color: var(--border);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">التقرير اليومي</div>
+      <div class="toolbar">
+        <button id="btnBack" class="btn">الرجوع</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="range-bar">
+        <div class="muted" id="range"></div>
+        <div class="range-actions">
+          <button id="exportPdfBtn" class="btn">تصدير PDF</button>
+          <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+          <button id="printReportBtn" class="btn">طباعة التقرير</button>
+        </div>
+      </div>
+
+      <div class="section summary-section">
+        <h3>الملخص التفصيلي</h3>
+        <table class="tbl-sum">
+          <thead>
+            <tr>
+              <th>البيان</th>
+              <th>قبل الضريبة</th>
+              <th>الضريبة</th>
+              <th>بعد الضريبة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>المبيعات</td>
+              <td id="salesPre">0.00</td>
+              <td id="salesVat">0.00</td>
+              <td id="salesAfter">0.00</td>
+            </tr>
+            <tr>
+              <td>الخصومات</td>
+              <td>0.00</td>
+              <td>0.00</td>
+              <td id="discTotal">0.00</td>
+            </tr>
+            <tr>
+              <td>المبيعات بعد الخصم</td>
+              <td id="salesAfterDiscPre">0.00</td>
+              <td id="salesAfterDiscVat">0.00</td>
+              <td id="salesAfterDiscAfter">0.00</td>
+            </tr>
+            <tr>
+              <td>إشعارات الدائن (المرتجعات)</td>
+              <td id="retPre">0.00</td>
+              <td id="retVat">0.00</td>
+              <td id="retAfter">0.00</td>
+            </tr>
+            <tr>
+              <td>إجمالي المبيعات بعد الخصم بعد المرتجعات</td>
+              <td id="salesAfterDiscNetPre">0.00</td>
+              <td id="salesAfterDiscNetVat">0.00</td>
+              <td id="salesAfterDiscNetAfter">0.00</td>
+            </tr>
+            <tr>
+              <td>المصروفات</td>
+              <td id="purPre">0.00</td>
+              <td id="purVat">0.00</td>
+              <td id="purAfter">0.00</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>الصافي</th>
+              <th id="netPre">0.00</th>
+              <th id="netVat">0.00</th>
+              <th id="netAfter">0.00</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="section profitability-section">
+        <h3>الربحية</h3>
+        <div class="kpis">
+          <div class="kpi"><div class="value" id="costTotalPre">0.00</div><div class="label">إجمالي بسعر الشراء (شامل الضريبة)</div></div>
+          <div class="kpi"><div class="value" id="salesTotalPre">0.00</div><div class="label">إجمالي بسعر البيع (شامل الضريبة)</div></div>
+          <div class="kpi"><div class="value" id="profitNetPre">0.00</div><div class="label">صافي الربح (شامل الضريبة)</div></div>
+        </div>
+      </div>
+
+      <!-- تمت إزالة بطاقات المؤشرات وملخص مختصر بناءً على طلب المستخدم -->
+
+      <div class="section">
+        <h3>طرق الدفع</h3>
+        <table>
+          <thead><tr><th>الطريقة</th><th>الإجمالي</th></tr></thead>
+          <tbody id="payTbody"></tbody>
+          <tfoot>
+            <tr><th>الإجمالي الكلي</th><th id="sumTotal">0.00</th></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="section">
+        <details open>
+          <summary>المنتجات المباعة</summary>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>المنتج</th>
+                  <th>الكمية</th>
+                  <th>الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody id="soldItemsTbody"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      <div class="section">
+        <details>
+          <summary>المصروفات</summary>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>البيان</th>
+                  <th>التاريخ</th>
+                  <th>الإجمالي</th>
+                  <th>ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody id="purTbody"></tbody>
+              <tfoot>
+                <tr>
+                  <th>الإجماليات</th>
+                  <th id="dPurCount">0</th>
+                  <th id="dPurAfter">0.00</th>
+                  <th></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="muted" style="margin-top:6px">الإجمالي: <b id="purCount">0</b></div>
+        </details>
+      </div>
+
+      <div class="section">
+        <details>
+          <summary>الفواتير</summary>
+          <div class="muted" style="margin:-4px 0 8px">تشمل الفواتير غير الدائنة والفواتير الآجل المدفوعة جزئياً (مع تمييز "مدفوعة جزئياً").</div>
+          <div style="overflow:auto">
+            <table class="tbl-inv">
+              <thead>
+                <tr>
+                  <th>رقم</th>
+                  <th>العميل</th>
+                  <th>التاريخ</th>
+                  <th>طريقة الدفع</th>
+                  <th>الإجمالي</th>
+                  <th>عرض</th>
+                </tr>
+              </thead>
+              <tbody id="invTbody"></tbody>
+            </table>
+          </div>
+          <div class="muted" style="margin-top:6px">الإجمالي: <b id="invCount">0</b></div>
+        </details>
+      </div>
+
+      <div class="section">
+        <details>
+          <summary>مرتجع/إشعارات دائنة</summary>
+          <div style="overflow:auto">
+            <table class="tbl-cn">
+              <thead>
+                <tr>
+                  <th>رقم الإشعار</th>
+                  <th>العميل</th>
+                  <th>التاريخ</th>
+                  <th>طريقة الدفع</th>
+                  <th>القيمة</th>
+                  <th>عرض</th>
+                </tr>
+              </thead>
+              <tbody id="cnTbody"></tbody>
+            </table>
+          </div>
+          <div class="muted" style="margin-top:6px">الإجمالي: <b id="cnCount">0</b></div>
+        </details>
+      </div>
+
+    </div>
+    <script>
+      // إخفاء زر العودة إذا كان هناك زر الرجوع
+      window.addEventListener('DOMContentLoaded', function() {
+        const btnBack = document.getElementById('btnBack');
+        if (btnBack) {
+          document.querySelectorAll('a, button').forEach(function(el) {
+            if (el !== btnBack && el.textContent.includes('العودة')) {
+              el.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./print-margins.js"></script>
+    <script src="./daily.js"></script>
+  </body>
+</html>

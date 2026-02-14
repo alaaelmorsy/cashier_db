@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>العروض والكوبونات - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      
+      /* Dialog backdrop */
+      dialog::backdrop {
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes slideUp {
+        from { 
+          opacity: 0; 
+          transform: translate(-50%, -40%) scale(0.95); 
+        }
+        to { 
+          opacity: 1; 
+          transform: translate(-50%, -50%) scale(1); 
+        }
+      }
+      
+      dialog {
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+      }
+      
+      dialog[open] {
+        display: block;
+      }
+      
+      #confirmDlg {
+        max-width: 450px;
+        width: min(95vw, 450px);
+        border-color: #fecaca;
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      .hidden { display: none !important; }
+      
+      /* Modal Header Styles */
+      #modalBackdrop > div:first-child,
+      #confirmDlg > div:first-child {
+        padding: 18px 24px;
+        font-size: 17px;
+        font-weight: 700;
+        border-radius: 16px 16px 0 0;
+      }
+      
+      /* Modal Content Styles */
+      #modalBackdrop > div:nth-child(2) {
+        padding: 24px;
+      }
+      
+      /* Modal Actions (Footer) */
+      #modalBackdrop .flex.gap-3.justify-end,
+      #confirmDlg .flex.gap-3.justify-end {
+        background: #000000;
+        padding: 16px 24px;
+        margin: 0 -24px -24px;
+        border-radius: 0 0 16px 16px;
+        border-top: 2px solid #e2e8f0;
+      }
+      
+      /* Modal Buttons */
+      #modalBackdrop button,
+      #confirmDlg button {
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        border: none;
+        cursor: pointer;
+      }
+      
+      #modalBackdrop button:hover,
+      #confirmDlg button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      }
+      
+      /* Primary Button (Save/OK) */
+      #saveModal,
+      #confirmOk {
+        background: #3b82f6 !important;
+        color: #ffffff !important;
+      }
+      
+      #saveModal:hover,
+      #confirmOk:hover {
+        background: #2563eb !important;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+      }
+      
+      /* Cancel Button */
+      #cancelModal,
+      #confirmCancel {
+        background: #e5e7eb !important;
+        color: #111827 !important;
+      }
+      
+      #cancelModal:hover,
+      #confirmCancel:hover {
+        background: #d1d5db !important;
+      }
+      
+      /* Confirm Dialog Specific */
+      #confirmHeader {
+        background: linear-gradient(135deg, #fee2e2, #fecaca) !important;
+        color: #991b1b !important;
+        border-radius: 16px 16px 0 0 !important;
+      }
+      
+      #confirmHeaderIcon {
+        font-size: 24px;
+        animation: bounce 0.6s ease;
+      }
+      
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+      }
+      
+      /* Input Fields Styling */
+      #modalContent input,
+      #modalContent select,
+      #modalContent textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+      
+      #modalContent input:focus,
+      #modalContent select:focus,
+      #modalContent textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      #modalContent label {
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 8px;
+        display: block;
+        font-size: 14px;
+      }
+      
+      /* Dark Mode Support */
+      .dark dialog {
+        background: #0d0d0d;
+        border: 1px solid #1a1a1a;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      }
+      
+      .dark dialog::backdrop {
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(6px);
+      }
+      
+      .dark #modalBackdrop > div:first-child {
+        background: #3b82f6 !important;
+        color: #ffffff !important;
+      }
+      
+      .dark #modalBackdrop > div:nth-child(2) {
+        background: #0d0d0d;
+      }
+      
+      .dark #modalBackdrop .flex.gap-3.justify-end,
+      .dark #confirmDlg .flex.gap-3.justify-end {
+        background: #000000 !important;
+        border-top-color: #1a1a1a !important;
+      }
+      
+      .dark #modalContent label {
+        color: #ffffff !important;
+      }
+      
+      .dark #modalContent input,
+      .dark #modalContent select,
+      .dark #modalContent textarea {
+        background: #1a1a1a !important;
+        border-color: #333333 !important;
+        color: #ffffff !important;
+      }
+      
+      .dark #modalContent input:focus,
+      .dark #modalContent select:focus,
+      .dark #modalContent textarea:focus {
+        background: #1a1a1a !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+      }
+      
+      .dark #modalContent input::placeholder,
+      .dark #modalContent textarea::placeholder {
+        color: #9ca3af !important;
+      }
+      
+      .dark #saveModal,
+      .dark #confirmOk {
+        background: #3b82f6 !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+      }
+      
+      .dark #saveModal:hover,
+      .dark #confirmOk:hover {
+        background: #2563eb !important;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5) !important;
+      }
+      
+      .dark #cancelModal,
+      .dark #confirmCancel {
+        background: #e5e7eb !important;
+        color: #111827 !important;
+      }
+      
+      .dark #cancelModal:hover,
+      .dark #confirmCancel:hover {
+        background: #d1d5db !important;
+      }
+      
+      .dark #confirmHeader {
+        background: linear-gradient(135deg, #1a0a0a, #2d1111) !important;
+        color: #ff6b6b !important;
+      }
+      
+      .dark #confirmHeaderIcon {
+        filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.5));
+      }
+      
+      .dark #confirmDlg {
+        background: #0d0d0d !important;
+        border-color: #991b1b !important;
+      }
+      
+      .dark #confirmText {
+        color: #ffffff !important;
+      }
+      
+      /* Additional Modal Content Styling */
+      #modalContent > div {
+        margin-bottom: 20px;
+      }
+      
+      #modalContent > div:last-child {
+        margin-bottom: 0;
+      }
+      
+      /* Select dropdown arrow styling */
+      #modalContent select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        padding-left: 36px;
+      }
+      
+      .dark #modalContent select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      }
+      
+      /* Checkbox and Radio Styling */
+      #modalContent input[type="checkbox"],
+      #modalContent input[type="radio"] {
+        width: auto;
+        margin-left: 8px;
+      }
+      
+      /* Modal Icon in Confirm Dialog */
+      #confirmIcon {
+        flex-shrink: 0;
+      }
+      
+      /* Confirm Dialog Body */
+      #confirmDlg > div:nth-child(2) {
+        background: #fff;
+      }
+      
+      .dark #confirmDlg > div:nth-child(2) {
+        background: #0d0d0d;
+      }
+      
+      /* Dark mode for page elements */
+      .dark body {
+        background: #0d0d0d;
+      }
+      
+      .dark header {
+        background: #1a1a1a !important;
+        border-bottom-color: #333333 !important;
+      }
+      
+      .dark header .text-gray-800 {
+        color: #ffffff !important;
+      }
+      
+      .dark input[type="text"],
+      .dark input[type="search"] {
+        background: #1a1a1a;
+        border-color: #333333;
+        color: #ffffff;
+      }
+      
+      .dark input[type="text"]:focus,
+      .dark input[type="search"]:focus {
+        border-color: #3b82f6;
+      }
+      
+      .dark input::placeholder {
+        color: #9ca3af;
+      }
+      
+      .dark table {
+        background: #1a1a1a;
+      }
+      
+      .dark thead tr {
+        background: #1a2744 !important;
+      }
+      
+      .dark th {
+        color: #93c5fd !important;
+        border-bottom-color: #333333 !important;
+      }
+      
+      .dark tbody td {
+        color: #ffffff;
+        border-bottom-color: #333333;
+      }
+      
+      .dark .tab-btn {
+        color: #9ca3af;
+      }
+      
+      .dark .tab-btn.text-blue-600 {
+        color: #3b82f6 !important;
+        border-bottom-color: #3b82f6 !important;
+      }
+      
+      .dark .border-gray-200 {
+        border-color: #333333 !important;
+      }
+      
+      .dark .overflow-hidden {
+        border-color: #333333 !important;
+      }
+      
+      /* Scrollbar styling for dark mode */
+      .dark dialog::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      .dark dialog::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+      
+      .dark dialog::-webkit-scrollbar-thumb {
+        background: #333333;
+        border-radius: 4px;
+      }
+      
+      .dark dialog::-webkit-scrollbar-thumb:hover {
+        background: #3b82f6;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">🏷️ العروض والكوبونات</div>
+      <nav class="flex gap-2">
+        <button id="backBtn" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+        <input id="searchBox" placeholder="🔍 البحث بالاسم أو الرمز..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="flex gap-2 flex-wrap">
+          <button id="searchBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            🔍 بحث
+          </button>
+          <button id="refreshBtn" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+            🔄 تحديث
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="mb-4 border-b border-gray-200">
+        <nav class="flex gap-2">
+          <button class="tab-btn px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600" data-tab="offers">
+            🎯 العروض على الأصناف
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="global-offers" id="globalOfferTab">
+            🌐 العروض العامة
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="qty-offers">
+            📦 عروض الكمية
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="coupons">
+            🎟️ الكوبونات
+          </button>
+        </nav>
+      </div>
+
+      <!-- Offers Tab -->
+      <div class="tab-content active" id="offers-tab">
+        <div class="flex gap-2 mb-4">
+          <button id="addOfferBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            ➕ إضافة عرض جديد
+          </button>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الاسم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">النوع</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الأصناف</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">القيمة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الفترة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+              </tr>
+            </thead>
+            <tbody id="offersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Global Offers Tab -->
+      <div class="tab-content" id="global-offers-tab">
+        <div class="flex gap-2 mb-4">
+          <button id="addGlobalOfferBtn" class="px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium">
+            ➕ إضافة عرض عام
+          </button>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الاسم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">النوع</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">نوع العرض</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">القيمة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الفترة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+              </tr>
+            </thead>
+            <tbody id="globalOffersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quantity Offers Tab -->
+      <div class="tab-content" id="qty-offers-tab">
+        <div class="flex gap-2 mb-4">
+          <button id="addQtyOfferBtn" class="px-5 py-2.5 bg-orange-600 text-white rounded-lg font-medium">
+            ➕ إضافة عرض كمي
+          </button>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الاسم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الشرط</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">نوع الخصم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">قيمة الخصم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">تكرار</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الفترة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الأصناف</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+              </tr>
+            </thead>
+            <tbody id="qtyOffersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Coupons Tab -->
+      <div class="tab-content" id="coupons-tab">
+        <div class="flex gap-2 mb-4">
+          <button id="addCouponBtn" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg font-medium">
+            ➕ إضافة كوبون
+          </button>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الرمز</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">النوع</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">القيمة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الصلاحية</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+              </tr>
+            </thead>
+            <tbody id="couponsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <dialog id="modalBackdrop">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold" style="border-radius: 16px 16px 0 0;">
+        <span id="modalTitle">➕ إضافة عرض جديد</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <div id="modalContent"></div>
+        <div class="flex gap-3 justify-end pt-2" style="margin: 0 -24px -24px; padding: 16px 24px; background: #000000; border-radius: 0 0 16px 16px; border-top: 2px solid #e2e8f0;">
+          <button id="cancelModal" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="saveModal" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div id="confirmHeader" class="px-5 py-4 text-lg font-bold flex items-center gap-2" style="background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border-radius: 16px 16px 0 0;">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed font-semibold" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2" style="margin: 0 -24px -24px; padding: 16px 24px; background: #000000; border-radius: 0 0 16px 16px; border-top: 2px solid #fecaca;">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

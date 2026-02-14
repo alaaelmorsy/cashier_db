@@ -1,0 +1,124 @@
+{
+  "name": "pos1",
+  "version": "1.0.26",
+  "description": "POS Desktop App for KSA - Login skeleton (Electron + Node.js + MySQL)",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "build:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --minify",
+    "watch:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --watch",
+    "dist:win": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis",
+    "dist:msi": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win msi",
+    "dist:win:all": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis msi",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.alrabt.cashier",
+    "productName": "الرابط كاشير",
+    "artifactName": "cashier${version}.${ext}",
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "msi"
+      ],
+      "icon": "assets/icon/app.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false,
+      "sign": null,
+      "signingHashAlgorithms": null
+    },
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "الرابط كاشير",
+      "installerIcon": "assets/icon/app.ico",
+      "uninstallerIcon": "assets/icon/app.ico",
+      "installerHeaderIcon": "assets/icon/app.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "alaaelmorsy",
+      "repo": "cashier_db"
+    }
+  },
+  "keywords": [
+    "pos",
+    "electron",
+    "ksa",
+    "zakat"
+  ],
+  "author": "مؤسسة تعلم التقنيات",
+  "license": "ISC",
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "^1.30.1",
+    "axios": "^1.12.1",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "electron-is-dev": "^2.0.0",
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.1.7",
+    "express": "^5.2.1",
+    "helmet": "^7.1.0",
+    "moment-timezone": "^0.6.0",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.9.7",
+    "node-forge": "^1.3.1",
+    "nodemailer": "^6.9.8",
+    "qrcode": "^1.5.4",
+    "serialport": "^13.0.0",
+    "systeminformation": "^5.27.16",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.1",
+    "electron-rebuild": "^3.2.9",
+    "jest": "^30.2.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.3",
+    "tailwindcss": "^4.1.17"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/main/electron.js",
+      "!src/db/**"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ]
+  }
+}

@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>إدارة الشيفتات</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{
+        --primary: #8B6B47;
+        --primary-600: #6B4E31;
+        --accent: #C9A961;
+        --danger: #C17858;
+        --success: #4CAF50;
+        --text: #3E2723;
+        --muted: #8D6E63;
+        --bg: linear-gradient(135deg, #f5e6d3 0%, #e8d4bf 50%, #d7c0a8 100%);
+        --card: rgba(255,250,245,0.95);
+        --border: rgba(62,39,35,0.08);
+        --shadow: 0 20px 40px rgba(139,107,71,0.15);
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{
+        font-family: 'saudi_riyal', 'Cairo', system-ui, -apple-system, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container{
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .header{
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 24px 32px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      h1{
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .filters{
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 24px 32px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border);
+      }
+      .filters-grid{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .form-group{
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      label{
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      select, input{
+        padding: 10px 14px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 15px;
+        transition: all 0.2s;
+      }
+      select:focus, input:focus{
+        outline: none;
+        border-color: var(--primary);
+      }
+      .btn{
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-primary{
+        background: var(--primary);
+        color: white;
+      }
+      .btn-primary:hover{
+        background: var(--primary-600);
+        transform: translateY(-1px);
+      }
+      .btn-secondary{
+        background: white;
+        color: var(--text);
+        border: 2px solid var(--border);
+      }
+      .btn-small{
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+      .stats{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .stat-card{
+        background: var(--card);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+      .stat-label{
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .stat-value{
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .table-container{
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      table{
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead{
+        background: rgba(139,107,71,0.08);
+      }
+      th{
+        padding: 16px;
+        text-align: right;
+        font-weight: 600;
+        color: var(--text);
+        font-size: 14px;
+        border-bottom: 2px solid var(--border);
+      }
+      td{
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+      }
+      tbody tr:hover{
+        background: rgba(139,107,71,0.03);
+      }
+      .badge{
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge-open{
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .badge-closed{
+        background: #fbe9e7;
+        color: #d84315;
+      }
+      .actions{
+        display: flex;
+        gap: 8px;
+      }
+      .loading{
+        text-align: center;
+        padding: 40px;
+        color: var(--muted);
+      }
+      .empty{
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+      }
+      .empty-icon{
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      .error{
+        background: #ffebee;
+        color: #c62828;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        border-right: 4px solid #c62828;
+        display: none;
+      }
+      .error.show{display: block}
+      .success{
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        border-right: 4px solid #2e7d32;
+        display: none;
+      }
+      .success.show{display: block}
+      .diff-positive{color: #2e7d32; font-weight: 600}
+      .diff-negative{color: #c62828; font-weight: 600}
+      .diff-zero{color: #757575; font-weight: 600}
+      
+      .modal-overlay{
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+      }
+      .modal-overlay.show{
+        display: flex;
+      }
+      .modal{
+        background: var(--card);
+        border-radius: 20px;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        max-width: 700px;
+        width: 90%;
+        max-height: 85vh;
+        overflow: hidden;
+        animation: slideUp 0.3s ease;
+        border: 1px solid var(--border);
+      }
+      @keyframes fadeIn{
+        from{opacity: 0}
+        to{opacity: 1}
+      }
+      @keyframes slideUp{
+        from{transform: translateY(30px); opacity: 0}
+        to{transform: translateY(0); opacity: 1}
+      }
+      .modal-header{
+        background: var(--primary);
+        color: white;
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-header h2{
+        font-size: 22px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+      }
+      .modal-close{
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+      .modal-close:hover{
+        background: rgba(255,255,255,0.3);
+        transform: rotate(90deg);
+      }
+      .modal-body{
+        padding: 32px;
+        overflow-y: auto;
+        max-height: calc(85vh - 180px);
+      }
+      .modal-section{
+        margin-bottom: 24px;
+      }
+      .modal-section-title{
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--border);
+      }
+      .modal-info-grid{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .modal-info-item{
+        background: rgba(139,107,71,0.04);
+        padding: 14px 16px;
+        border-radius: 10px;
+        border-right: 3px solid var(--accent);
+      }
+      .modal-info-label{
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      .modal-info-value{
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .modal-highlight{
+        background: linear-gradient(135deg, rgba(76,175,80,0.1) 0%, rgba(76,175,80,0.05) 100%);
+        border: 2px solid rgba(76,175,80,0.3);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
+      .modal-highlight-grid{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+      }
+      .modal-highlight-item{
+        text-align: center;
+      }
+      .modal-highlight-label{
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .modal-highlight-value{
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--success);
+      }
+      .modal-footer{
+        background: rgba(139,107,71,0.04);
+        padding: 20px 32px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      .btn-print{
+        background: var(--success);
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn-print:hover{
+        background: #388e3c;
+        transform: translateY(-1px);
+      }
+      .currency-symbol::before{
+        content: '\ue900';
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>
+          <span>📊</span>
+          <span>إدارة الشيفتات</span>
+        </h1>
+        <button class="btn btn-secondary" id="backBtn">
+          ← العودة للرئيسية
+        </button>
+      </div>
+
+      <div class="error" id="errorMsg"></div>
+      <div class="success" id="successMsg"></div>
+
+      <div class="stats" id="statsContainer" style="display:none">
+        <div class="stat-card">
+          <div class="stat-label">إجمالي الشيفتات</div>
+          <div class="stat-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">شيفتات مفتوحة</div>
+          <div class="stat-value" id="statOpen">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">شيفتات مغلقة</div>
+          <div class="stat-value" id="statClosed">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">إجمالي المبيعات</div>
+          <div class="stat-value" id="statRevenue">0 <span class="currency-symbol"></span></div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label>الحالة</label>
+            <select id="filterStatus">
+              <option value="">الكل</option>
+              <option value="open">مفتوح</option>
+              <option value="closed">مغلق</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>من تاريخ</label>
+            <input type="date" id="filterDateFrom" style="cursor: pointer;" />
+          </div>
+          <div class="form-group">
+            <label>إلى تاريخ</label>
+            <input type="date" id="filterDateTo" style="cursor: pointer;" />
+          </div>
+          <div class="form-group">
+            <label>عدد النتائج لكل صفحة</label>
+            <select id="pageSize">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="0">الكل</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" id="applyFiltersBtn">
+              تطبيق الفلاتر
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="pagerTop" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;"></div>
+
+      <div class="table-container">
+        <div class="loading" id="loading">
+          جاري التحميل...
+        </div>
+        <div class="empty" id="empty" style="display:none">
+          <div class="empty-icon">📭</div>
+          <p>لا توجد شيفتات بعد</p>
+        </div>
+        <table id="shiftsTable" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>رقم الشيفت</th>
+              <th>الكاشير</th>
+              <th>وقت الفتح</th>
+              <th>وقت الإغلاق</th>
+              <th>المدة</th>
+              <th>عدد الفواتير</th>
+              <th>إجمالي المبيعات</th>
+              <th>فارق النقدية</th>
+              <th>الحالة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="shiftsBody"></tbody>
+        </table>
+      </div>
+      
+      <div id="pagerBottom" style="display: flex; gap: 8px; justify-content: center; margin-top: 16px;"></div>
+    </div>
+
+    <div class="modal-overlay" id="shiftDetailsModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>
+            <span>📋</span>
+            <span>تفاصيل الشفت</span>
+          </h2>
+          <button class="modal-close" id="modalCloseBtn">×</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+          
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="modalCancelBtn">إغلاق</button>
+          <button class="btn btn-print" id="modalPrintBtn">
+            <span>🖨️</span>
+            <span>طباعة</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../theme.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

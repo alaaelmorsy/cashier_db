@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>شاشة دفع الفاتورة</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .dialog {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">💳 شاشة دفع الفاتورة (آجل)</div>
+      <nav>
+        <button id="btnBack" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="bg-white border border-gray-200 rounded-lg p-5 mb-5">
+        <h3 class="text-base font-bold text-gray-800 mb-4">🔍 البحث والتصفية</h3>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+          <input id="q" placeholder="🔢 بحث برقم الفاتورة" class="px-4 py-2.5 border border-gray-300 rounded-lg" />
+          <input id="q2" placeholder="👤 بحث بالعميل (جوال/اسم/رقم ضريبي)" class="md:col-span-2 px-4 py-2.5 border border-gray-300 rounded-lg" />
+          <input id="dateFrom" type="date" class="px-4 py-2.5 border border-gray-300 rounded-lg" />
+          <input id="dateTo" type="date" class="px-4 py-2.5 border border-gray-300 rounded-lg" />
+          <div class="flex gap-2">
+            <button id="btnSearch" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+              🔍 بحث
+            </button>
+            <button id="btnClearDates" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">🧾 رقم الفاتورة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">👤 العميل</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">📱 الجوال</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">💰 الإجمالي</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">💵 المدفوع</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">💳 المتبقي</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">📅 التاريخ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">🏷️ الحالة</th>
+              <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200">⚡ الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="9" class="text-center py-16 text-gray-400"><div class="text-5xl mb-4 opacity-50">📋</div><div>لا توجد فواتير آجلة</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dialog-backdrop" id="dlgBackdrop">
+      <div class="dialog bg-white rounded-2xl w-full max-w-lg mx-4">
+        <div class="px-6 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-2xl">
+          <span id="dlgTitle">💳 سداد الفاتورة</span>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <span class="w-36 text-sm font-semibold text-gray-600">🧾 رقم الفاتورة</span>
+            <div id="dlgInvNo" class="font-bold text-blue-600"></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="w-36 text-sm font-semibold text-gray-600">💰 إجمالي الفاتورة</span>
+            <div id="dlgTotal" class="font-bold text-green-600"></div>
+          </div>
+          <div class="flex items-center gap-3" id="rowPaid" style="display: none;">
+            <span class="w-36 text-sm font-semibold text-gray-600">💵 المدفوع</span>
+            <div id="dlgPaid" class="font-bold text-cyan-600"></div>
+          </div>
+          <div class="flex items-center gap-3" id="rowRemaining" style="display: none;">
+            <span class="w-36 text-sm font-semibold text-gray-600">💳 المتبقي</span>
+            <div id="dlgRemaining" class="font-bold text-amber-600"></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="w-36 text-sm font-semibold text-gray-600">💸 المبلغ المدفوع</label>
+            <input id="amountVal" type="number" step="0.01" min="0" placeholder="أدخل المبلغ" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg"/>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="w-36 text-sm font-semibold text-gray-600">💳 طريقة السداد</label>
+            <select id="payMethod" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg">
+              <option value="cash">💵 كاش</option>
+              <option value="card">💳 شبكة</option>
+              <option value="tamara">🛍️ تمارا</option>
+              <option value="tabby">📱 تابي</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="w-36 text-sm font-semibold text-gray-600">📝 ملاحظات</label>
+            <input id="notesVal" type="text" placeholder="ملاحظات إضافية (اختياري)" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg"/>
+          </div>
+          <div class="flex gap-3 justify-end pt-4 border-t border-gray-200">
+            <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">❌ إلغاء</button>
+            <button id="dlgPartial" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">💵 دفع جزئي</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-backdrop" id="dlgPaymentsBackdrop">
+      <div class="dialog bg-white rounded-2xl w-full max-w-3xl mx-4">
+        <div class="px-6 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-2xl">📊 سجل الدفعات</div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <span class="w-32 text-sm font-semibold text-gray-600">🧾 رقم الفاتورة</span>
+            <div id="dlgPaymentsInvNo" class="font-bold text-blue-600"></div>
+          </div>
+          <div class="max-h-96 overflow-y-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-blue-50">
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">التاريخ</th>
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المبلغ</th>
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الطريقة</th>
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المستخدم</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsRows">
+                <tr><td colspan="4" class="text-center py-8 text-gray-400">لا توجد دفعات</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex justify-end pt-4 border-t border-gray-200">
+            <button id="dlgPaymentsClose" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إغلاق</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

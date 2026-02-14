@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>المنتجات - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .dark dialog {
+        background: #0d0d0d !important;
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .dark dialog::backdrop {
+        background: rgba(0, 0, 0, 0.85);
+      }
+      .dark .bg-blue-50 {
+        background: #1a1a1a !important;
+      }
+      .dark .bg-blue-600 {
+        background: #3b82f6 !important;
+      }
+      .dark .border-blue-200 {
+        border-color: #333333 !important;
+      }
+      .dark .text-blue-900 {
+        color: #ffffff !important;
+      }
+      .dark .bg-slate-50,
+      .dark .bg-green-50,
+      .dark .bg-purple-50,
+      .dark .bg-gray-100 {
+        background: #1a1a1a !important;
+      }
+      .dark .text-gray-800 {
+        color: #ffffff !important;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+      #categoryDlg, #operationDlg {
+        width: min(95vw, 400px);
+      }
+      .thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+      table {
+        table-layout: fixed;
+        width: 100%;
+      }
+      table td, table th {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        padding: 8px 4px;
+        font-size: 12px;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: bold;
+        color: #1a1a1a;
+      }
+      table th {
+        font-size: 13px;
+      }
+      table td:nth-child(1) { width: 3%; }
+      table td:nth-child(2) { width: 5%; }
+      table td:nth-child(3) { width: 11%; }
+      table td:nth-child(4) { width: 9%; }
+      table td:nth-child(5) { width: 6%; }
+      table td:nth-child(6) { width: 6%; }
+      table td:nth-child(7) { width: 9%; }
+      table td:nth-child(8) { width: 6%; }
+      table td:nth-child(9) { width: 7%; }
+      table td:nth-child(10) { width: 7%; }
+      table td:nth-child(11) { width: 7%; }
+      table td:nth-child(12) { width: 6%; }
+      table td:nth-child(13) { width: 7%; }
+      table td:nth-child(14) { width: 6%; }
+      table td:nth-child(15) { width: 9%; }
+      table th:nth-child(1) { width: 3%; }
+      table th:nth-child(2) { width: 5%; }
+      table th:nth-child(3) { width: 11%; }
+      table th:nth-child(4) { width: 9%; }
+      table th:nth-child(5) { width: 6%; }
+      table th:nth-child(6) { width: 6%; }
+      table th:nth-child(7) { width: 9%; }
+      table th:nth-child(8) { width: 6%; }
+      table th:nth-child(9) { width: 7%; }
+      table th:nth-child(10) { width: 7%; }
+      table th:nth-child(11) { width: 7%; }
+      table th:nth-child(12) { width: 6%; }
+      table th:nth-child(13) { width: 7%; }
+      table th:nth-child(14) { width: 6%; }
+      table th:nth-child(15) { width: 9%; }
+      tbody tr {
+        border-bottom: 3px solid #d1d5db;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">📦 إدارة المنتجات</div>
+      <nav>
+        <button onclick="history.back()" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-full mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between bg-white border border-gray-200 rounded-lg p-4">
+        <input id="q" placeholder="🔍 بحث بالاسم أو الباركود" class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg" />
+        <div class="flex gap-2 flex-wrap">
+          <button id="addBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            ➕ إضافة
+          </button>
+          <button id="btnExportProductsPdf" class="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium">
+            🧾 PDF
+          </button>
+          <button id="btnExportProductsCsv" class="px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium">
+            📄 CSV
+          </button>
+          <button id="btnImportExcel" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg font-medium whitespace-nowrap">
+            📥 استيراد من Excel
+          </button>
+          <button id="btnDownloadTemplate" class="px-5 py-2.5 bg-indigo-600 rounded-lg font-medium whitespace-nowrap" style="color: #000000 !important;">
+            📋 نموذج Excel
+          </button>
+          <select id="filter_category" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">كل الفئات</option>
+          </select>
+          <select id="f_active" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">كل الحالات</option>
+            <option value="1">✓ نشط</option>
+            <option value="0">✕ موقوف</option>
+            <option value="hidden">🔒 مخفي</option>
+            <option value="expired">⚠️ منتهى</option>
+          </select>
+          <select id="sort" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="id_desc">الأحدث</option>
+            <option value="custom">ترتيبي</option>
+            <option value="name_asc">الاسم (أ-ي)</option>
+            <option value="price_asc">السعر ↑</option>
+            <option value="price_desc">السعر ↓</option>
+            <option value="stock_desc">المخزون ↓</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+      
+      <div id="importProgress" class="hidden bg-white border border-gray-200 rounded-lg p-4 my-3">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm font-semibold text-gray-700">جاري الاستيراد...</span>
+          <span id="progressText" class="text-sm font-bold text-blue-600">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div id="progressBar" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div id="progressDetails" class="text-xs text-gray-600 mt-2 text-center">0 / 0 منتج</div>
+      </div>
+
+      <div class="flex justify-between items-center my-3 flex-wrap gap-3">
+        <div class="flex gap-2 items-center">
+          <span class="text-gray-600 font-medium">عدد الصفوف في الصفحة:</span>
+          <select id="pageSize" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">الكل</option>
+          </select>
+        </div>
+        <div id="pagerTop" class="flex gap-2 items-center"></div>
+      </div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الصورة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الاسم</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الباركود</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">سعر الشراء</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">سعر البيع</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات وأسعارها</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المخزون</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">إجمالي الشراء</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">إجمالي البيع</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">صافي الربح</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الفئة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">تاريخ الصلاحية</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">عمليات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 flex gap-2 items-center">
+        <button id="saveOrderBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+          💾 حفظ ترتيب السطور
+        </button>
+        <span class="text-gray-600 text-sm">💡 اسحب الصفوف لأعلى/أسفل ثم اضغط حفظ</span>
+      </div>
+
+      <div id="pagerBottom" class="flex gap-2 items-center justify-center mt-4"></div>
+    </div>
+
+    <dialog id="dlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span id="dlgTitle">إضافة منتج</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <div id="dlgError" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg text-center font-medium"></div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">اسم المنتج (عربي)</label>
+            <input id="f_name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">اسم المنتج (إنجليزي) - اختياري</label>
+            <input id="f_name_en" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">الباركود</label>
+            <input id="f_barcode" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">سعر الشراء</label>
+            <input id="f_cost" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">سعر البيع</label>
+            <input id="f_price" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">الحد الأدنى لسعر البيع</label>
+            <input id="f_min_price" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">عمليات المنتج وأسعارها</label>
+          <div id="opsBox" class="border-2 border-dashed border-gray-300 rounded-lg p-4 space-y-3 bg-slate-50">
+            <div class="flex gap-2 items-center">
+              <div class="flex gap-2 items-center flex-1">
+                <select id="opSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg"></select>
+                <button id="opQuickAddBtn" class="px-3 py-2 bg-green-600 text-white rounded-lg font-medium text-lg">➕</button>
+              </div>
+              <input id="opPrice" type="number" step="0.01" min="0" placeholder="السعر" class="w-40 px-3 py-2 border border-gray-300 rounded-lg" />
+              <button id="opAdd" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">إضافة</button>
+            </div>
+            <div id="opList" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">وحدات البيع</label>
+          <div id="unitsBox" class="border-2 border-dashed border-gray-300 rounded-lg p-4 space-y-3 bg-green-50">
+            <div class="flex gap-2 items-center flex-wrap">
+              <input id="unitName" placeholder="اسم الوحدة (مثال: كرتون)" class="flex-1 min-w-[160px] px-3 py-2 border border-gray-300 rounded-lg" />
+              <input id="unitMultiplier" type="number" step="0.001" min="0.001" placeholder="عدد القطع" class="w-36 px-3 py-2 border border-gray-300 rounded-lg" />
+              <select id="unitPriceMode" class="w-40 px-3 py-2 border border-gray-300 rounded-lg">
+                <option value="auto">احتساب تلقائي</option>
+                <option value="manual">سعر يدوي</option>
+              </select>
+              <input id="unitPrice" type="number" step="0.01" min="0" placeholder="السعر" class="w-40 px-3 py-2 border border-gray-300 rounded-lg" />
+              <button id="unitAdd" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">إضافة</button>
+            </div>
+            <div id="unitList" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">الأصناف (مثال: علبة، كرتونة)</label>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 space-y-3 bg-purple-50">
+            <div class="flex gap-2 items-center flex-wrap">
+              <input id="variantNameInput" placeholder="اسم الصنف (مثال: علبة)" class="flex-1 min-w-[150px] px-3 py-2 border border-gray-300 rounded-lg" />
+              <input id="variantBarcodeInput" type="text" placeholder="الباركود" class="w-36 px-3 py-2 border border-gray-300 rounded-lg" />
+              <input id="variantPriceInput" type="number" step="0.01" min="0" placeholder="السعر" class="w-28 px-3 py-2 border border-gray-300 rounded-lg" />
+              <input id="variantCostInput" type="number" step="0.01" min="0" placeholder="التكلفة (اختياري)" class="w-36 px-3 py-2 border border-gray-300 rounded-lg" />
+              <input id="variantStockDeductInput" type="number" step="0.001" min="0.001" value="1" placeholder="خصم المخزون" class="w-36 px-3 py-2 border border-gray-300 rounded-lg" />
+              <button id="variantAddBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium whitespace-nowrap">➕ إضافة صنف</button>
+            </div>
+            <div id="variantsList" class="space-y-2 max-h-[300px] overflow-y-auto"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">المخزون</label>
+            <input id="f_stock" type="number" step="1" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">الفئة</label>
+            <div class="flex gap-2 items-center">
+              <select id="f_category" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg"></select>
+              <button id="btnAddCategory" class="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium text-lg">➕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">تاريخ انتهاء الصلاحية (اختياري)</label>
+            <input id="f_expiry_date" type="date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">الوصف</label>
+            <textarea id="f_description" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg min-h-[100px] resize-y"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">صورة المنتج</label>
+            <div class="flex gap-2 items-center mb-2">
+              <img id="f_thumb" alt="" class="w-20 h-20 rounded-lg border border-gray-300 bg-gray-100" />
+            </div>
+            <div class="flex gap-2">
+              <button id="pickImage" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">اختيار صورة</button>
+              <button id="removeImage" class="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium">إزالة الصورة</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+          <input type="checkbox" id="f_hide_from_sales" class="w-5 h-5 cursor-pointer" />
+          <label for="f_hide_from_sales" class="cursor-pointer font-semibold text-gray-700">إخفاء المنتج من شاشة الفاتورة</label>
+        </div>
+
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="dlgSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="categoryDlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span>إضافة نوع رئيسي جديد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div id="categoryDlgError" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg text-center font-medium"></div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">اسم النوع الرئيسي</label>
+          <input id="categoryNameInput" placeholder="أدخل اسم النوع الرئيسي" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="categoryCancelBtn" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="categorySaveBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="operationDlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span>إضافة عملية جديدة</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div id="operationDlgError" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg text-center font-medium"></div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">اسم العملية</label>
+          <input id="operationNameInput" placeholder="أدخل اسم العملية" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="operationCancelBtn" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="operationSaveBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

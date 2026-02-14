@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>الرئيسية - POS SA</title>
+    
+    <link rel="stylesheet" href="../tailwind-output.css">
+    
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; }
+    </style>
+  </head>
+  <body class="m-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 min-h-screen font-cairo">
+    
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-blue-50/50 via-white to-purple-50/30">
+      <div class="absolute top-0 right-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl"></div>
+    </div>
+    
+    <header class="sticky top-0 z-50 bg-white border-b border-slate-200/60 shadow-sm">
+      <div class="max-w-screen-2xl mx-auto px-6 py-3 flex items-center justify-between min-h-[80px]">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30 flex items-center justify-center">
+            <span class="text-white font-bold text-lg">POS</span>
+          </div>
+          <span class="text-xl font-bold text-slate-800">الرئيسية</span>
+        </div>
+        <div class="flex-1 flex justify-center">
+          <button id="posBtn" class="rounded-xl bg-green-600 text-white font-bold shadow-lg shadow-green-500/30 hover:bg-green-700 transition-all" title="اختصار: F1" style="padding: 10px 24px 10px 24px; min-height: 65px; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important;">
+            <div style="margin-bottom: 2px; white-space: nowrap;">🛒 نقطة البيع</div>
+            <div style="font-size: 12px; font-weight: normal; opacity: 0.95; white-space: nowrap;">F1</div>
+          </button>
+        </div>
+        <nav class="flex gap-3 items-center">
+          <button id="logoutBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold shadow-lg shadow-red-500/30">
+            تسجيل الخروج
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="max-w-screen-2xl mx-auto px-6 py-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- بطاقة المستخدمين -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardUsers" title="إدارة المستخدمين">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30 flex items-center justify-center mb-4" aria-hidden="true">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M16 11C18.2091 11 20 9.20914 20 7C20 4.79086 18.2091 3 16 3C13.7909 3 12 4.79086 12 7C12 9.20914 13.7909 11 16 11Z" fill="white" fill-opacity="0.95"/>
+              <path d="M8 13C10.2091 13 12 11.2091 12 9C12 6.79086 10.2091 5 8 5C5.79086 5 4 6.79086 4 9C4 11.2091 5.79086 13 8 13Z" fill="white" fill-opacity="0.95"/>
+              <path d="M2 19C2 16.7909 3.79086 15 6 15H10C12.2091 15 14 16.7909 14 19V20H2V19Z" fill="white" fill-opacity="0.85"/>
+              <path d="M16 13C13.8783 13 12.1566 14.7178 12.0054 16.8137C12.0018 16.8621 12 16.9109 12 16.96V20H22V18C22 15.7909 20.2091 14 18 14H16Z" fill="white" fill-opacity="0.85"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">المستخدمون</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إدارة مستخدمي النظام والأدوار والحالة</p>
+        </div>
+
+        <!-- بطاقة الصلاحيات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardPermissions" title="إدارة الصلاحيات">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.9)"/>
+              <path d="M9 12L11 14L15 10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الصلاحيات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">تحديد صلاحيات المستخدمين</p>
+        </div>
+
+        <!-- بطاقة العملاء -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardCustomers" title="إدارة العملاء">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-red-500 to-red-400 shadow-lg shadow-red-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/>
+              <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">العملاء</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إضافة/إدارة العملاء</p>
+        </div>
+
+        <!-- بطاقة المواعيد -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardAppointments" title="إدارة المواعيد">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-400 shadow-lg shadow-purple-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.1)"/>
+              <line x1="16" y1="2" x2="16" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="2" x2="8" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="3" y1="10" x2="21" y2="10" stroke="white" stroke-width="2"/>
+              <circle cx="8" cy="14" r="1" fill="white"/>
+              <circle cx="12" cy="14" r="1" fill="white"/>
+              <circle cx="16" cy="14" r="1" fill="white"/>
+              <circle cx="8" cy="18" r="1" fill="white"/>
+              <circle cx="12" cy="18" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">المواعيد</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">حجز وإدارة المواعيد</p>
+        </div>
+
+        <!-- بطاقة فاتورة جديدة -->
+        <div class="card bg-gradient-to-br from-orange-50 to-white border-2 border-orange-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardNewInvoice" title="فاتورة جديدة">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-400 shadow-xl shadow-orange-500/40 flex items-center justify-center mb-5">
+            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-2xl">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="16" y1="13" x2="8" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="16" y1="17" x2="8" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="10" y1="9" x2="8" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">فاتورة جديدة</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">بدء عملية بيع</p>
+        </div>
+
+        <!-- بطاقة الفواتير -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardInvoices" title="الفواتير">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-green-600 to-green-400 shadow-lg shadow-green-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M9 11L12 14L22 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <line x1="7" y1="9" x2="7" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="7" y1="13" x2="11" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الفواتير</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض وإدارة الفواتير</p>
+        </div>
+
+        <!-- بطاقة الفواتير الدائنة -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardCreditNotes" title="الفواتير الدائنة">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-orange-600 to-red-500 shadow-lg shadow-orange-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M3 12L21 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 5L15 12L8 19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="2" y="3" width="20" height="18" rx="2" ry="2" stroke="white" stroke-width="1.5" fill="rgba(255,255,255,0.1)"/>
+              <line x1="6" y1="8" x2="10" y2="8" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="6" y1="16" x2="10" y2="16" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الفواتير الدائنة</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض الإشعارات الدائنة منفصلة</p>
+        </div>
+
+        <!-- بطاقة عروض الأسعار -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardQuotations" title="عروض الأسعار">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-400 shadow-lg shadow-amber-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.1)"/>
+              <line x1="7" y1="9" x2="17" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="7" y1="13" x2="17" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="7" y1="17" x2="13" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 17L18 15L20 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">عروض الأسعار</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إدارة وطباعة عروض الأسعار</p>
+        </div>
+
+        <!-- بطاقة المدفوعات -->
+        <div class="card bg-gradient-to-br from-blue-50 to-white border-2 border-blue-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardPayments" title="شاشة دفع الفاتورة">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 shadow-xl shadow-blue-500/40 flex items-center justify-center mb-5">
+            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-2xl">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.15)"/>
+              <line x1="1" y1="10" x2="23" y2="10" stroke="white" stroke-width="2"/>
+              <circle cx="7" cy="15" r="1" fill="white"/>
+              <circle cx="11" cy="15" r="1" fill="white"/>
+              <circle cx="15" cy="15" r="1" fill="white"/>
+              <path d="M17 15H19" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">دفع الفاتورة</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">سداد فواتير الآجل بالكامل</p>
+        </div>
+
+        <!-- بطاقة السندات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardVouchers" title="سندات القبض والصرف">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 shadow-lg shadow-purple-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="8" y1="13" x2="16" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="17" x2="16" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="9" cy="13" r="0.5" fill="white"/>
+              <circle cx="9" cy="17" r="0.5" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">السندات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">سندات القبض والصرف</p>
+        </div>
+
+        <!-- بطاقة الشيفتات -->
+        <div class="card bg-gradient-to-br from-amber-50 to-white border-2 border-amber-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardShifts" title="إدارة الشيفتات">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-400 shadow-xl shadow-amber-500/40 flex items-center justify-center mb-5">
+            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-2xl">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/>
+              <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="2" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">الشيفتات</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">عرض وإدارة الشيفتات</p>
+        </div>
+
+        <!-- بطاقة المنتجات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardProducts" title="إضافة/إدارة المنتجات">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 shadow-lg shadow-emerald-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M21 16V8C20.9996 7.64928 20.9071 7.30481 20.7315 7.00116C20.556 6.69751 20.3037 6.44536 20 6.27L13 2.27C12.696 2.09446 12.3511 2.00205 12 2.00205C11.6489 2.00205 11.304 2.09446 11 2.27L4 6.27C3.69626 6.44536 3.44398 6.69751 3.26846 7.00116C3.09294 7.30481 3.00036 7.64928 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9988C3.44398 17.3025 3.69626 17.5546 4 17.73L11 21.73C11.304 21.9055 11.6489 21.998 12 21.998C12.3511 21.998 12.696 21.9055 13 21.73L20 17.73C20.3037 17.5546 20.556 17.3025 20.7315 16.9988C20.9071 16.6952 20.9996 16.3507 21 16Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <polyline points="7.5,4.21 12,6.81 16.5,4.21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="7.5,19.79 7.5,14.6 3,12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="21,12 16.5,14.6 16.5,19.79" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="12,6.81 12,12.01" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">المنتجات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إضافة منتج جديد</p>
+        </div>
+
+        <!-- بطاقة الغرف: تمت إزالتها بناءً على طلب العميل -->
+        <!-- تم حذف بطاقة الغرف من الواجهة -->
+
+        <!-- بطاقة الأنواع الرئيسية -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardTypes" title="الأنواع الرئيسية">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-violet-600 to-violet-400 shadow-lg shadow-violet-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M20.59 13.41L13.42 20.58C13.2343 20.766 13.0137 20.9135 12.7709 21.0141C12.5281 21.1148 12.2678 21.1666 12.005 21.1666C11.7422 21.1666 11.4819 21.1148 11.2391 21.0141C10.9963 20.9135 10.7757 20.766 10.59 20.58L2 12V2H12L20.59 10.59C20.9625 10.9647 21.1716 11.4716 21.1716 12C21.1716 12.5284 20.9625 13.0353 20.59 13.41V13.41Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <circle cx="7" cy="7" r="1.5" fill="white"/>
+              <path d="M8 8L16 16" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,2"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الأنواع الرئيسية</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إدارة الأنواع الرئيسية</p>
+        </div>
+
+        <!-- بطاقة العمليات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardOperations" title="إدارة العمليات">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-sky-600 to-sky-400 shadow-lg shadow-sky-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7" cy="9" r="1" fill="white"/>
+              <circle cx="17" cy="9" r="1" fill="white"/>
+              <circle cx="12" cy="15" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">العمليات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">تعريف العمليات وربطها بالمنتجات</p>
+        </div>
+
+        <!-- بطاقة طابعات المطبخ -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardKitchen" title="طابعات المطبخ">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-lime-600 to-lime-400 shadow-lg shadow-lime-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <path d="M3 6H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="8" cy="18" r="1" fill="white"/>
+              <circle cx="12" cy="18" r="1" fill="white"/>
+              <circle cx="16" cy="18" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">طابعات المطبخ</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">ربط الأقسام بطابعات</p>
+        </div>
+
+        <!-- بطاقة المصروفات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardPurchases" title="المصروفات">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-400 shadow-lg shadow-teal-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="white"/>
+              <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="white"/>
+              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 10H9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M10 10H12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">المصروفات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إضافة ومراجعة مصروفات</p>
+        </div>
+
+        <!-- بطاقة فواتير الشراء -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardPurchaseInvoices" title="فواتير الشراء">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-yellow-600 to-yellow-400 shadow-lg shadow-yellow-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M6 2H18V22L15 20L12 22L9 20L6 22V2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.08)"/>
+              <path d="M8 6H16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 10H16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 14H13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">فواتير الشراء</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إنشاء وإدارة فواتير الشراء</p>
+        </div>
+
+        <!-- بطاقة المخزون: تمت إزالتها بناءً على طلب العميل -->
+        <!-- تم حذف بطاقة المخزون من الواجهة -->
+
+        <!-- بطاقة تخصيص الأسعار -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardCustomerPricing" title="تخصيص أسعار">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-400 shadow-lg shadow-teal-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <line x1="12" y1="1" x2="12" y2="23" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="8" r="1" fill="white"/>
+              <circle cx="15" cy="16" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تخصيص أسعار</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">تحديد أسعار/خصومات لعميل</p>
+        </div>
+
+        <!-- بطاقة العروض والكوبونات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardOffers" title="العروض والكوبونات">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-pink-600 to-pink-400 shadow-lg shadow-pink-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M21.41 11.58L12.41 2.58C12.2343 2.39449 12.0139 2.25757 11.7709 2.18345C11.5279 2.10932 11.2705 2.10045 11.0233 2.15836L4.15334 3.66836C3.58334 3.79336 3.20834 4.36336 3.33334 4.93336L4.84334 11.8034C4.90124 12.0506 4.99011 12.3079 5.06424 12.5509C5.13836 12.7939 5.27528 13.0143 5.46079 13.1901L14.4608 22.1901C14.6465 22.3759 14.8672 22.5238 15.1102 22.6249C15.3532 22.7259 15.6141 22.778 15.8776 22.778C16.1411 22.778 16.402 22.7259 16.645 22.6249C16.888 22.5238 17.1087 22.3759 17.2944 22.1901L22.1944 17.2901C22.3802 17.1044 22.5281 16.8837 22.6292 16.6407C22.7302 16.3977 22.7823 16.1368 22.7823 15.8733C22.7823 15.6098 22.7302 15.3489 22.6292 15.1059C22.5281 14.8629 22.3802 14.6422 22.1944 14.4565L21.41 11.58Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <circle cx="9" cy="9" r="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+              <path d="M13 13L17 17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="18" cy="6" r="2" stroke="white" stroke-width="1.5" fill="rgba(255,255,255,0.3)"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">العروض والكوبونات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عروض على الأصناف وكوبونات خصم</p>
+        </div>
+
+        <!-- بطاقة السائقون -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardDrivers" title="السائقون">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-400 shadow-lg shadow-indigo-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M1 3H23L21 9H3L1 3Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <path d="M3 9V20C3 20.5523 3.44772 21 4 21H6C6.55228 21 7 20.5523 7 20V19H17V20C17 20.5523 17.4477 21 18 21H20C20.5523 21 21 20.5523 21 20V9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7" cy="15" r="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+              <circle cx="17" cy="15" r="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+              <path d="M6 6L8 4H16L18 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="6" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">السائقون</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">تسجيل وإدارة السائقين</p>
+        </div>
+
+        <!-- بطاقة الموردون -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardSuppliers" title="الموردون">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-400 shadow-lg shadow-orange-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M3 7H21V19C21 19.5523 20.5523 20 20 20H4C3.44772 20 3 19.5523 3 19V7Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.08)"/>
+              <path d="M7 7V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 12H10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M14 12H17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الموردون</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إضافة/إدارة الموردين</p>
+        </div>
+
+        <!-- بطاقة الموظفين -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardEmployees" title="الموظفون">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 shadow-lg shadow-blue-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/>
+              <path d="M3 21V19C3 17.9391 3.42143 16.9217 4.17157 16.1716C4.92172 15.4214 5.93913 15 7 15H11C12.0609 15 13.0783 15.4214 13.8284 16.1716C14.5786 16.9217 15 17.9391 15 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.1)"/>
+              <path d="M16 11H22M19 8V14" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الموظفون</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">إضافة/إدارة الموظفين</p>
+        </div>
+
+        <!-- بطاقة التقارير -->
+        <div class="card bg-gradient-to-br from-purple-50 to-white border-2 border-purple-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardReports" title="التقارير">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 shadow-xl shadow-purple-500/40 flex items-center justify-center mb-5">
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 9L13 5L17 9L21 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="9" r="1.5" fill="white"/>
+              <circle cx="13" cy="5" r="1.5" fill="white"/>
+              <circle cx="17" cy="9" r="1.5" fill="white"/>
+              <circle cx="21" cy="5" r="1.5" fill="white"/>
+              <path d="M7 13V17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M11 11V17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M15 14V17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M19 12V17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">التقارير</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">عرض تقارير المبيعات والإحصائيات</p>
+        </div>
+
+        <!-- بطاقة WhatsApp -->
+        <div class="card bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardWhatsApp" title="إدارة WhatsApp">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-500 shadow-xl shadow-emerald-500/40 flex items-center justify-center mb-5">
+            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-2xl">
+              <path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <circle cx="8" cy="11" r="1.5" fill="white"/>
+              <circle cx="12" cy="11" r="1.5" fill="white"/>
+              <circle cx="16" cy="11" r="1.5" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">إدارة WhatsApp</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">ربط WhatsApp وإرسال الفواتير</p>
+        </div>
+
+        <!-- بطاقة ZATCA - الفاتورة الإلكترونية -->
+        <div class="card bg-gradient-to-br from-green-50 to-white border-2 border-green-200 rounded-2xl p-8 cursor-pointer relative flex flex-col items-center text-center min-h-[240px]" id="cardZatca" title="ZATCA - الفاتورة الإلكترونية">
+          <div class="icon relative w-32 h-32 rounded-2xl bg-gradient-to-br from-green-600 to-green-400 shadow-xl shadow-green-500/40 flex items-center justify-center mb-5">
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="7" r="2" stroke="white" stroke-width="1.5" fill="rgba(255,255,255,0.3)"/>
+              <path d="M8 15L12 17L16 15" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-slate-900 mb-3">الفاتورة الإلكترونية</h3>
+          <p class="text-base text-slate-700 leading-relaxed font-semibold">إعداد وإدارة نظام ZATCA الضريبي</p>
+        </div>
+
+        <!-- بطاقة الإعدادات -->
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="cardSettings" title="إعدادات البرنامج">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-400 shadow-lg shadow-slate-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+              <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5842 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6642 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.2569 9.77251 19.9839C9.5799 19.7108 9.31074 19.4973 9 19.37C8.69838 19.2369 8.36381 19.1972 8.03941 19.256C7.71502 19.3148 7.41568 19.4695 7.18 19.7L7.12 19.76C6.93425 19.946 6.71368 20.0935 6.47088 20.1941C6.22808 20.2948 5.96783 20.3466 5.705 20.3466C5.44217 20.3466 5.18192 20.2948 4.93912 20.1941C4.69632 20.0935 4.47575 19.946 4.29 19.76C4.10405 19.5743 3.95653 19.3537 3.85588 19.1109C3.75523 18.8681 3.70343 18.6078 3.70343 18.345C3.70343 18.0822 3.75523 17.8219 3.85588 17.5791C3.95653 17.3363 4.10405 17.1157 4.29 16.93L4.35 16.87C4.58054 16.6342 4.73519 16.335 4.794 16.0106C4.85282 15.6862 4.81312 15.3516 4.68 15.05C4.55324 14.7542 4.34276 14.502 4.07447 14.3243C3.80618 14.1466 3.49179 14.0513 3.17 14.05H3C2.46957 14.05 1.96086 13.8393 1.58579 13.4642C1.21071 13.0891 1 12.5804 1 12.05C1 11.5196 1.21071 11.0109 1.58579 10.6358C1.96086 10.2607 2.46957 10.05 3 10.05H3.09C3.42099 10.0423 3.742 9.93512 4.01513 9.74251C4.28825 9.5499 4.50173 9.28074 4.63 8.97C4.76312 8.66838 4.80282 8.33381 4.744 8.00941C4.68519 7.68502 4.53054 7.38568 4.3 7.15L4.24 7.09C4.05405 6.90425 3.90653 6.68368 3.80588 6.44088C3.70523 6.19808 3.65343 5.93783 3.65343 5.675C3.65343 5.41217 3.70523 5.15192 3.80588 4.90912C3.90653 4.66632 4.05405 4.44575 4.24 4.26C4.42575 4.07405 4.64632 3.92653 4.88912 3.82588C5.13192 3.72523 5.39217 3.67343 5.655 3.67343C5.91783 3.67343 6.17808 3.72523 6.42088 3.82588C6.66368 3.92653 6.88425 4.07405 7.07 4.26L7.13 4.32C7.36568 4.55054 7.66502 4.70519 7.98941 4.764C8.31381 4.82282 8.64838 4.78312 8.95 4.65H9C9.29577 4.52324 9.54802 4.31276 9.72569 4.04447C9.90337 3.77618 9.99872 3.46179 10 3.14V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5842 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">الإعدادات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">معلومات الشركة والضريبة</p>
+        </div>
+      </div>
+
+      <div class="mt-12 text-center text-slate-500 text-sm py-6 px-4 rounded-xl bg-white/60 border border-slate-200/40 shadow-sm">
+        <p class="font-semibold">نظام الرابط</p>
+      </div>
+    </div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

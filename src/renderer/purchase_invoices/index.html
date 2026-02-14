@@ -1,0 +1,2407 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>فاتورة شراء - POS SA</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <link rel="stylesheet" href="styles-fast.css">
+  </head>
+  <body>
+    <style media="none">
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-weight: 700 !important;
+      }
+
+      body {
+        font-family: 'Cairo', 'saudi_riyal', sans-serif;
+        background: #f1f5f9;
+        color: #0f172a;
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+
+      /* Header */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      }
+
+      .page-title {
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 1.125rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .page-title span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: #dbeafe;
+        font-size: 1.2rem;
+      }
+
+      /* Container */
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      /* Cards */
+      .card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .pad {
+        padding: 20px;
+      }
+
+      /* Compact filters section - تصغير أكبر */
+      .filters-section .pad { padding: 8px 12px !important; }
+      .filters-section .section-header-row { margin-bottom: 4px !important; padding: 6px 8px !important; }
+      .filters-section .section-title { font-size: 0.875rem !important; line-height: 1.2 !important; }
+      .filters-section .section-subtitle { font-size: 0.65rem !important; line-height: 1.2 !important; margin-top: 2px !important; }
+      .filters-section .section-icon { font-size: 1.1rem !important; }
+      .filters-section .form-row { margin-bottom: 4px !important; gap: 10px !important; }
+      .filters-section label { margin-bottom: 3px !important; font-size: 0.8rem !important; }
+      .filters-section input, .filters-section select { padding: 5px 8px !important; font-size: 0.8rem !important; height: 32px !important; }
+      .filters-section .btn { padding: 5px 10px !important; font-size: 0.75rem !important; height: 32px !important; }
+      .filters-section .btn span { font-size: 0.9rem !important; }
+
+      /* Tabs Section - Compact & Clean */
+      .tabs-container {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      .tabs-wrapper {
+        background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .tabs-info {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .tabs-info h2 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 2px;
+      }
+
+      .tabs-info p {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .tab span {
+        font-size: 1rem;
+      }
+
+      .tab.active {
+        color: #ffffff;
+        background: var(--primary);
+        border-color: var(--primary);
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+      }
+
+      .tab:not(.active):hover {
+        background: #f8fafc;
+        color: var(--primary);
+      }
+
+      /* Section Headers */
+      .section-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--border-light);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .section-title-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--primary-bg);
+        color: var(--primary);
+        font-size: 1rem;
+      }
+
+      .section-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--text);
+      }
+
+      .section-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 2px;
+      }
+
+      .section-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        background: var(--primary-bg);
+        color: var(--primary);
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
+      /* Form Elements */
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .form-group.full {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      label .required {
+        color: var(--danger);
+      }
+
+      label .info-icon {
+        color: var(--text-muted);
+        cursor: help;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        font-size: 0.875rem;
+        color: var(--text);
+        transition: all 0.2s ease;
+        font-family: inherit;
+        font-weight: 700;
+      }
+
+      input:hover:not([readonly]),
+      select:hover,
+      textarea:hover {
+        border-color: var(--primary-lighter);
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: #ffffff;
+      }
+
+      input[readonly] {
+        background: var(--border-light);
+        color: var(--text-secondary);
+        cursor: not-allowed;
+        border-color: var(--border-light);
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      /* Search Input */
+      .search-wrapper {
+        position: relative;
+        flex: 1;
+        max-width: 400px;
+      }
+
+      .search-wrapper input {
+        padding-right: 40px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        background-size: 20px;
+      }
+
+      .suggestions-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        max-height: 450px;
+        overflow-y: auto;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        z-index: 1000;
+        display: none;
+      }
+      
+      .suggestions-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      .suggestions-panel::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+      }
+      
+      .suggestions-panel::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+      
+      .suggestions-panel::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      /* Tables */
+      .table-wrapper {
+        overflow-x: auto;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        margin-top: 16px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 700px;
+      }
+
+      th,
+      td {
+        padding: 8px 12px;
+        text-align: right;
+        font-size: 0.8rem;
+      }
+
+      th {
+        background: var(--border-light);
+        color: var(--text);
+        font-weight: 900;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--border);
+      }
+
+      td {
+        border-bottom: 1px solid var(--border-light);
+        font-weight: 700;
+      }
+
+      tbody tr {
+        background: #ffffff;
+        transition: background 0.15s ease;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #fafbfc;
+      }
+
+      tbody tr:hover {
+        background: var(--primary-bg);
+      }
+
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* Table Input */
+      td input {
+        padding: 6px 8px;
+        font-size: 0.875rem;
+        min-width: 80px;
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 18px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        background: #ffffff;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--text);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .btn:hover {
+        background: var(--background);
+        border-color: var(--primary-lighter);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+      }
+
+      .btn.primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+      }
+
+      .btn.success {
+        background: var(--success);
+        color: #ffffff;
+        border-color: var(--success);
+      }
+
+      .btn.success:hover {
+        background: #059669;
+        border-color: #059669;
+      }
+
+      .btn.danger {
+        background: transparent;
+        color: var(--danger);
+        border-color: var(--danger);
+      }
+
+      .btn.danger:hover {
+        background: var(--danger);
+        color: #ffffff;
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Table Action Buttons - Enhanced */
+      .btn-action-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .btn-view, .btn-edit, .btn-del {
+        padding: 8px 14px !important;
+        font-size: 0.8rem !important;
+        border-radius: 8px !important;
+        font-weight: 900 !important;
+        transition: all 0.2s ease !important;
+        min-width: 80px;
+      }
+
+      .btn-view {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-view:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+      }
+
+      .btn-edit {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+      }
+
+      .btn-edit:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+      }
+
+      .btn-del {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+      }
+
+      .btn-del:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+      }
+
+      /* Payment Status Badges */
+      .payment-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .payment-badge.paid {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+      }
+
+      .payment-badge.partial {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+      }
+
+      .payment-badge.unpaid {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+      }
+
+      /* Enhanced Table Rows for Saved Invoices */
+      #tbodySaved tr {
+        transition: all 0.2s ease;
+      }
+
+      #tbodySaved tr:hover {
+        background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 50%, #eff6ff 100%) !important;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+      }
+
+      #tbodySaved td {
+        vertical-align: middle;
+        padding: 12px;
+        font-size: 0.875rem;
+      }
+
+      /* Invoice Number Styling */
+      .invoice-number {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #1e40af;
+        font-size: 0.875rem;
+      }
+
+      /* Total Amount Styling */
+      .total-amount {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #065f46;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        padding: 6px 12px;
+        border-radius: 8px;
+        display: inline-block;
+        border: 2px solid #6ee7b7;
+      }
+
+      /* Supplier Name Styling */
+      .supplier-name {
+        font-weight: 500;
+        color: #1e293b;
+      }
+
+      /* Date Styling */
+      .invoice-date {
+        color: #64748b;
+        font-size: 0.8rem;
+      }
+
+      /* Payment Method Badge */
+      .payment-method-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+      }
+
+      /* Loading State */
+      .loading-row {
+        background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      /* Empty State */
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+      }
+
+      .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .empty-state .message {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+
+      .empty-state .hint {
+        font-size: 0.875rem;
+        color: #cbd5e1;
+      }
+
+      /* Filter buttons enhancement */
+      .inline-date-actions {
+        display: flex;
+        align-items: end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .inline-date-actions input {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .inline-date-actions .btn {
+        flex-shrink: 0;
+        height: fit-content;
+      }
+
+      /* Action Bar */
+      .action-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        background: var(--border-light);
+        border-top: 1px solid var(--border);
+        margin: -1px;
+        border-radius: 0 0 12px 12px;
+      }
+
+      /* Summary Box */
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        padding: 20px;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0f9ff 100%);
+        border: 2px solid #bae6fd;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+        position: relative;
+      }
+
+      .summary-grid::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #10b981, #fbbf24, #ef4444);
+        border-radius: 12px 12px 0 0;
+      }
+
+      .summary-item {
+        background: #ffffff;
+        border: 2px solid #e0e7ff;
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      .summary-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        border-color: #c7d2fe;
+      }
+
+      .summary-item label {
+        margin-bottom: 10px;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .summary-item input,
+      .summary-item select {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .summary-item.highlight {
+        background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 50%, #fef9c3 100%);
+        border: 3px solid #fbbf24;
+        box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .summary-item.highlight::before {
+        content: '⭐';
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        font-size: 1.2rem;
+        opacity: 0.6;
+      }
+
+      .summary-item.highlight label {
+        color: #92400e;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+
+      .summary-item.highlight input {
+        background: #ffffff;
+        border-color: #fbbf24;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: #92400e;
+        text-align: center;
+      }
+
+      /* General Info Section */
+      .general-info-section .pad {
+        padding: 20px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #eff6ff 100%);
+        border-radius: 12px;
+        position: relative;
+      }
+
+      .general-info-section {
+        border: 2px solid #93c5fd;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .general-info-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+        z-index: 1;
+      }
+
+      .general-info-section .section-header-row {
+        background: rgba(255, 255, 255, 0.7);
+        padding: 16px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border: 2px solid #bfdbfe;
+      }
+
+      .general-info-section .section-icon {
+        font-size: 2rem;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        padding: 12px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+      }
+
+      .general-info-section .form-row {
+        background: #ffffff;
+        padding: 16px;
+        border-radius: 10px;
+        border: 2px solid #e0e7ff;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+      }
+
+      .general-info-section .form-row:hover {
+        border-color: #c7d2fe;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+      }
+
+      .general-info-section .form-group label {
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.875rem;
+      }
+
+      .general-info-section input,
+      .general-info-section select {
+        border-width: 2px;
+        font-weight: 500;
+      }
+
+      .general-info-section input:focus,
+      .general-info-section select:focus {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      /* Products Section */
+      .products-section .pad {
+        padding: 16px;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #f0fdf4 100%);
+        border-radius: 12px;
+        position: relative;
+        overflow: visible;
+      }
+
+      .products-section {
+        border: 2px solid #86efac;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+        position: relative;
+        overflow: visible !important;
+      }
+
+      .products-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #10b981, #059669, #047857);
+        z-index: 1;
+      }
+
+      .products-section .section-header-row {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        border: 2px solid #bbf7d0;
+        overflow: visible;
+      }
+
+      .products-section .section-icon {
+        font-size: 1.8rem;
+        background: linear-gradient(135deg, #10b981, #059669);
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+      }
+
+      .products-section .table-wrapper {
+        background: #ffffff;
+        border-radius: 10px;
+        border: 2px solid #d1fae5;
+        overflow: hidden;
+      }
+
+      /* Financial Summary Section */
+      .financial-summary-section .pad {
+        padding: 16px;
+      }
+
+      .financial-summary-section .section-header-row {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        border: 2px solid #fde68a;
+      }
+
+      .financial-summary-section .section-icon {
+        font-size: 1.8rem;
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(251, 191, 36, 0.3);
+      }
+
+      /* Compact Spacing */
+      .pad {
+        padding: 16px !important;
+      }
+
+      .section-header-row {
+        margin-bottom: 12px !important;
+      }
+
+      .section-title {
+        font-size: 1rem !important;
+        margin-bottom: 2px !important;
+      }
+
+      .section-subtitle {
+        font-size: 0.75rem !important;
+      }
+
+      .section-icon {
+        font-size: 1.5rem !important;
+        padding: 8px !important;
+      }
+
+      .form-row {
+        margin-bottom: 10px !important;
+      }
+
+      .general-info-section .pad {
+        padding: 16px !important;
+      }
+
+      .general-info-section .section-header-row {
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+      }
+
+      .general-info-section .section-icon {
+        font-size: 1.8rem !important;
+        padding: 10px !important;
+      }
+
+      .general-info-section .form-row {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+      }
+
+      .summary-grid {
+        padding: 14px !important;
+        gap: 12px !important;
+      }
+
+      .summary-item {
+        padding: 10px 12px !important;
+      }
+
+      .summary-item label {
+        margin-bottom: 6px !important;
+        font-size: 0.8rem !important;
+      }
+
+      input, select, textarea {
+        padding: 8px 10px !important;
+        font-size: 0.85rem !important;
+      }
+
+      label {
+        font-size: 0.75rem !important;
+        margin-bottom: 4px !important;
+      }
+
+      .card {
+        margin-bottom: 12px !important;
+      }
+
+      .table-wrapper {
+        margin-top: 10px !important;
+      }
+
+      th, td {
+        padding: 8px 10px !important;
+      }
+
+      th {
+        padding: 9px 10px !important;
+      }
+
+      .btn {
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+      }
+
+      .action-bar {
+        padding: 12px 16px !important;
+      }
+
+      /* Toast Notifications */
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 400px;
+      }
+
+      .toast {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px 20px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-left: 4px solid;
+        animation: slideInRight 0.3s ease, fadeOut 0.3s ease 4.7s;
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .toast.warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      }
+
+      .toast.success {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      }
+
+      .toast.error {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      }
+
+      .toast-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+      }
+
+      .toast-content {
+        flex: 1;
+      }
+
+      .toast-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        color: #1e293b;
+      }
+
+      .toast-message {
+        font-size: 0.85rem;
+        color: #475569;
+        line-height: 1.4;
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+
+      /* Invoice Preview Modal - عرض كامل للفاتورة */
+      .invoice-preview-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .invoice-preview-overlay.active {
+        display: flex;
+      }
+
+      .invoice-preview-modal {
+        background: #ffffff;
+        border-radius: 16px;
+        max-width: 95%;
+        max-height: 95vh;
+        width: 1200px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        animation: scaleIn 0.3s ease;
+        overflow: hidden;
+      }
+
+      .invoice-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border-bottom: 3px solid #047857;
+      }
+
+      .invoice-modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .invoice-modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .invoice-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+      }
+
+      .invoice-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        background: #f8fafc;
+      }
+
+      .invoice-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        gap: 16px;
+      }
+
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #10b981;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .invoice-loading p {
+        color: #64748b;
+        font-size: 1rem;
+        font-weight: 500;
+      }
+
+      .invoice-modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 20px 24px;
+        background: white;
+        border-top: 2px solid #e2e8f0;
+      }
+
+      .btn-modal-print,
+      .btn-modal-close {
+        padding: 12px 24px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-modal-print {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border-color: #2563eb;
+      }
+
+      .btn-modal-print:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      }
+
+      .btn-modal-close {
+        background: white;
+        color: #475569;
+        border-color: #cbd5e1;
+      }
+
+      .btn-modal-close:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        transform: translateY(-2px);
+      }
+
+      /* تصميم الفاتورة داخل الـ Modal */
+      .invoice-content-wrapper {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .invoice-header-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid #cbd5e1;
+        margin-bottom: 24px;
+      }
+
+      .invoice-company-row {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .invoice-company-ar {
+        text-align: right;
+        direction: rtl;
+      }
+
+      .invoice-company-en {
+        text-align: left;
+        direction: ltr;
+      }
+
+      .invoice-company-ar h1,
+      .invoice-company-en h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .invoice-company-info {
+        color: #475569;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .invoice-logo {
+        width: 80px;
+        height: 80px;
+        border-radius: 12px;
+        object-fit: contain;
+        border: 2px solid #cbd5e1;
+        background: #fff;
+      }
+
+      .invoice-type-badge {
+        text-align: center;
+        padding: 12px;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-radius: 10px;
+        border: 2px solid #60a5fa;
+      }
+
+      .invoice-type-ar {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #1e40af;
+      }
+
+      .invoice-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .invoice-meta-cell {
+        background: #f8fafc;
+        border: 2px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: 700;
+        font-size: 0.875rem;
+      }
+
+      .invoice-meta-cell strong {
+        color: #0f172a;
+      }
+
+      .invoice-meta-cell span {
+        color: #475569;
+      }
+
+      .invoice-items-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 3px solid #0f172a;
+        border-radius: 12px;
+        overflow: hidden;
+        margin: 20px 0;
+      }
+
+      .invoice-items-table thead {
+        background: #eef2ff;
+      }
+
+      .invoice-items-table th {
+        padding: 12px;
+        text-align: right;
+        font-weight: 900;
+        font-size: 0.875rem;
+        color: #1e40af;
+        border-bottom: 3px solid #0f172a;
+        border-left: 2px solid #0f172a;
+      }
+
+      .invoice-items-table th:first-child {
+        border-right: 2px solid #0f172a;
+      }
+
+      .invoice-items-table th:last-child {
+        border-left: 2px solid #0f172a;
+      }
+
+      .invoice-items-table tbody td {
+        padding: 10px 12px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        border-bottom: 2px solid #cbd5e1;
+        border-left: 2px solid #cbd5e1;
+        color: #334155;
+      }
+
+      .invoice-items-table tbody td:first-child {
+        border-right: 2px solid #cbd5e1;
+      }
+
+      .invoice-items-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .invoice-totals-table {
+        width: 400px;
+        margin: 20px 0 20px auto;
+        border: 2px solid #334155;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .invoice-totals-table td {
+        padding: 10px 14px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #cbd5e1;
+      }
+
+      .invoice-totals-table tr:last-child td {
+        border-bottom: none;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        font-size: 1rem;
+        font-weight: 800;
+        color: #92400e;
+      }
+
+      .invoice-totals-table td:first-child {
+        color: #0f172a;
+      }
+
+      .invoice-totals-table td:last-child {
+        text-align: left;
+        color: #475569;
+      }
+
+      .invoice-notes {
+        margin-top: 20px;
+        padding: 14px;
+        background: #f1f5f9;
+        border-radius: 8px;
+        border: 2px solid #cbd5e1;
+        color: #000;
+        font-weight: 700;
+        font-size: 0.875rem;
+        line-height: 1.6;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-20px);
+        }
+        60% {
+          transform: translateY(-10px);
+        }
+      }
+
+      /* Error Message */
+      .error {
+        display: none;
+        color: var(--danger);
+        background: var(--danger-bg);
+        border: 1px solid #fecaca;
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .error:not(:empty) {
+        display: block;
+      }
+
+      /* Tab Content */
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Filter Section */
+      .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+      }
+
+      /* Empty State */
+      .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: var(--text-secondary);
+      }
+
+      .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 12px;
+        opacity: 0.4;
+      }
+
+      .empty-state h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+
+      .empty-state p {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .wrap {
+          padding: 12px;
+        }
+
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .tabs-wrapper {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .tabs {
+          width: 100%;
+        }
+
+        .tab {
+          flex: 1;
+        }
+
+        .section-header-row {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .search-wrapper {
+          max-width: 100%;
+        }
+
+        .action-bar {
+          flex-direction: column;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        table {
+          font-size: 0.8125rem;
+        }
+
+        th, td {
+          padding: 10px 12px;
+        }
+      }
+
+      /* Utilities */
+      .flex {
+        display: flex;
+      }
+
+      .items-center {
+        align-items: center;
+      }
+
+      .justify-between {
+        justify-content: space-between;
+      }
+
+      .gap-2 {
+        gap: 8px;
+      }
+
+      .gap-3 {
+        gap: 12px;
+      }
+
+      .mt-4 {
+        margin-top: 16px;
+      }
+
+      /* Loading State */
+      .loading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      /* Focus Visible */
+      *:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      button:focus-visible,
+      .tab:focus-visible {
+        outline-offset: 0;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+      }
+
+      /* Pagination Styles */
+      .pagination-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 16px 0;
+        padding: 16px;
+        background: var(--border-light);
+        border-radius: 10px;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .pagination-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+      }
+
+      .items-per-page-select {
+        padding: 6px 10px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        background: var(--card-bg);
+        font-size: 0.8rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .items-per-page-select:hover {
+        border-color: var(--primary-lighter);
+      }
+
+      .items-per-page-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .pagination-buttons {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .pagination-btn {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .pagination-btn:hover:not(:disabled) {
+        background: var(--primary-bg);
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .pagination-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #ffffff;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+      }
+
+      .pagination-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--border-light);
+      }
+
+      .pagination-btn.ellipsis {
+        border: none;
+        background: transparent;
+        cursor: default;
+        pointer-events: none;
+      }
+
+      @media (max-width: 768px) {
+        .pagination-wrapper {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .pagination-info {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .pagination-buttons {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .pagination-btn {
+          min-width: 32px;
+          height: 32px;
+          font-size: 0.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Invoice Preview Modal - عرض كامل للفاتورة -->
+    <div id="successModal" class="invoice-preview-overlay">
+      <div class="invoice-preview-modal">
+        <div class="invoice-modal-header">
+          <h2>✅ تم حفظ الفاتورة بنجاح</h2>
+          <button class="invoice-modal-close" id="modalCloseBtn">✖</button>
+        </div>
+        
+        <div class="invoice-modal-body" id="invoicePreviewContent">
+          <div class="invoice-loading">
+            <div class="spinner"></div>
+            <p>جاري تحميل بيانات الفاتورة...</p>
+          </div>
+        </div>
+        
+        <div class="invoice-modal-footer">
+          <button class="btn-modal-print" id="modalPrintBtn">
+            <span>🖨️</span> طباعة الفاتورة
+          </button>
+          <button class="btn-modal-close" id="modalCloseBtn2">إغلاق</button>
+        </div>
+      </div>
+    </div>
+
+    <header>
+      <div class="page-title">
+        <span>🧾</span>
+        فاتورة شراء
+      </div>
+      <nav>
+        <button id="btnBack" class="btn">
+          <span>←</span>
+          العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="wrap">
+      <!-- Error Message -->
+      <div id="error" class="error"></div>
+
+      <!-- Tabs Navigation -->
+      <div class="card tabs-card tabs-container">
+        <div class="tabs-wrapper">
+          <div class="tabs-info">
+            <h2>إدارة الفواتير</h2>
+            <p>إنشاء فواتير شراء جديدة أو مراجعة الفواتير المحفوظة</p>
+          </div>
+          <div class="tabs">
+            <div id="tabBtnMake" class="tab active">
+              <span>🛒</span>
+              إنشاء فاتورة
+            </div>
+            <div id="tabBtnSaved" class="tab">
+              <span>📁</span>
+              الفواتير المحفوظة
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 1: إنشاء فاتورة -->
+      <div id="tab_make" class="tab-content active">
+        
+        <!-- البيانات العامة -->
+        <div class="card general-info-section">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">📋</div>
+                <div>
+                  <div class="section-title">البيانات العامة للفاتورة</div>
+                  <div class="section-subtitle">أدخل المعلومات الأساسية للفاتورة</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>
+                  رقم الفاتورة
+                  <span class="info-icon" title="يتم توليده تلقائياً">ⓘ</span>
+                </label>
+                <input id="inv_no" type="text" readonly placeholder="يتولد تلقائياً عند الحفظ" />
+              </div>
+
+              <div class="form-group">
+                <label>
+                  تاريخ/وقت الفاتورة
+                  <span class="required">*</span>
+                </label>
+                <input id="inv_dt" type="datetime-local" required />
+              </div>
+
+              <div class="form-group">
+                <label>
+                  المورد
+                  <span class="required">*</span>
+                </label>
+                <select id="supplier_id" required>
+                  <option value="">-- اختر المورد --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>طريقة الدفع</label>
+                <select id="payment_method">
+                  <option value="كاش">💵 كاش</option>
+                  <option value="شبكة">💳 شبكة</option>
+                  <option value="آجل">📄 آجل</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>رقم مرجع (اختياري)</label>
+                <input id="reference_no" type="text" placeholder="رقم فاتورة المورد" />
+              </div>
+
+              <div class="form-group">
+                <label>ملاحظات</label>
+                <input id="notes" type="text" placeholder="أضف ملاحظة..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- جدول الأصناف -->
+        <div class="card products-section">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">📦</div>
+                <div>
+                  <div class="section-title">الأصناف المشتراة</div>
+                  <div class="section-subtitle">أضف الأصناف باستخدام البحث أو الباركود</div>
+                </div>
+              </div>
+              <div class="search-wrapper">
+                <input 
+                  id="prod_search" 
+                  type="text" 
+                  placeholder="ابحث بالاسم أو الباركود..."
+                  autocomplete="off"
+                />
+                <div id="suggestions" class="suggestions-panel"></div>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="min-width: 100px;">الكود</th>
+                    <th style="min-width: 200px;">اسم الصنف</th>
+                    <th style="min-width: 100px; text-align: center;">الكمية</th>
+                    <th style="min-width: 120px; text-align: center;">سعر الشراء</th>
+                    <th style="min-width: 120px; text-align: center;">الإجمالي</th>
+                    <th style="min-width: 80px; text-align: center;">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody">
+                  <!-- سيتم ملؤها ديناميكياً -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- الملخص المالي -->
+        <div class="card financial-summary-section">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">💰</div>
+                <div>
+                  <div class="section-title">الملخص المالي</div>
+                  <div class="section-subtitle">مراجعة المبالغ والضرائب</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-item">
+                <label>الإجمالي قبل الضريبة</label>
+                <input id="sub_total" type="text" readonly value="0.00" />
+              </div>
+
+              <div class="summary-item">
+                <label>الخصم العام</label>
+                <input id="discount_general" type="number" step="0.01" min="0" value="0" />
+              </div>
+
+              <div class="summary-item">
+                <label>وضع سعر الشراء</label>
+                <select id="price_mode">
+                  <option value="inclusive" selected>السعر شامل الضريبة</option>
+                  <option value="zero_vat">بدون ضريبة</option>
+                </select>
+              </div>
+
+              <div class="summary-item">
+                <label>نسبة الضريبة %</label>
+                <input id="vat_percent" type="number" step="0.01" min="0" value="15" />
+              </div>
+
+              <div class="summary-item">
+                <label>قيمة الضريبة</label>
+                <input id="vat_total" type="text" readonly value="0.00" />
+              </div>
+
+              <div class="summary-item highlight">
+                <label>الإجمالي شامل الضريبة</label>
+                <input id="grand_total" type="text" readonly value="0.00" />
+              </div>
+
+              <div class="summary-item">
+                <label>المدفوع</label>
+                <input id="amount_paid" type="text" readonly value="0.00" />
+              </div>
+
+              <div class="summary-item">
+                <label>المتبقي</label>
+                <input id="amount_due" type="text" readonly value="0.00" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Bar -->
+          <div class="action-bar">
+            <button id="btnSave" class="btn primary">
+              <span>💾</span>
+              حفظ الفاتورة
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: الفواتير المحفوظة -->
+      <div id="tab_saved" class="tab-content">
+        
+        <!-- تصفية الفواتير -->
+        <div class="card filters-section">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">🔍</div>
+                <div>
+                  <div class="section-title">تصفية الفواتير</div>
+                  <div class="section-subtitle">ابحث عن الفواتير بالتاريخ أو المورد</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>من</label>
+                <input id="filter_from" type="datetime-local" />
+              </div>
+
+              <div class="form-group">
+                <label>إلى</label>
+                <div class="inline-date-actions" style="display:flex; align-items:center; gap:8px;">
+                  <input id="filter_to" type="datetime-local" />
+                  <button id="btnFilterSearch" class="btn primary">
+                    <span>🔍</span>
+                    بحث
+                  </button>
+                  <button id="btnFilterClear" class="btn">
+                    <span>🔄</span>
+                    مسح
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>رقم الفاتورة</label>
+                <input id="filter_invno" type="text" placeholder="البحث برقم الفاتورة..." />
+              </div>
+
+              <div class="form-group">
+                <label>المورد</label>
+                <select id="filter_supplier_id">
+                  <option value="">-- جميع الموردين --</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- قائمة الفواتير -->
+        <div class="card">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">📋</div>
+                <div>
+                  <div class="section-title">قائمة الفواتير</div>
+                  <div class="section-subtitle">الفواتير المحفوظة مع إمكانية التعديل</div>
+                </div>
+              </div>
+              <span class="section-badge" id="invoice-count">0 فاتورة</span>
+            </div>
+
+            <!-- Pagination Controls - Top -->
+            <div id="paginationControlsTop" class="pagination-wrapper">
+              <div class="pagination-info">
+                <span id="paginationTextTop">عرض 0-0 من 0 فاتورة</span>
+                <select id="itemsPerPageSelectTop" class="items-per-page-select">
+                  <option value="10" selected>10 لكل صفحة</option>
+                  <option value="20">20 لكل صفحة</option>
+                  <option value="50">50 لكل صفحة</option>
+                  <option value="100">100 لكل صفحة</option>
+                </select>
+              </div>
+              <div id="paginationButtonsTop" class="pagination-buttons">
+                <!-- سيتم ملؤها ديناميكياً -->
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>رقم الفاتورة</th>
+                    <th>المورد</th>
+                    <th>طريقة الدفع</th>
+                    <th>حالة الدفع</th>
+                    <th>الإجمالي</th>
+                    <th style="text-align: center; min-width: 260px;">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySaved">
+                  <!-- سيتم ملؤها ديناميكياً -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="paginationControls" class="pagination-wrapper">
+              <div class="pagination-info">
+                <span id="paginationText">عرض 0-0 من 0 فاتورة</span>
+                <select id="itemsPerPageSelect" class="items-per-page-select">
+                  <option value="10" selected>10 لكل صفحة</option>
+                  <option value="20">20 لكل صفحة</option>
+                  <option value="50">50 لكل صفحة</option>
+                  <option value="100">100 لكل صفحة</option>
+                </select>
+              </div>
+              <div id="paginationButtons" class="pagination-buttons">
+                <!-- سيتم ملؤها ديناميكياً -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm dialog styles -->
+    <style>
+      /* Modern compact confirm dialog for Purchase Invoices */
+      #confirmDlg{ 
+        border: 0; 
+        padding: 0; 
+        background: transparent; 
+        position: fixed !important; 
+        inset: 0 !important; 
+        margin: auto !important; 
+        width: fit-content !important; 
+        height: fit-content !important; 
+        display: none; 
+        z-index: 1100; 
+      }
+      #confirmDlg[open]{ 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease-out;
+      }
+      #confirmDlg::backdrop{ 
+        background: rgba(0,0,0,0.65); 
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease-out;
+      }
+      
+      #confirmDlg .confirm-modal{ 
+        background: #fff; 
+        color: var(--text); 
+        width: 100%; 
+        max-width: 380px; 
+        border-radius: 16px; 
+        box-shadow: 0 24px 48px rgba(0,0,0,0.2), 0 8px 16px rgba(0,0,0,0.1); 
+        overflow: hidden;
+        animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center;
+      }
+      
+      #confirmDlg .confirm-content {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+      }
+      
+      #confirmDlg .confirm-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.2);
+      }
+      
+      #confirmDlg .confirm-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        line-height: 1.3;
+      }
+      
+      #confirmDlg .confirm-message {
+        font-size: 0.875rem;
+        color: #64748b;
+        line-height: 1.6;
+        margin: 0;
+      }
+      
+      #confirmDlg .confirm-list {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px 16px;
+        width: 100%;
+        text-align: right;
+      }
+      
+      #confirmDlg .confirm-list-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8125rem;
+        color: #475569;
+        padding: 4px 0;
+      }
+      
+      #confirmDlg .confirm-list-item::before {
+        content: '•';
+        color: #ef4444;
+        font-size: 1.2rem;
+        font-weight: bold;
+        line-height: 1;
+      }
+      
+      #confirmDlg .confirm-actions { 
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        padding: 0 24px 24px 24px;
+      }
+      
+      #confirmDlg .confirm-actions button {
+        flex: 1;
+        padding: 11px 20px;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+      
+      #confirmDlg #confirmOk {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      }
+      
+      #confirmDlg #confirmOk:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+        transform: translateY(-1px);
+      }
+      
+      #confirmDlg #confirmOk:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+      }
+      
+      #confirmDlg #confirmCancel {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+      }
+      
+      #confirmDlg #confirmCancel:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+      }
+      
+      #confirmDlg #confirmCancel:active {
+        transform: translateY(0);
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes scaleIn {
+        from { 
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to { 
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      
+      @keyframes pulse {
+        0%, 100% { 
+          transform: scale(1);
+          box-shadow: 0 8px 20px rgba(239, 68, 68, 0.2);
+        }
+        50% { 
+          transform: scale(1.05);
+          box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+        }
+      }
+      
+      /* Dark mode support */
+      .dark #confirmDlg .confirm-modal {
+        background: #0d0d0d !important;
+      }
+      .dark #confirmDlg::backdrop {
+        background: rgba(0, 0, 0, 0.85);
+      }
+      .dark #confirmDlg .confirm-title {
+        color: #ffffff !important;
+      }
+      .dark #confirmDlg .confirm-message {
+        color: #cccccc !important;
+      }
+      .dark #confirmDlg .confirm-list {
+        background: #1a1a1a !important;
+      }
+      .dark #confirmDlg .confirm-list-item {
+        color: #cccccc !important;
+      }
+      .dark #confirmDlg #confirmCancel {
+        background: #1a1a1a !important;
+        color: #ffffff !important;
+        border-color: #333333 !important;
+      }
+      .dark #confirmDlg #confirmCancel:hover {
+        background: #262626 !important;
+        border-color: #404040 !important;
+      }
+      .dark .card {
+        background: #0d0d0d !important;
+        border-color: #1a1a1a !important;
+      }
+      .dark body {
+        background: #000000 !important;
+        color: #ffffff !important;
+      }
+      .dark header {
+        background: #0d0d0d !important;
+        border-color: #1a1a1a !important;
+      }
+      .dark .page-title {
+        color: #ffffff !important;
+      }
+    </style>
+
+    <!-- Confirm dialog markup -->
+    <dialog id="confirmDlg">
+      <div class="confirm-modal">
+        <div class="confirm-content">
+          <div class="confirm-icon" id="confirmIcon">🗑️</div>
+          <h3 class="confirm-title" id="confirmTitle">تأكيد حذف الفاتورة</h3>
+          <p class="confirm-message" id="confirmMessage">هل أنت متأكد من حذف هذه الفاتورة؟</p>
+          <div class="confirm-list" id="confirmList">
+            <div class="confirm-list-item">سيتم تعديل المخزون</div>
+            <div class="confirm-list-item">سيتم تعديل حساب المورد</div>
+            <div class="confirm-list-item">سيتم حذف البيانات نهائياً</div>
+          </div>
+        </div>
+        <div class="confirm-actions">
+          <button id="confirmOk">تأكيد الحذف</button>
+          <button id="confirmCancel">إلغاء</button>
+        </div>
+      </div>
+    </dialog>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

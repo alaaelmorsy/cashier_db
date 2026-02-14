@@ -1,0 +1,1863 @@
+@import "tailwindcss";
+
+@source "../renderer/**/*.{html,js}";
+
+@theme {
+  --font-cairo: 'Cairo', system-ui, -apple-system, sans-serif;
+  
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'Cairo';
+  src: url('../../assets/fonts/Cairo-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-display: swap;
+}
+
+@font-face{
+  font-family: 'saudi_riyal';
+  src: url('../../assets/fonts/saudi-riyal.woff') format('woff'),
+       url('../../assets/fonts/saudi-riyal.ttf') format('truetype');
+  font-display: swap;
+  unicode-range: U+E900;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark * {
+  border-color: #1a1a1a;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Removed - let buttons keep their text colors */
+
+.dark .card,
+.dark .modal,
+.dark [class*="card"],
+.dark [style*="background"] {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark header,
+.dark nav {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark table {
+  background: #0d0d0d !important;
+}
+
+.dark table thead {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark table tbody tr {
+  border-color: #1a1a1a !important;
+}
+
+.dark table tbody tr:hover {
+  background: #1a1a1a !important;
+}
+
+.dark table tbody tr:nth-child(even) {
+  background: #0a0a0a !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #ffffff !important;
+}
+
+.dark .text-gray-400,
+.dark .text-gray-300,
+.dark .text-gray-200 {
+  color: #cccccc !important;
+}
+
+/* Override all gray text colors */
+.dark .text-gray-50 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-gray-100 {
+  color: #e5e7eb !important;
+}
+
+.dark .bg-white {
+  background: #0d0d0d !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-gray-200 {
+  background: #1a1a1a !important;
+}
+
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-400 {
+  border-color: #333333 !important;
+}
+
+.dark label {
+  color: #ffffff !important;
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #ffffff !important;
+}
+
+.dark .section-title,
+.dark .section-desc {
+  color: #ffffff !important;
+}
+
+.dark [class*="gradient"] {
+  opacity: 0.9;
+}
+
+.dark svg path,
+.dark svg circle {
+  stroke: currentColor;
+}
+
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: left 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-left: 2.5rem;
+}
+
+.dark :root,
+.dark html {
+  --bg: #000000;
+  --card: #0d0d0d;
+  --card-glass: rgba(13, 13, 13, 0.9);
+  --text: #ffffff;
+  --text-light: #cccccc;
+  --border: #1a1a1a;
+  --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-primary: 0 4px 12px rgba(59, 130, 246, 0.3);
+  --muted: #999999;
+  --primary: #3b82f6;
+  --primary-light: #60a5fa;
+}
+
+.dark [style*="background: white"],
+.dark [style*="background:#fff"],
+.dark [style*="background: #fff"] {
+  background: #0d0d0d !important;
+}
+
+.dark [style*="background:#f"],
+.dark [style*="background: #f"],
+.dark [style*="background: rgb(2"] {
+  background: #1a1a1a !important;
+}
+
+.dark [style*="color:#3"],
+.dark [style*="color: #3"],
+.dark [style*="color:#1"],
+.dark [style*="color: #1"] {
+  color: #ffffff !important;
+}
+
+/* Removed - let buttons keep their natural colors */
+
+.dark .btn.primary,
+.dark .btn-primary {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.dark .btn.primary:hover,
+.dark .btn-primary:hover {
+  background: #2563eb !important;
+}
+
+.dark .btn.success,
+.dark .btn-success {
+  background: #10b981 !important;
+}
+
+.dark .btn.danger,
+.dark .btn-danger {
+  background: #ef4444 !important;
+}
+
+.dark .btn.secondary {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+/* Make all text white in dark mode */
+.dark p,
+.dark span,
+.dark div,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark a,
+.dark li,
+.dark td,
+.dark th,
+.dark small,
+.dark strong,
+.dark em,
+.dark i,
+.dark b {
+  color: #ffffff !important;
+}
+
+/* Placeholder text */
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark select::placeholder {
+  color: #999999 !important;
+}
+
+/* Keep specific colors for alerts */
+.dark .text-red-500,
+.dark .text-red-600,
+.dark .text-red-700 {
+  color: #ff6b6b !important;
+}
+
+.dark .text-green-500,
+.dark .text-green-600,
+.dark .text-green-700 {
+  color: #6bff6b !important;
+}
+
+.dark .text-yellow-500,
+.dark .text-yellow-600,
+.dark .text-yellow-700 {
+  color: #ffd700 !important;
+}
+
+.dark .text-blue-500,
+.dark .text-blue-600,
+.dark .text-blue-700,
+.dark .text-blue-900 {
+  color: #60a5fa !important;
+}
+
+.dark .error,
+.dark .alert-error {
+  background: #1a0a0a !important;
+  border-color: #4a1a1a !important;
+  color: #ff6b6b !important;
+}
+
+.dark .success,
+.dark .alert-success {
+  background: #0a1a0a !important;
+  border-color: #1a4a1a !important;
+  color: #6bff6b !important;
+}
+
+.dark .low-stock {
+  background: #1a1300 !important;
+  border-color: #4a3300 !important;
+  color: #ffd700 !important;
+}
+
+.dark .low-stock.danger {
+  background: #1a0a0a !important;
+  border-color: #4a1a1a !important;
+  color: #ff6b6b !important;
+}
+
+.dark .product-card,
+.dark .product-item {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.dark .product-card:hover,
+.dark .product-item:hover {
+  background: #262626 !important;
+}
+
+.dark .cart,
+.dark .cart-item {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .category-btn,
+.dark .tab-button {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .category-btn.active,
+.dark .tab-button.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.dark .modal-content,
+.dark .dialog {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.85) !important;
+}
+
+.dark .toast,
+.dark .toast-box {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark .divider,
+.dark hr {
+  border-color: #1a1a1a !important;
+  background: #1a1a1a !important;
+}
+
+.dark .badge {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .badge.primary {
+  background: #3b82f6 !important;
+}
+
+.dark .badge.success {
+  background: #10b981 !important;
+}
+
+.dark .badge.danger {
+  background: #ef4444 !important;
+}
+
+.dark .badge.warning {
+  background: #f59e0b !important;
+}
+
+.dark [class*="total"],
+.dark [class*="price"] {
+  color: #ffffff !important;
+}
+
+.dark .icon,
+.dark [class*="icon"] {
+  color: #ffffff !important;
+  filter: brightness(1.2);
+}
+
+.dark img {
+  opacity: 0.9;
+}
+
+.dark .switch {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.dark .wrap,
+.dark .container,
+.dark .content {
+  background: transparent !important;
+}
+
+.dark .sidebar {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark [class*="panel"] {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark td, .dark th {
+  color: #ffffff !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .status {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark .bg-indigo-600,
+.dark .bg-blue-600,
+.dark .bg-green-600,
+.dark .bg-red-600,
+.dark .bg-yellow-600,
+.dark .bg-purple-600 {
+  filter: brightness(1.1);
+}
+
+.dark .text-black,
+.dark [style*="color: #000000"],
+.dark [style*="color:#000000"],
+.dark [style*="color: black"] {
+  color: #ffffff !important;
+}
+
+.dark .pagination,
+.dark .pagination-btn {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .pagination-btn.active {
+  background: #3b82f6 !important;
+}
+
+.dark .search-box,
+.dark .search-input {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .filter-btn,
+.dark .sort-btn {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .filter-btn.active,
+.dark .sort-btn.active {
+  background: #3b82f6 !important;
+}
+
+.dark .dropdown,
+.dark .dropdown-menu {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .dropdown-item {
+  color: #ffffff !important;
+}
+
+.dark .dropdown-item:hover {
+  background: #1a1a1a !important;
+}
+
+.dark .form-group,
+.dark .form-control {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .checkbox,
+.dark .radio {
+  border-color: #666666 !important;
+  accent-color: #3b82f6 !important;
+}
+
+.dark .list-item {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark .list-item:hover {
+  background: #1a1a1a !important;
+}
+
+.dark .list-item.selected {
+  background: #1a4a8a !important;
+}
+
+.dark .empty-state,
+.dark .no-data {
+  color: #999999 !important;
+}
+
+.dark .loading,
+.dark .spinner {
+  border-color: #333333 #3b82f6 #333333 #333333 !important;
+}
+
+.dark .alert,
+.dark .notification {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark .alert.info {
+  background: #0a1a2a !important;
+  border-color: #1a4a8a !important;
+  color: #60a5fa !important;
+}
+
+.dark .alert.warning {
+  background: #1a1300 !important;
+  border-color: #4a3300 !important;
+  color: #ffd700 !important;
+}
+
+.dark .breadcrumb {
+  color: #999999 !important;
+}
+
+.dark .breadcrumb a {
+  color: #60a5fa !important;
+}
+
+.dark .breadcrumb a:hover {
+  color: #3b82f6 !important;
+}
+
+.dark .tabs {
+  border-color: #1a1a1a !important;
+}
+
+.dark .tab {
+  background: transparent !important;
+  color: #999999 !important;
+  border-color: transparent !important;
+}
+
+.dark .tab:hover {
+  color: #ffffff !important;
+}
+
+.dark .tab.active {
+  background: transparent !important;
+  color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark .accordion-item {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .accordion-header {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark .accordion-header:hover {
+  background: #262626 !important;
+}
+
+.dark .tooltip {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .progress-bar {
+  background: #1a1a1a !important;
+}
+
+.dark .progress-fill {
+  background: #3b82f6 !important;
+}
+
+.dark .stat-card {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .stat-value {
+  color: #ffffff !important;
+}
+
+.dark .stat-label {
+  color: #999999 !important;
+}
+
+.dark .chart-container {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .grid-item {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .grid-item:hover {
+  background: #1a1a1a !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark .thumbnail {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.dark .menu-item {
+  color: #ffffff !important;
+}
+
+.dark .menu-item:hover {
+  background: #1a1a1a !important;
+}
+
+.dark .menu-item.active {
+  background: #1a4a8a !important;
+  color: #ffffff !important;
+}
+
+.dark .price-tag {
+  color: #10b981 !important;
+}
+
+.dark .discount-badge {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.dark .quantity-input {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .action-menu {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .separator {
+  background: #1a1a1a !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark code,
+.dark pre {
+  background: #1a1a1a !important;
+  color: #10b981 !important;
+  border-color: #333333 !important;
+}
+
+.dark .highlight {
+  background: #1a4a8a !important;
+  color: #ffffff !important;
+}
+
+.dark .link {
+  color: #60a5fa !important;
+}
+
+.dark .link:hover {
+  color: #3b82f6 !important;
+}
+
+.dark .muted {
+  color: #999999 !important;
+}
+
+.dark .disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dark [disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dark .overlay {
+  background: rgba(0, 0, 0, 0.85) !important;
+}
+
+.dark .popup {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .footer {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #999999 !important;
+}
+
+.dark .p-card {
+  background: #000000 !important;
+  border-color: #333333 !important;
+}
+
+.dark .p-card:hover {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+.dark .p-card img {
+  background: #1a1a1a !important;
+  border-bottom: 1px solid #333333;
+}
+
+.dark .p-card .meta {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark .p-card .pname {
+  color: #ffffff !important;
+}
+
+.dark .p-card .price-under {
+  color: #60a5fa !important;
+}
+
+.dark .p-card .offer-badge {
+  background: #1a4a1a !important;
+  color: #6bff6b !important;
+  border-color: #2a6a2a !important;
+}
+
+.dark body.hide-product-images .p-card {
+  background: #000000 !important;
+  border-color: #333333 !important;
+}
+
+.dark body.hide-product-images .p-card:hover {
+  border-color: #3b82f6 !important;
+}
+
+.dark body.hide-product-images .p-card .meta {
+  background: #000000 !important;
+}
+
+.dark .grid {
+  background: transparent !important;
+}
+
+.dark #catalog {
+  background: transparent !important;
+}
+
+.dark .tabs {
+  background: transparent !important;
+}
+
+.dark .tab-btn,
+.dark .tabs button {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .tab-btn:hover,
+.dark .tabs button:hover {
+  background: #262626 !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark .tab-btn.active,
+.dark .tabs button.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark .category-name {
+  color: #ffffff !important;
+}
+
+.dark .stock-badge,
+.dark .qty-badge {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .out-of-stock {
+  background: #1a0a0a !important;
+  color: #ff6b6b !important;
+  border-color: #4a1a1a !important;
+}
+
+.dark .low-stock-badge {
+  background: #1a1300 !important;
+  color: #ffd700 !important;
+  border-color: #4a3300 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-700,
+.dark .text-slate-500 {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-400 {
+  color: #cccccc !important;
+}
+
+.dark .text-slate-800,
+.dark .text-slate-900 {
+  color: #ffffff !important;
+}
+
+/* ===== Cart Panel Styling - Professional Dark Mode ===== */
+.dark .cart-panel {
+  background: #000000 !important;
+  border-color: #1a1a1a !important;
+  border-right-color: #3b82f6 !important;
+}
+
+.dark .cart-panel .cart-head {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark .cart-panel .cart-head span {
+  color: #ffffff !important;
+}
+
+.dark .cart-panel .cart-head span:last-child {
+  color: #cccccc !important;
+}
+
+/* Cart Scrollbar Dark Mode */
+.dark .cart-scroll::-webkit-scrollbar-track {
+  background: #0d0d0d !important;
+}
+
+.dark .cart-scroll::-webkit-scrollbar-thumb {
+  background: #333333 !important;
+}
+
+.dark .cart-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6 !important;
+}
+
+.dark .cart-scroll::-webkit-scrollbar-corner {
+  background: #0d0d0d !important;
+}
+
+/* Cart Table Rows - Pure Black Background */
+.dark .cart-panel tbody tr {
+  background: #000000 !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .cart-panel tbody tr:hover {
+  background: #0a0a0a !important;
+}
+
+/* Cart Table Cells */
+.dark .cart-panel td,
+.dark .cart-panel th {
+  color: #ffffff !important;
+  border-color: #1a1a1a !important;
+}
+
+/* Product Name in Cart */
+.dark .cart-panel .p-name {
+  color: #60a5fa !important;
+}
+
+/* Cart Quantity Buttons - Keep Normal Colors */
+.dark .cart-panel .qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Cart Quantity Input */
+.dark .cart-panel .qty,
+.dark .cart-panel input.qty {
+  background: #1a1a1a !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.dark .cart-panel .qty:focus,
+.dark .cart-panel input.qty:focus {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.dark .cart-panel .qty::placeholder,
+.dark .cart-panel input.qty::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+/* Cart Price Input */
+.dark .cart-panel .op-price,
+.dark .cart-panel input.op-price {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark .cart-panel .op-price:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.dark .cart-panel .op-price::placeholder,
+.dark .cart-panel input.op-price::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+/* Cart Amount Input (Weight Mode) */
+.dark .cart-panel .amount-paid,
+.dark .cart-panel input.amount-paid {
+  background: #0a1a0a !important;
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+}
+
+.dark .cart-panel .amount-paid:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+.dark .cart-panel .amount-paid::placeholder,
+.dark .cart-panel input.amount-paid::placeholder {
+  color: #10b981 !important;
+  opacity: 0.7;
+}
+
+/* Cart Total Value */
+.dark .cart-panel .total-val,
+.dark .cart-panel .price-val {
+  color: #ffffff !important;
+}
+
+/* Cart Operation Select */
+.dark .cart-panel .op-select,
+.dark .cart-panel select.op-select {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark .cart-panel .op-select:focus {
+  border-color: #3b82f6 !important;
+}
+
+/* Cart Operation Label */
+.dark .cart-panel .op-name-label {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #cccccc !important;
+}
+
+/* Cart Employee Select */
+.dark .cart-panel .employee-select,
+.dark .cart-panel select.employee-select {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+}
+
+/* Cart Description Textarea */
+.dark .cart-panel .desc,
+.dark .cart-panel textarea.desc {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #cccccc !important;
+}
+
+.dark .cart-panel .desc:focus,
+.dark .cart-panel textarea.desc:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark .cart-panel .desc::placeholder,
+.dark .cart-panel textarea.desc::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+/* Cart Delete Button */
+.dark .cart-panel button.danger:not(#btnClear):not(#btnClearTop),
+.dark .cart-panel .btn.danger:not(#btnClear):not(#btnClearTop) {
+  background: #7f1d1d !important;
+  color: #ffffff !important;
+  border-color: #991b1b !important;
+}
+
+.dark .cart-panel button.danger:hover:not(:disabled):not(#btnClear):not(#btnClearTop),
+.dark .cart-panel .btn.danger:hover:not(:disabled):not(#btnClear):not(#btnClearTop) {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+/* Cart Footer - Totals Section */
+.dark .cart-panel .foot {
+  background: #000000 !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .cart-panel .totals {
+  background: #000000 !important;
+}
+
+.dark .cart-panel .totals-box {
+  background: #000000 !important;
+}
+
+.dark .cart-panel .totals-box > div {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .cart-panel .totals label {
+  color: #ffffff !important;
+}
+
+/* Cart Header Buttons */
+.dark .cart-panel .btn-hold,
+.dark .cart-panel .btn-hold-list {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark .cart-panel .btn-hold:hover,
+.dark .cart-panel .btn-hold-list:hover {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Cart Process Invoice Input */
+.dark #processInvoiceNo {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark #processInvoiceNo:focus {
+  border-color: #3b82f6 !important;
+}
+
+.dark #processInvoiceNo::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+/* Payment Method & Other Selects in Totals */
+.dark #paymentMethod,
+.dark .cart-panel .totals select {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark #paymentMethod:focus,
+.dark .cart-panel .totals select:focus {
+  border-color: #3b82f6 !important;
+}
+
+/* Cash Received & Other Inputs in Totals */
+.dark #cashReceived,
+.dark #extraValue,
+.dark #discountValue,
+.dark #couponCode,
+.dark .cart-panel .totals input {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark #cashReceived:focus,
+.dark #extraValue:focus,
+.dark #discountValue:focus,
+.dark #couponCode:focus,
+.dark .cart-panel .totals input:focus {
+  border-color: #3b82f6 !important;
+}
+
+.dark #cashReceived::placeholder,
+.dark #extraValue::placeholder,
+.dark #discountValue::placeholder,
+.dark #couponCode::placeholder,
+.dark .cart-panel .totals input::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+/* Discount Type Select */
+.dark #discountType {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+/* Coupon Info */
+.dark #couponInfo {
+  color: #10b981 !important;
+}
+
+/* Total Display Values */
+.dark .totals-display,
+.dark .total-row {
+  background: #0d0d0d !important;
+  color: #ffffff !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .totals-display span,
+.dark .total-row span {
+  color: #ffffff !important;
+}
+
+/* Grand Total Highlight */
+.dark .grand-total {
+  background: #1a4a1a !important;
+  color: #10b981 !important;
+}
+
+/* Change Display */
+.dark .change-display {
+  background: #0a1a2a !important;
+  color: #60a5fa !important;
+}
+
+/* ===== GRAY THEME - Soft Warm Gray Professional Mode ===== */
+
+.theme-gray {
+  color-scheme: light;
+}
+
+.theme-gray body {
+  background: linear-gradient(135deg, #b5b2ac 0%, #a8a59f 100%) !important;
+  color: #2d2a27 !important;
+  --bg: linear-gradient(135deg, #b5b2ac 0%, #a8a59f 100%);
+  --card: #c5c2bc;
+  --border: #aeaba5;
+  --text: #2d2a27;
+  --muted: #6b6560;
+}
+
+.theme-gray .layout,
+.theme-gray .wrap,
+.theme-gray .main,
+.theme-gray main {
+  background: transparent !important;
+}
+
+.theme-gray .layout > div:first-child,
+.theme-gray .layout > div:last-child {
+  background: transparent !important;
+}
+
+.theme-gray * {
+  border-color: #aeaba5;
+}
+
+.theme-gray #buttonsContainer {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray input,
+.theme-gray select,
+.theme-gray textarea {
+  background: #d4d0ca !important;
+  border-color: #aeaba5 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray input:focus,
+.theme-gray select:focus,
+.theme-gray textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.theme-gray .card,
+.theme-gray .modal,
+.theme-gray [class*="card"],
+.theme-gray [style*="background"] {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray header,
+.theme-gray nav {
+  background: #bbb8b2 !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray table {
+  background: #c5c2bc !important;
+}
+
+.theme-gray table thead {
+  background: #bbb8b2 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray table tbody tr {
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray table tbody tr:hover {
+  background: #bbb8b2 !important;
+}
+
+.theme-gray table tbody tr:nth-child(even) {
+  background: #c2bfb9 !important;
+}
+
+.theme-gray .text-gray-900,
+.theme-gray .text-gray-800,
+.theme-gray .text-gray-700,
+.theme-gray .text-gray-600,
+.theme-gray .text-gray-500 {
+  color: #2d2a27 !important;
+}
+
+.theme-gray .text-gray-400,
+.theme-gray .text-gray-300,
+.theme-gray .text-gray-200 {
+  color: #3f3a36 !important;
+}
+
+.theme-gray .text-gray-50 {
+  color: #2d2a27 !important;
+}
+
+.theme-gray .text-gray-100 {
+  color: #2d2a27 !important;
+}
+
+.theme-gray .bg-white {
+  background: #c5c2bc !important;
+}
+
+.theme-gray .bg-gray-50,
+.theme-gray .bg-gray-100,
+.theme-gray .bg-gray-200 {
+  background: #d4d0ca !important;
+}
+
+.theme-gray .border-gray-200,
+.theme-gray .border-gray-300,
+.theme-gray .border-gray-400 {
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray label {
+  color: #2d2a27 !important;
+}
+
+.theme-gray h1, .theme-gray h2, .theme-gray h3, .theme-gray h4, .theme-gray h5, .theme-gray h6 {
+  color: #2d2a27 !important;
+}
+
+.theme-gray .section-title,
+.theme-gray .section-desc {
+  color: #2d2a27 !important;
+}
+
+.theme-gray svg path,
+.theme-gray svg circle {
+  stroke: currentColor;
+}
+
+.theme-gray .btn svg,
+.theme-gray button svg,
+.theme-gray [class*="icon"] svg,
+.theme-gray .section-icon svg {
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
+
+.theme-gray .btn,
+.theme-gray button,
+.theme-gray [style*="background: linear-gradient"],
+.theme-gray [class*="gradient"],
+.theme-gray .section-icon {
+  color: inherit !important;
+}
+
+.theme-gray .btn *,
+.theme-gray button *,
+.theme-gray .section-icon * {
+  color: inherit !important;
+}
+
+.theme-gray [style*="background: linear-gradient"] *,
+.theme-gray [style*="background:linear-gradient"] * {
+  color: inherit !important;
+}
+
+.theme-gray select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%233f3a36' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: left 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-left: 2.5rem;
+}
+
+.theme-gray :root,
+.theme-gray html {
+  --bg: linear-gradient(135deg, #b5b2ac 0%, #a8a59f 100%);
+  --card: #c5c2bc;
+  --card-glass: rgba(197, 194, 188, 0.98);
+  --text: #2d2a27;
+  --text-light: #3f3a36;
+  --border: #aeaba5;
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-primary: 0 4px 12px rgba(99, 102, 241, 0.2);
+  --muted: #6b6560;
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+}
+
+.theme-gray [style*="background: white"]:not(.btn):not(button):not([style*="linear-gradient"]),
+.theme-gray [style*="background:#fff"]:not(.btn):not(button):not([style*="linear-gradient"]),
+.theme-gray [style*="background: #fff"]:not(.btn):not(button):not([style*="linear-gradient"]) {
+  background: #c5c2bc !important;
+}
+
+.theme-gray [style*="background:#f"]:not(.btn):not(button):not([style*="linear-gradient"]):not([class*="icon"]),
+.theme-gray [style*="background: #f"]:not(.btn):not(button):not([style*="linear-gradient"]):not([class*="icon"]),
+.theme-gray [style*="background: rgb(2"]:not(.btn):not(button):not([style*="linear-gradient"]):not([class*="icon"]) {
+  background: #d4d0ca !important;
+}
+
+.theme-gray [style*="color:#3"]:not(.btn):not(button):not(.btn *):not(button *),
+.theme-gray [style*="color: #3"]:not(.btn):not(button):not(.btn *):not(button *),
+.theme-gray [style*="color:#1"]:not(.btn):not(button):not(.btn *):not(button *),
+.theme-gray [style*="color: #1"]:not(.btn):not(button):not(.btn *):not(button *) {
+  color: #3f3a36 !important;
+}
+
+.theme-gray .btn.primary,
+.theme-gray .btn-primary {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.theme-gray .btn.primary:hover,
+.theme-gray .btn-primary:hover {
+  background: #4f46e5 !important;
+}
+
+.theme-gray .btn.success,
+.theme-gray .btn-success {
+  background: #10b981 !important;
+}
+
+.theme-gray .btn.danger,
+.theme-gray .btn-danger {
+  background: #ef4444 !important;
+}
+
+.theme-gray .btn.secondary {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.theme-gray .btn.warning,
+.theme-gray .btn-warning {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+.theme-gray .btn.info,
+.theme-gray .btn-info {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.theme-gray p:not(.btn *):not(button *):not(.alert *),
+.theme-gray span:not(.btn *):not(button *):not(.alert *):not(.section-icon *),
+.theme-gray div:not(.btn):not(button):not(.alert):not(.section-icon):not([class*="icon"]):not([style*="background: linear-gradient"]) > *:not(.btn):not(button),
+.theme-gray h1,
+.theme-gray h2,
+.theme-gray h3,
+.theme-gray h4,
+.theme-gray h5,
+.theme-gray h6,
+.theme-gray a:not(.btn),
+.theme-gray li:not(.btn *):not(button *),
+.theme-gray td:not(.btn *):not(button *),
+.theme-gray th:not(.btn *):not(button *),
+.theme-gray small:not(.btn *):not(button *),
+.theme-gray strong:not(.btn *):not(button *),
+.theme-gray em:not(.btn *):not(button *),
+.theme-gray i:not(.btn *):not(button *),
+.theme-gray b:not(.btn *):not(button *) {
+  color: #2d2a27 !important;
+}
+
+.theme-gray input::placeholder,
+.theme-gray textarea::placeholder,
+.theme-gray select::placeholder {
+  color: #6b6560 !important;
+}
+
+.theme-gray .text-red-500,
+.theme-gray .text-red-600,
+.theme-gray .text-red-700 {
+  color: #ef4444 !important;
+}
+
+.theme-gray .text-green-500,
+.theme-gray .text-green-600,
+.theme-gray .text-green-700 {
+  color: #10b981 !important;
+}
+
+.theme-gray .text-yellow-500,
+.theme-gray .text-yellow-600,
+.theme-gray .text-yellow-700 {
+  color: #f59e0b !important;
+}
+
+.theme-gray .text-blue-500,
+.theme-gray .text-blue-600,
+.theme-gray .text-blue-700,
+.theme-gray .text-blue-900 {
+  color: #3b82f6 !important;
+}
+
+.theme-gray .error,
+.theme-gray .alert-error {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #dc2626 !important;
+}
+
+.theme-gray .success,
+.theme-gray .alert-success {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #059669 !important;
+}
+
+.theme-gray .divider,
+.theme-gray hr {
+  border-color: #aeaba5 !important;
+  background: #aeaba5 !important;
+}
+
+.theme-gray .product-card,
+.theme-gray .product-item {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .product-card:hover,
+.theme-gray .product-item:hover {
+  background: #bbb8b2 !important;
+}
+
+.theme-gray .cart,
+.theme-gray .cart-item {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .category-btn,
+.theme-gray .tab-button {
+  background: #d4d0ca !important;
+  color: #2d2a27 !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .category-btn.active,
+.theme-gray .tab-button.active {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.theme-gray .modal-content,
+.theme-gray .dialog {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .modal-overlay {
+  background: rgba(107, 101, 96, 0.75) !important;
+}
+
+.theme-gray .p-card {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .p-card:hover {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 1px #6366f1 !important;
+}
+
+.theme-gray .p-card img {
+  background: #d4d0ca !important;
+  border-bottom: 1px solid #aeaba5;
+}
+
+.theme-gray .p-card .meta {
+  background: #c5c2bc !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray .p-card .pname {
+  color: #2d2a27 !important;
+}
+
+.theme-gray .p-card .price-under {
+  color: #3b82f6 !important;
+}
+
+.theme-gray .offer-badge {
+  background: #d4d0ca !important;
+  border-color: #aeaba5 !important;
+  color: #047857 !important;
+}
+
+.theme-gray .grid {
+  background: transparent !important;
+}
+
+.theme-gray .cart-panel {
+  background: #c8c4bd !important;
+  border-color: #aeaba5 !important;
+  border-right-color: #6366f1 !important;
+}
+
+.theme-gray .cart-panel .cart-head {
+  background: #bbb8b2 !important;
+  border-color: #aeaba5 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray .cart-panel tbody tr {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .cart-panel tbody tr:hover {
+  background: #bbb8b2 !important;
+}
+
+.theme-gray .cart-panel td,
+.theme-gray .cart-panel th {
+  color: #2d2a27 !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .cart-panel .qty,
+.theme-gray .cart-panel input.qty {
+  background: #d4d0ca !important;
+  border-color: #6366f1 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray #paymentMethod,
+.theme-gray .cart-panel .totals select {
+  background: #d4d0ca !important;
+  border-color: #aeaba5 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray #cashReceived,
+.theme-gray #extraValue,
+.theme-gray #discountValue,
+.theme-gray .cart-panel .totals input {
+  background: #d4d0ca !important;
+  border-color: #aeaba5 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray .totals-display,
+.theme-gray .total-row {
+  background: #bbb8b2 !important;
+  color: #2d2a27 !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .switch {
+  background: #c8c4bd !important;
+  border-color: #aeaba5 !important;
+}
+
+/* Customer & Driver Search Inputs */
+.dark #customerSearch,
+.dark #driverSearch {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark #customerSearch::placeholder,
+.dark #driverSearch::placeholder {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+.dark #customerSearch:focus,
+.dark #driverSearch:focus {
+  border-color: #3b82f6 !important;
+}
+
+/* ===== Permissions Screen - Professional Dark Mode ===== */
+
+/* Permission Groups */
+.dark .perm-group {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+/* Permission Header */
+.dark .perm-header {
+  background: #1a1a1a !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .perm-header label {
+  color: #ffffff !important;
+}
+
+.dark .perm-header span {
+  color: #ffffff !important;
+}
+
+/* Permission Body */
+.dark .perm-body {
+  background: #000000 !important;
+  border-color: #1a1a1a !important;
+}
+
+/* Permission Items (Child checkboxes) */
+.dark .perm-body label {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.dark .perm-body label:hover {
+  background: #1a1a1a !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark .perm-body label span {
+  color: #ffffff !important;
+}
+
+/* Checkboxes */
+.dark input[type="checkbox"] {
+  accent-color: #3b82f6 !important;
+  border-color: #666666 !important;
+}
+
+/* Empty State */
+.dark .perm-body .text-gray-400 {
+  color: #999999 !important;
+}
+
+/* User Select Card */
+.dark #userSelect {
+  background: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.dark #userSelect:focus {
+  border-color: #3b82f6 !important;
+}
+
+/* Status Text */
+.dark #status {
+  color: #cccccc !important;
+}
+
+/* Action Buttons Container */
+.dark .border-gray-200 {
+  border-color: #1a1a1a !important;
+}
+
+/* Gray Buttons (Select All, Clear All) */
+.dark #selectAllBtn,
+.dark #clearAllBtn {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+.dark #selectAllBtn:hover,
+.dark #clearAllBtn:hover {
+  background: #262626 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Save Button - Keep Blue */
+/* #saveBtn keeps its original blue color */
+
+/* User Select Card Container */
+.dark .bg-white.border.border-gray-200.rounded-lg {
+  background: #0d0d0d !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .bg-white.border.border-gray-200.rounded-lg label {
+  color: #ffffff !important;
+}
+
+/* Permissions Wrap */
+.dark #permsWrap {
+  background: transparent !important;
+}
+
+/* Keep add customer button green in gray theme */
+.theme-gray #btnAddCustomer {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Invoice Summary Box in gray theme */
+.theme-gray #invoiceSummaryBox {
+  background: #c5c2bc !important;
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray #invoiceSummaryBox .bg-slate-50 {
+  background: #d4d0ca !important;
+}
+
+.theme-gray #invoiceSummaryBox .bg-blue-600 {
+  background: #6366f1 !important;
+}
+
+.theme-gray #invoiceSummaryBox .text-slate-600 {
+  color: #3f3a36 !important;
+}
+
+.theme-gray #invoiceSummaryBox .text-slate-900 {
+  color: #2d2a27 !important;
+}
+
+.theme-gray #invoiceSummaryBox .divide-slate-200,
+.theme-gray #invoiceSummaryBox .border-slate-200 {
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray #invoiceSummaryBox .bg-emerald-50,
+.theme-gray #invoiceSummaryBox .bg-red-50,
+.theme-gray #invoiceSummaryBox .bg-purple-50,
+.theme-gray #invoiceSummaryBox .bg-amber-50 {
+  background: #d4d0ca !important;
+}
+
+/* Tabs in gray theme - Sales screen type tabs */
+.theme-gray .tabs {
+  border-color: #aeaba5 !important;
+}
+
+.theme-gray .tab {
+  background: #d4d0ca !important;
+  border-color: #aeaba5 !important;
+  color: #2d2a27 !important;
+}
+
+.theme-gray .tab:hover {
+  background: #c8c4bd !important;
+  border-color: #9a938b !important;
+}
+
+.theme-gray .tab.active {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+}

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تخصيص الأسعار - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">💰 تخصيص الأسعار للعملاء</div>
+      <nav>
+        <button class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium" id="backBtn">⬅ العودة</button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between bg-white border border-gray-200 rounded-lg p-4">
+        <input id="searchBox" placeholder="🔍 بحث عن عميل، منتج، جوال أو باركود..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg" />
+        <div class="flex gap-2 flex-wrap">
+          <button class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium" id="searchBtn">🔍 بحث</button>
+          <button class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium" id="addBtn">➕ إضافة تخصيص جديد</button>
+        </div>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">👤 العميل</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">📦 المنتج</th>
+              <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200">⚙️ العملية</th>
+              <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200">💰 التخصيص</th>
+              <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200">🔧 إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="rulesTbody">
+            <tr>
+              <td colspan="6" class="text-center py-10 text-gray-500">
+                ⏳ جاري تحميل البيانات...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="bg-white border border-gray-200 rounded-lg p-4 mt-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">💡</span>
+          <strong class="text-gray-800">نصائح مفيدة:</strong>
+        </div>
+        <div class="text-sm text-gray-600 leading-relaxed">
+          • يمكنك تخصيص <strong>سعر نقدي ثابت</strong> أو <strong>خصم نسبة مئوية</strong> على السعر الأساسي<br>
+          • عند اختيار عملية محددة، سيتم تطبيق التخصيص على تلك العملية فقط<br>
+          • بدون تحديد عملية، سيُطبق التخصيص على المنتج بشكل عام لهذا العميل
+        </div>
+      </div>
+    </div>
+
+    <dialog id="dlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span id="dlgTitle">✨ إضافة/تعديل تخصيص سعر</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="relative">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">👤 العميل المستهدف</label>
+            <input id="custSearch" placeholder="ابحث بالاسم أو رقم الجوال..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+            <div id="custSuggest" class="absolute z-50 left-0 right-0 top-full bg-white border border-gray-200 rounded-lg max-h-60 overflow-auto hidden mt-1"></div>
+            <div id="custSelected" class="hidden mt-2 bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm"></div>
+          </div>
+          
+          <div class="relative md:col-span-2">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">📦 المنتجات المستهدفة (يمكن إضافة أكثر من منتج)</label>
+            <div class="flex gap-2">
+              <div class="flex-1 relative">
+                <input id="prodSearch" placeholder="ابحث بالاسم أو الباركود..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+                <div id="prodSuggest" class="absolute z-50 left-0 right-0 top-full bg-white border border-gray-200 rounded-lg max-h-60 overflow-auto hidden mt-1"></div>
+              </div>
+              <button id="addProductBtn" class="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium whitespace-nowrap">➕ إضافة</button>
+            </div>
+            <div id="selectedProductsList" class="mt-3 space-y-2 max-h-40 overflow-y-auto"></div>
+          </div>
+          
+          <div class="md:col-span-2">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">💰 نوع التخصيص</label>
+            <select id="modeSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
+              <option value="cash">💵 سعر نقدي ثابت</option>
+              <option value="percent">📊 خصم نسبة مئوية</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">سيتم تطبيق هذا النوع على جميع المنتجات والعمليات المحددة</p>
+          </div>
+        </div>
+        
+        <div id="previewSection" class="hidden bg-green-50 border border-green-200 p-4 rounded-lg">
+          <div class="flex items-center gap-2 mb-2">
+            <span>👁️</span>
+            <strong class="text-green-800">معاينة التخصيص:</strong>
+          </div>
+          <div id="previewContent" class="text-sm text-gray-600"></div>
+        </div>
+        
+        <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+          <div class="text-sm text-gray-700">
+            <strong class="text-gray-800">📌 ملاحظات مهمة:</strong><br>
+            • يمكنك إضافة أكثر من منتج في نفس التخصيص<br>
+            • يمكنك تحديد سعر/خصم مختلف لكل عملية من عمليات المنتج<br>
+            • اترك العملية فارغة لتطبيق السعر العام على المنتج كاملاً<br>
+            • السعر النقدي: يحل محل السعر الأصلي تماماً<br>
+            • الخصم النسبي: يتم تطبيقه على السعر الأساسي (سعر العملية أو سعر المنتج)
+          </div>
+        </div>
+        
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">❌ إلغاء</button>
+          <button id="dlgSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">💾 حفظ التخصيص</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

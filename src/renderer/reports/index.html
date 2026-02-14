@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>التقارير - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .hidden { display: none !important; }
+      
+      /* Card hover effects */
+      .card {
+        transition: all 0.3s ease;
+      }
+      
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* Dark Mode Support */
+      body.dark {
+        background: #0d0d0d;
+      }
+      
+      body.dark header {
+        background: #1a1a1a !important;
+        border-bottom-color: #333333 !important;
+      }
+      
+      body.dark header .text-gray-800 {
+        color: #ffffff !important;
+      }
+      
+      body.dark .card {
+        background: #1a1a1a !important;
+        border-color: #333333 !important;
+      }
+      
+      body.dark .card:hover {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3) !important;
+      }
+      
+      body.dark .card h3 {
+        color: #ffffff !important;
+      }
+      
+      body.dark .card p {
+        color: #9ca3af !important;
+      }
+      
+      body.dark .text-slate-800 {
+        color: #ffffff !important;
+      }
+      
+      body.dark .text-slate-600 {
+        color: #9ca3af !important;
+      }
+      
+      /* Icon containers in dark mode keep their gradient */
+      body.dark .icon {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">📊 التقارير</div>
+      <nav>
+        <button id="btnBack" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="dailyReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 9L13 5L17 9L21 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="9" r="1.5" fill="white"/>
+              <circle cx="13" cy="5" r="1.5" fill="white"/>
+              <circle cx="17" cy="9" r="1.5" fill="white"/>
+              <circle cx="21" cy="5" r="1.5" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">التقرير اليومي</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض تقرير اليوم اعتمادًا على ساعة الإقفال</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="periodReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 shadow-lg shadow-purple-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.1)"/>
+              <line x1="16" y1="2" x2="16" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="2" x2="8" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="3" y1="10" x2="21" y2="10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير الفترة</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">اختر تاريخ ووقت من — إلى لعرض التقرير</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="allInvoicesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-green-600 to-green-400 shadow-lg shadow-green-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير جميع الفواتير</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">جلب كل الفواتير لفترة من — إلى مع الإجماليات</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="purchasesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-cyan-600 to-cyan-400 shadow-lg shadow-cyan-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="white" stroke-width="2" fill="white"/>
+              <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="white" stroke-width="2" fill="white"/>
+              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير المصروفات</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">حدد الفترة من — إلى لعرض مصروفاتك مع الإجماليات</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="customerInvoicesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-red-500 to-red-400 shadow-lg shadow-red-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير العملاء</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">فواتير عميل محدد لفترة من — إلى مع الإجماليات</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="creditInvoicesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-400 shadow-lg shadow-orange-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.15)"/>
+              <line x1="1" y1="10" x2="23" y2="10" stroke="white" stroke-width="2"/>
+              <circle cx="7" cy="15" r="1" fill="white"/>
+              <circle cx="11" cy="15" r="1" fill="white"/>
+              <circle cx="15" cy="15" r="1" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير الفواتير الدائنة</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">يعرض فواتير الآجل غير المسددة للفترة المحددة</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="unpaidInvoicesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-orange-600 to-red-500 shadow-lg shadow-orange-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <rect x="2" y="3" width="20" height="18" rx="2" ry="2" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.1)"/>
+              <line x1="6" y1="8" x2="10" y2="8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="6" y1="12" x2="14" y2="12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="6" y1="16" x2="10" y2="16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير الفواتير غير مدفوعة</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">جلب الفواتير غير المدفوعة للفترة من — إلى</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="typesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-pink-600 to-pink-400 shadow-lg shadow-pink-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M20.59 13.41L13.42 20.58C13.2343 20.766 13.0137 20.9135 12.7709 21.0141C12.5281 21.1148 12.2678 21.1666 12.005 21.1666C11.7422 21.1666 11.4819 21.1148 11.2391 21.0141C10.9963 20.9135 10.7757 20.766 10.59 20.58L2 12V2H12L20.59 10.59C20.9625 10.9647 21.1716 11.4716 21.1716 12C21.1716 12.5284 20.9625 13.0353 20.59 13.41V13.41Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7" cy="7" r="1.5" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير الأنواع</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">تجميع المبيعات حسب الأنواع للفترة من — إلى</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="purchaseInvoicesReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-cyan-700 to-cyan-500 shadow-lg shadow-cyan-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 18V12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 15L12 12L15 15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير فواتير الشراء</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض فواتير الشراء من الموردين للفترة المحددة</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="customerStatementReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-400 shadow-lg shadow-indigo-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="13" r="2" stroke="white" stroke-width="2"/>
+              <line x1="14" y1="13" x2="17" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="14" y1="17" x2="17" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">كشف حساب عميل</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض بيانات العميل والفواتير مع الإجماليات للفترة</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="supplierStatementReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-400 shadow-lg shadow-amber-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+              <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="8" y1="13" x2="16" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="17" x2="16" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">كشف حساب مورد</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض فواتير الشراء وسندات الصرف للمورد خلال الفترة</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="employeeReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-400 shadow-lg shadow-teal-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <circle cx="12" cy="8" r="4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/>
+              <path d="M3 21C3 17.134 7.029 14 12 14C16.971 14 21 17.134 21 21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير الموظفين</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">فواتير ومنتجات موظف محدد لفترة من — إلى مع الإجماليات</p>
+        </div>
+
+        <div class="card bg-white border border-slate-200/60 rounded-2xl p-7 cursor-pointer relative flex flex-col items-center text-center min-h-[200px]" id="expiryReport">
+          <div class="icon relative w-28 h-28 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 shadow-lg shadow-orange-500/30 flex items-center justify-center mb-4">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+              <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.15)"/>
+              <path d="M12 6V12L16 14" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="1.5" fill="white"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-extrabold text-slate-800 mb-3">تقرير المنتجات المنتهية الصلاحية</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">عرض المنتجات المنتهية أو السارية حسب الفترة المحددة</p>
+        </div>
+
+      </div>
+    </div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

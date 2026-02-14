@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>عرض سعر A4</title>
+    <style>
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+        font-weight: 900;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      body{ font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; margin:0; color:#000; font-weight:900; font-size:12px; letter-spacing:.1px; }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      .page{ width: 190mm; min-height: 297mm; margin: 0 auto; padding: 0; box-sizing:border-box; }
+      .header{ display:flex; flex-direction:column; gap:4px; border-bottom:2px solid #cbd5e1; padding-bottom:6px; }
+      .headerTop{ display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:8px; }
+      .company-box.ar{ text-align:right; direction:rtl; }
+      .company-box.en{ text-align:left; direction:ltr; }
+      .brand-center img{ width:60px; height:60px; border-radius:8px; object-fit:contain; border:1px solid #cbd5e1; background:#fff; }
+      .brand{ display:flex; gap:8px; align-items:center; }
+      .brand img{ width:55px; height:55px; border-radius:8px; object-fit:contain; border:1px solid #cbd5e1; background:#fff; }
+      .brand h1{ margin:0; font-size:18px; font-weight:800; }
+      .company-box h1{ margin:0; font-size:18px; font-weight:800; }
+      #invType{ font-size:18px; font-weight:800; }
+      .muted{ color:#000; font-weight:900; font-size: 13px; }
+      .company-box .muted{ white-space: pre-wrap; font-size: 13px !important; }
+      .desc-print{ color:#000; font-size:12px; font-weight:900; margin-top:4px; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+      .item-name-en{ font-size:11px; color:#000; font-weight:900; direction:ltr; text-align:left; margin-top:2px; }
+      .barcode-cell{ font-size:10.5px; color:#000; font-weight:900; direction:ltr; text-align:left; }
+      .item-row td, .item-desc-row td{ border-bottom:0 !important; }
+      .item-row td{ border-top:2px solid #334155; }
+      .item-desc-row td{ border-bottom:2px solid #334155; }
+      .item-row td:first-child, .item-desc-row td:first-child{ border-right:2px solid #334155; }
+      .item-row td:last-child, .item-desc-row td:last-child{ border-left:2px solid #334155; }
+
+      .meta{ display:grid; gap:1px; font-size:12px; font-weight:900; }
+      #driverDetails{ border:0 !important; border-radius:0 !important; padding:0 !important; }
+      .section-title{ margin:4px 0 3px; padding:4px 8px; background:#e5e7eb; border:1px solid #cbd5e1; border-radius:4px; font-weight:800; color:#0f172a; font-size:12px; }
+      .section-badge{ display:inline-block; margin:0; padding:2px 5px; background:#e5e7eb; border:1px solid #cbd5e1; border-radius:3px; font-weight:800; color:#0f172a; font-size:10px; }
+      h2{ margin:6px 0 4px; font-weight:800; }
+      table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+      th, td{ padding:4px 6px; border-bottom:1px solid #cbd5e1; font-size:11px; font-weight:900; word-wrap:break-word; overflow-wrap:anywhere; }
+      th{ background:#eef2ff; color:#0b3daa; text-align:right; }
+
+      #itemsTable thead{
+        display: table-header-group;
+      }
+      #itemsTable thead tr{
+        background: #f8fafc;
+        border: 0;
+      }
+      #itemsTable thead th{
+        border-bottom: 2px solid #0f172a !important;
+        border-left: 2px solid #0f172a;
+        color: #000 !important;
+        font-weight: 900 !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        padding: 4px 6px !important;
+        vertical-align: middle !important;
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+        min-height: 30px;
+      }
+      #itemsTable thead th:first-child{ border-right: 2px solid #0f172a; }
+      #itemsTable thead th:last-child{ border-left: 2px solid #0f172a; }
+      #itemsTable thead tr th:first-child{ border-right-width: 2px; }
+      #itemsTable thead tr th:last-child{ border-left-width: 2px; }
+
+      #itemsTable{ border: 3px solid #0f172a; border-radius: 8px; overflow: visible; table-layout: fixed; }
+      /* Hide barcode column when hide-barcode class is present */
+      #itemsTable.hide-barcode thead th:nth-child(1),
+      #itemsTable.hide-barcode tbody td:nth-child(1){ display:none; }
+      #itemsTable tbody td{ 
+        border-left: 2px solid #0f172a; 
+        vertical-align: middle; 
+        overflow-wrap: anywhere; 
+        word-break: break-word; 
+        white-space: normal;
+        min-height: 25px;
+        height: auto;
+        line-height: 1.3;
+      }
+      #itemsTable tbody td:first-child{ border-right: 2px solid #0f172a; }
+      #itemsTable tbody tr{ border-bottom: 2px solid #0f172a; height: auto; }
+
+      .has-op thead th:nth-child(1), .has-op tbody td:nth-child(1){ width:12%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(2), .has-op tbody td:nth-child(2){ width:20%; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(3), .has-op tbody td:nth-child(3){ width:8%; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; text-align:center; }
+      .has-op thead th:nth-child(4), .has-op tbody td:nth-child(4){ width:7%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(5), .has-op tbody td:nth-child(5){ width:9%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(6), .has-op tbody td:nth-child(6){ width:11%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(7), .has-op tbody td:nth-child(7){ width:7%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(8), .has-op tbody td:nth-child(8){ width:10%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .has-op thead th:nth-child(9), .has-op tbody td:nth-child(9){ width:16%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+
+      .no-op thead th:nth-child(1), .no-op tbody td:nth-child(1){ width:13%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(2), .no-op tbody td:nth-child(2){ width:22%; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(3), .no-op tbody td:nth-child(3){ display:none; }
+      .no-op thead th:nth-child(4), .no-op tbody td:nth-child(4){ width:8%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(5), .no-op tbody td:nth-child(5){ width:10%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(6), .no-op tbody td:nth-child(6){ width:12%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(7), .no-op tbody td:nth-child(7){ width:8%; text-align:center; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(8), .no-op tbody td:nth-child(8){ width:11%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+      .no-op thead th:nth-child(9), .no-op tbody td:nth-child(9){ width:16%; text-align:left; white-space:normal; word-break:break-word; overflow-wrap:anywhere; padding:4px 6px; }
+
+      table.no-vat thead th:nth-child(7), table.no-vat tbody td:nth-child(7),
+      table.no-vat thead th:nth-child(8), table.no-vat tbody td:nth-child(8){ display:none; }
+      #itemsTable tbody td.num{
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip;
+        direction: ltr;
+        unicode-bidi: plaintext;
+        font-variant-numeric: tabular-nums;
+        font-weight: 900;
+        font-size: 10.5px;
+        line-height: 1.2;
+        letter-spacing: 0;
+        word-break: keep-all;
+        overflow-wrap: normal;
+      }
+      .totals{ margin-top:6px; width:320px; margin-left:auto; border:2px solid #334155; border-radius:6px; overflow:hidden; }
+      .totals td{ padding:4px 8px; font-weight:700; font-size:11px; }
+      .totals tbody tr td:first-child{ border-left: 1px solid #cbd5e1; }
+      .totals tbody tr{ border-bottom: 1px dashed #cbd5e1; }
+      .totals tbody tr:last-child{ border-bottom: 0; }
+      .totals tbody tr#extraRow td,
+      .totals tbody tr#discRow td,
+      .totals tbody tr#afterDiscRow td,
+      .totals tbody tr#tobaccoFeeRow td{
+        border-left: 2px solid #334155 !important;
+        border-right: 2px solid #334155 !important;
+      }
+      .totals tbody tr:has(td#sub) td,
+      .totals tbody tr:has(td#vat) td,
+      .totals tbody tr:has(td#grand) td{ background:#eef2ff; }
+      .totals tbody tr:has(td#sub) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:has(td#vat) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:has(td#grand) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr#discRow td,
+      .totals tbody tr#afterDiscRow td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:last-child td{ border-bottom: 2px solid #334155 !important; }
+      .footer{ margin-top:6px; display:flex; justify-content:space-between; align-items:center; }
+      .bottom-summary{ margin-top:6px; display:flex; gap:12px; align-items:flex-start; justify-content:flex-start; flex-wrap:wrap; }
+      .bottom-summary .totals-and-notes{ flex:1; min-width:320px; }
+      .sign{ text-align:center; }
+      #companyInfoAr, #companyInfoEn{ white-space:pre-wrap; font-size: 13px !important; }
+      .currency-symbol{ font-family:'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-size:1.35em; line-height:0; vertical-align:-0.05em; margin:0 2px; }
+      .desc-title{ font-weight:800; color:#0b3daa; margin-inline-start:6px; }
+      tr.item-desc-row td{ border-bottom:2.5px solid #64748b; }
+      #custBox{ 
+        display:grid !important; 
+        grid-template-columns: 1fr 1fr; 
+        gap:0; 
+        position:relative; 
+        border:3px solid #000 !important;
+        border-radius:8px; 
+        overflow:hidden; 
+        color:#000 !important; 
+        font-weight:900; 
+      }
+      #custBox::before{ content:''; position:absolute; top:0; bottom:0; left:50%; width:3px; background:#000; transform:translateX(-1.5px); }
+      #custBox .cust-row{ padding:4px 8px; white-space:normal; word-break:break-word; color:#000 !important; font-weight:900; }
+      #custBox .cust-row + .cust-row{ border-top: 2px solid #000 !important; }
+      #a4cName{ grid-column: auto; background:transparent; font-weight:900; border-bottom:0; color:#000 !important; }
+      #customerTitle{ background:#e5e7eb !important; border:2px solid #000 !important; color:#000 !important; font-weight:900 !important; }
+
+      .notes-box{ display:grid; grid-template-columns: 1fr 1fr; gap:0; border:3px solid #000; border-radius:8px; overflow:hidden; position:relative; }
+      .notes-box::before{ content:""; position:absolute; top:0; bottom:0; right:50%; width:3px; background:#000; transform:translateX(1.5px); }
+      .notes-box.single{ grid-template-columns: 1fr; }
+      .notes-box.single::before{ display:none; }
+      .note-col{ padding:4px 8px; }
+      .note-col + .note-col{ border-right:3px solid #000; }
+      .note-title{ font-weight:900; margin-bottom:3px; }
+      .note-text{ white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
+      
+      #itemsTable .continuation-header-row { display: none; }
+
+      @media print {
+        @page { size: A4; margin: 6mm 8mm 5mm 8mm; }
+        html, body { height: auto !important; }
+        body{ padding-left: 0; padding-right: 0; }
+        .page{ min-height: auto !important; height: auto !important; width: calc(210mm - 8mm - 8mm) !important; margin: 0 auto; }
+        .header, .totals, .footer, #custBox, #itemsTable thead { break-inside: avoid; page-break-inside: avoid; }
+        #itemsTable tr.item-row, #itemsTable tr.item-desc-row { break-inside: avoid; page-break-inside: avoid; }
+        .notes-box { break-inside: auto; page-break-inside: auto; }
+        
+        #itemsTable .continuation-header-row {
+          display: table-row !important;
+          background: #eef2ff !important;
+        }
+        #itemsTable .continuation-header-row td {
+          text-align: center !important;
+          font-weight: 900 !important;
+          font-size: 10px !important;
+          padding: 6px 8px !important;
+          border: 3px solid #000 !important;
+          background: #eef2ff !important;
+          border-radius: 6px;
+        }
+        #itemsTable .continuation-header-row td strong {
+          font-size: 11px !important;
+          color: #0b3daa !important;
+        }
+        #itemsTable .continuation-header-row.first-page-hide {
+          display: none !important;
+        }
+      }
+      .reprint-btn{ position:fixed; top:12px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;}
+      .export-btn{ position:fixed; top:52px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#16a34a; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;} 
+      .continuation-banner{ display:none; }
+      @media print{
+        .continuation-banner{ display:block; font-weight:900; font-size:10px; text-align:center; padding:4px 6px; margin-bottom:4px; }
+      }
+
+      body{ color:#000 !important; font-weight:900 !important; }
+      .muted, .section-title, .section-badge, h1, h2, th, td, #companyInfoAr, #companyInfoEn, .desc-print, #invType, .brand h1, .company-box h1, .totals td{
+        color:#000 !important; font-weight:900 !important;
+      }
+      @media print { .reprint-btn, .export-btn{ display:none } }
+    </style>
+  </head>
+  <body>
+    <button class="reprint-btn" id="reprintBtn" onclick="window.print()">طباعة</button>
+    <button class="export-btn" id="exportBtn">تصدير PDF</button>
+    <div class="page">
+      <div class="header">
+        <div class="headerTop">
+          <div class="company-box ar">
+            <h1 id="companyAr">الشركة</h1>
+            <div class="muted" id="companyInfoAr"></div>
+          </div>
+          <div class="brand-center">
+            <img id="logo" alt="" />
+          </div>
+          <div class="company-box en">
+            <h1 id="companyEn">Company</h1>
+            <div class="muted" id="companyInfoEn"></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:8px;">
+            <div style="text-align:right;">رقم عرض السعر: <b id="invNo"></b></div>
+            <div style="text-align:center;"><span id="invType" class="section-badge">عرض سعر | Quotation</span></div>
+            <div style="text-align:left;">التاريخ: <span id="invDate"></span></div>
+          </div>
+
+          <div id="userLineA4" style="display:none; justify-content:space-between; gap:12px; border:0 !important; padding:0 !important;">
+            <div>مدخل الفاتورة: <span id="cashierNameA4"></span></div>
+            <div></div>
+          </div>
+
+          <div id="custBox" class="muted" style="display:none; border:2.5px solid #334155; border-radius:8px; overflow:hidden; margin-top:4px;">
+            <div class="cust-row" id="a4cName"></div>
+            <div class="cust-row" id="a4cPhone" style="display:none;">جوال: <span></span></div>
+            <div class="cust-row" id="a4cEmail" style="display:none;">إيميل: <span></span></div>
+            <div class="cust-row" id="a4cAddress" style="display:none;">العنوان: <span></span></div>
+            <div class="cust-row" id="a4cVat" style="display:none;">الرقم الضريبي: <span></span></div>
+            <div class="cust-row" id="a4cCR" style="display:none;">السجل التجاري: <span></span></div>
+            <div class="cust-row" id="a4cNat" style="display:none;">العنوان الوطني: <span></span></div>
+            <div class="cust-row" id="a4cNotes" style="display:none;">ملاحظات: <span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <table id="itemsTable">
+        <thead>
+          <tr class="continuation-header-row first-page-hide">
+            <td colspan="9" style="text-align:center;">
+              <span>عرض سعر رقم: <strong id="contInvNo"></strong></span>
+            </td>
+          </tr>
+          <tr>
+            <th>باركود</th>
+            <th>الصنف</th>
+            <th>العملية</th>
+            <th id="thQuantityQuotation">عدد</th>
+            <th id="thUnitPriceQuotation">سعر القطعة</th>
+            <th>الإجمالي بدون الضريبة</th>
+            <th>نسبة الضريبة</th>
+            <th>الضريبة</th>
+            <th>الإجمالي شامل الضريبة</th>
+          </tr>
+        </thead>
+        <tbody id="items"></tbody>
+      </table>
+
+      <div class="bottom-summary">
+        <div class="totals-and-notes">
+          <table class="totals">
+            <tbody>
+              <tr id="extraRow" style="display:none"><td>الإضافى</td><td style="text-align:left" id="extra"></td></tr>
+              <tr><td>الإجمالي قبل الضريبة</td><td style="text-align:left" id="sub"></td></tr>
+              <tr id="discRow" style="display:none"><td id="discLabel">خصم</td><td style="text-align:left; color:#b91c1c" id="disc"></td></tr>
+              <tr id="afterDiscRow" style="display:none"><td>الإجمالي بعد الخصم (قبل الضريبة)</td><td style="text-align:left" id="afterDisc"></td></tr>
+              <tr id="tobaccoFeeRow" style="display:none"><td>رسوم التبغ</td><td style="text-align:left" id="tobaccoFee"></td></tr>
+              <tr><td>ضريبة VAT</td><td style="text-align:left" id="vat"></td></tr>
+              <tr><td><b>الإجمالي شامل الضريبة</b></td><td style="text-align:left" id="grand"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="generalNotesContainer" style="display:none; margin-top:8px; border:3px solid #000; border-radius:8px; padding:6px 8px; width:100%; box-sizing:border-box;">
+        <div style="font-weight:900; margin-bottom:4px; color:#000; font-size:11px;">ملاحظات | Notes</div>
+        <div id="generalNotesContent" style="white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; color:#000; font-weight:700; font-size:10px; line-height:1.3;"></div>
+      </div>
+
+      <div class="footer">
+        <div class="sign">
+          <div class="muted">توقيع البائع</div>
+          <div style="height:70px; border-bottom:1px dashed #e5e7eb"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (async function(){
+        try{
+          const api = (window.opener && window.opener.api) ? window.opener.api : (window.api || {});
+          
+          // Get settings from API
+          const st = await api.settings_get();
+          const settings = (st && st.ok) ? st.item : {};
+          
+          // Update unit price label from settings
+          try{
+            const unitPriceLabel = settings.unit_price_label || 'سعر القطعة';
+            const thUnitPrice = document.getElementById('thUnitPriceQuotation');
+            if(thUnitPrice) thUnitPrice.textContent = unitPriceLabel;
+          }catch(_){ /* ignore */ }
+          // Update quantity label from settings
+          try{
+            const quantityLabel = settings.quantity_label || 'عدد';
+            const thQuantity = document.getElementById('thQuantityQuotation');
+            if(thQuantity) thQuantity.textContent = quantityLabel;
+          }catch(_){ /* ignore */ }
+          
+          // Get cart data from sessionStorage
+          const cartDataStr = sessionStorage.getItem('quotation_cart');
+          const totalsDataStr = sessionStorage.getItem('quotation_totals');
+          
+          if(!cartDataStr || !totalsDataStr){
+            document.body.innerHTML = '<div style="padding:12px">لا توجد بيانات لعرض السعر</div>';
+            return;
+          }
+          
+          const items = JSON.parse(cartDataStr);
+          const totals = JSON.parse(totalsDataStr);
+
+          function fmt(a){
+            const n = Number(a||0).toFixed(2);
+            return n;
+          }
+
+          // header info (Arabic on right, English on left)
+          try{
+            const arName = settings.seller_legal_name || '';
+            const enName = settings.seller_legal_name_en || arName;
+            const arInfo = [];
+            const enInfo = [];
+            if(settings.company_location){ arInfo.push(settings.company_location); }
+            if(settings.company_location_en || settings.company_location){ enInfo.push(settings.company_location_en || settings.company_location); }
+            if(settings.company_site){ arInfo.push(settings.company_site); enInfo.push(settings.company_site); }
+            if(settings.mobile){ arInfo.push('جوال: ' + settings.mobile); enInfo.push('Mobile: ' + settings.mobile); }
+            if(settings.email && (typeof settings.show_email_in_invoice === 'undefined' || settings.show_email_in_invoice)){ arInfo.push('إيميل: ' + settings.email); enInfo.push('Email: ' + settings.email); }
+            if(settings.seller_vat_number){ arInfo.push('الرقم الضريبي: ' + settings.seller_vat_number); enInfo.push('VAT No: ' + settings.seller_vat_number); }
+            if(settings.commercial_register){ arInfo.push('السجل التجاري: ' + settings.commercial_register); enInfo.push('CR No: ' + settings.commercial_register); }
+            const arNameEl = document.getElementById('companyAr');
+            const enNameEl = document.getElementById('companyEn');
+            const arInfoEl = document.getElementById('companyInfoAr');
+            const enInfoEl = document.getElementById('companyInfoEn');
+            if(arNameEl) arNameEl.textContent = arName;
+            if(enNameEl) enNameEl.textContent = enName;
+            if(arInfoEl) arInfoEl.textContent = arInfo.join('\n');
+            if(enInfoEl) enInfoEl.textContent = enInfo.join('\n');
+
+            function fitText(el, maxLines, minPx, maxPx){
+              if(!el) return;
+              try{
+                const cs = window.getComputedStyle(el);
+                let fs = Math.min(maxPx, parseFloat(cs.fontSize) || maxPx);
+                const baseLineH = parseFloat(cs.lineHeight) || (fs * 1.2);
+                const maxH = Math.ceil(baseLineH * maxLines);
+                el.style.maxHeight = maxH + 'px';
+                el.style.lineHeight = '1.15';
+                while(el.scrollHeight > el.clientHeight && fs > minPx){
+                  fs -= 1;
+                  el.style.fontSize = fs + 'px';
+                }
+              }catch(_){ }
+            }
+            fitText(arNameEl, 2, 14, 18);
+            fitText(enNameEl, 2, 14, 18);
+            fitText(arInfoEl, 5, 10, 13);
+            fitText(enInfoEl, 5, 10, 13);
+          }catch(_){ }
+
+          // logo
+          const logoEl = document.getElementById('logo');
+          try{
+            const lg = await api.settings_image_get();
+            if(lg && lg.ok && lg.base64){
+              logoEl.src = `data:${lg.mime||'image/png'};base64,${lg.base64}`;
+            } else if(settings.logo_path){
+              if(settings.logo_path.startsWith('assets/')){
+                logoEl.src='../../../'+settings.logo_path;
+              }else{
+                logoEl.src='file:///'+String(settings.logo_path||'').replace(/\\/g,'/');
+              }
+            } else {
+              logoEl.style.display='none';
+            }
+            const lw = Number(settings.logo_width_px||0), lh = Number(settings.logo_height_px||0);
+            if(lw>0){ logoEl.style.width = lw + 'px'; }
+            if(lh>0){ logoEl.style.height = lh + 'px'; }
+          }catch(_){ logoEl.style.display='none'; }
+
+          // Quotation number and date
+          const viewMode = sessionStorage.getItem('quotation_view_mode');
+          let refNum = '---';
+          let now = new Date();
+
+          // Render notes if available (from sessionStorage)
+          try{
+            const notesStr = sessionStorage.getItem('quotation_notes') || '';
+            const notesBox = document.getElementById('notesBox');
+            const notesText = document.getElementById('notesText');
+            if(notesStr && notesText && notesBox){
+              notesText.textContent = notesStr;
+              notesBox.style.display = 'block';
+            }
+          }catch(_){ }
+          
+          // If in view mode, use stored data
+          if (viewMode) {
+            const storedNum = sessionStorage.getItem('quotation_number');
+            const storedDate = sessionStorage.getItem('quotation_date');
+            if (storedNum) {
+              refNum = storedNum;
+              document.getElementById('invNo').textContent = refNum;
+            }
+            if (storedDate) {
+              now = new Date(storedDate);
+            }
+          } else {
+            document.getElementById('invNo').textContent = refNum;
+          }
+
+          // Fill continuation header with quotation number
+          try{
+            const displayInvNo = document.getElementById('invNo').textContent;
+            const contHeader = document.getElementById('contInvNo');
+            if(contHeader) contHeader.textContent = displayInvNo;
+          }catch(_){}
+
+          // Date and time
+          const enGreg = new Intl.DateTimeFormat('en-GB-u-ca-gregory', { year:'numeric', month:'2-digit', day:'2-digit', hour:'numeric', minute:'2-digit', hour12:true }).format(now);
+          document.getElementById('invDate').textContent = enGreg;
+
+          // Show cashier name
+          try{
+            let cashierName = '';
+            if (viewMode) {
+              cashierName = sessionStorage.getItem('quotation_cashier') || '';
+            } else {
+              const u = JSON.parse(localStorage.getItem('pos_user')||'null');
+              cashierName = (u && (u.full_name || u.username)) ? (u.full_name || u.username) : '';
+            }
+            if (cashierName) {
+              const line = document.getElementById('userLineA4');
+              const span = document.getElementById('cashierNameA4');
+              if(span){ span.textContent = cashierName; }
+              if(line){ line.style.display = 'flex'; }
+            }
+          }catch(_){ }
+
+          // Show customer data if selected
+          try{
+            const customerId = sessionStorage.getItem('quotation_customer_id');
+            if(customerId){
+              const c = await api.customers_get(customerId);
+              if(c && c.ok && c.item){
+                const { name, phone, email, address, vat_number, cr_number, national_address, notes } = c.item;
+                const box = document.getElementById('custBox');
+                const cName = document.getElementById('a4cName');
+                const cPhone = document.getElementById('a4cPhone');
+                const cEmail = document.getElementById('a4cEmail');
+                const cAddress = document.getElementById('a4cAddress');
+                const cVat = document.getElementById('a4cVat');
+                const cCR = document.getElementById('a4cCR');
+                const cNat = document.getElementById('a4cNat');
+                const cNotes = document.getElementById('a4cNotes');
+                if(name){ cName.textContent = 'اسم العميل: ' + name; cName.style.display='block'; cName.style.gridColumn='auto'; cName.style.background=''; cName.style.fontWeight='900'; cName.style.borderBottom=''; } else { cName.style.display='none'; }
+                if(phone){ cPhone.style.display='block'; cPhone.querySelector('span').textContent = phone; }
+                if(email){ cEmail.style.display='block'; cEmail.querySelector('span').textContent = email; }
+                if(address){ cAddress.style.display='block'; cAddress.querySelector('span').textContent = address; }
+                if(vat_number){ cVat.style.display='block'; cVat.querySelector('span').textContent = vat_number; }
+                if(cr_number){ cCR.style.display='block'; cCR.querySelector('span').textContent = cr_number; }
+                if(national_address){ cNat.style.display='block'; cNat.querySelector('span').textContent = national_address; }
+                if(notes){ cNotes.style.display='block'; cNotes.querySelector('span').textContent = notes; }
+                const hasAny = (name||phone||email||address||vat_number||cr_number||national_address||notes);
+                box.style.display = hasAny ? 'block' : 'none';
+                const title = document.getElementById('customerTitle');
+                if(title) title.style.display = hasAny ? 'block' : 'none';
+              }
+            }
+          }catch(_){ }
+
+          // Items table
+          const tbody = document.getElementById('items');
+          try{
+            const itemsTable = document.getElementById('itemsTable');
+            const hasOp = Array.isArray(items) && items.some(it => String(it.operation_name||'').trim() !== '');
+            const vatPercent = Number(settings?.vat_percent || 0);
+            const showBarcode = (settings?.show_barcode_in_a4 === 1);
+            if(itemsTable){
+              itemsTable.classList.remove('has-op','no-op');
+              itemsTable.classList.toggle('hide-barcode', !showBarcode);
+              if(vatPercent > 0){
+                itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
+              }
+              itemsTable.classList.toggle('no-vat', vatPercent === 0);
+              if(vatPercent === 0){
+                const thead = itemsTable.querySelector('thead');
+                if(thead){
+                  const unitPriceLabel = settings.unit_price_label || 'سعر القطعة';
+                  if(hasOp){
+                    thead.innerHTML = `
+                      <tr>
+                        <th>باركود</th>
+                        <th>الصنف</th>
+                        <th>العملية</th>
+                        <th>عدد</th>
+                        <th>${unitPriceLabel}</th>
+                        <th>الإجمالي</th>
+                      </tr>
+                    `;
+                  } else {
+                    thead.innerHTML = `
+                      <tr>
+                        <th>باركود</th>
+                        <th>الصنف</th>
+                        <th>عدد</th>
+                        <th>${unitPriceLabel}</th>
+                        <th>الإجمالي</th>
+                      </tr>
+                    `;
+                  }
+                }
+              }
+            }
+          }catch(_){ }
+
+          let pricesInclVat = true;
+          try{
+            const v = settings ? settings.prices_include_vat : undefined;
+            if (v == null) {
+              pricesInclVat = true;
+            } else if (typeof v === 'boolean') {
+              pricesInclVat = v;
+            } else if (typeof v === 'number') {
+              pricesInclVat = Number(v) === 1;
+            } else if (typeof v === 'string') {
+              const sv = v.toLowerCase().trim();
+              pricesInclVat = (sv === 'true' || sv === '1' || sv === 'yes');
+            } else {
+              pricesInclVat = !!Number(v);
+            }
+          }catch(_){ pricesInclVat = true; }
+          const vatRate = Number(settings?.vat_percent || 0) / 100;
+
+          items.forEach(it => {
+            const tr = document.createElement('tr');
+            tr.className = 'item-row';
+            const opCell = it.operation_name ? it.operation_name : '';
+            const unitPrice = Number(it.price||0);
+            const qtyNum = Number(it.qty||0);
+
+            let lineTotal = Number(it.total||0);
+            if(lineTotal === 0 || isNaN(lineTotal)){
+              lineTotal = unitPrice * qtyNum;
+            }
+            
+            let net = 0, vatAmt = 0, gross = 0;
+            if(vatRate > 0){
+              if(pricesInclVat){
+                gross = lineTotal;
+                net = gross / (1 + vatRate);
+                vatAmt = gross - net;
+              }else{
+                net = lineTotal;
+                vatAmt = net * vatRate;
+                gross = net + vatAmt;
+              }
+            }else{
+              net = lineTotal;
+              vatAmt = 0;
+              gross = lineTotal;
+            }
+
+            const qtyTxt = Number.isInteger(qtyNum) ? String(qtyNum) : qtyNum.toFixed(3);
+            const vatRateTxt = (vatRate>0) ? (vatRate*100).toFixed(0) : '0';
+            const displayNet = net;
+            const empName = it.employee_name ? `<div style='font-size:12px; color:#64748b; margin-top:2px; font-weight:700;'>الموظف: ${it.employee_name}</div>` : '';
+
+            if(vatRate > 0){
+              tr.innerHTML = `
+                <td class="barcode-cell">${it.barcode||''}</td>
+                <td>
+                  <div class="item-name">${it.name||''}</div>
+                  ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
+                  ${(it.description || it.employee_name) ? `<div class="desc-print">${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                </td>
+                <td>${opCell}</td>
+                <td class="num">${qtyTxt}</td>
+                <td class="num">${fmt(unitPrice)}</td>
+                <td class="num">${fmt(displayNet)}</td>
+                <td class="num">${vatRateTxt}</td>
+                <td class="num">${fmt(vatAmt)}</td>
+                <td class="num">${fmt(gross)}</td>
+              `;
+            } else {
+              const hasOpOverall = Array.isArray(items) && items.some(x => String(x.operation_name||'').trim() !== '');
+              if(hasOpOverall){
+                tr.innerHTML = `
+                  <td class="barcode-cell">${it.barcode||''}</td>
+                  <td>
+                    <div class="item-name">${it.name||''}</div>
+                    ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
+                    ${(it.description || it.employee_name) ? `<div class="desc-print">${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                  </td>
+                  <td>${opCell}</td>
+                  <td class="num">${qtyTxt}</td>
+                  <td class="num">${fmt(unitPrice)}</td>
+                  <td class="num">${fmt(gross)}</td>
+                `;
+              } else {
+                tr.innerHTML = `
+                  <td class="barcode-cell">${it.barcode||''}</td>
+                  <td>
+                    <div class="item-name">${it.name||''}</div>
+                    ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
+                    ${(it.description || it.employee_name) ? `<div class="desc-print">${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                  </td>
+                  <td class="num">${qtyTxt}</td>
+                  <td class="num">${fmt(unitPrice)}</td>
+                  <td class="num">${fmt(gross)}</td>
+                `;
+              }
+            }
+            tbody.appendChild(tr);
+          });
+
+          // Autosize numeric cells
+          function __adjustNumCells(){
+            try{
+              const minPx = 10, maxPx = 16;
+              const cells = document.querySelectorAll('#itemsTable tbody td.num');
+              cells.forEach(td => {
+                let size = maxPx;
+                td.style.fontSize = size + 'px';
+                for(let i=0;i<20 && td.scrollWidth > td.clientWidth && size > minPx; i++){
+                  size -= 0.5;
+                  td.style.fontSize = size + 'px';
+                }
+                for(let i=0;i<12 && (td.scrollWidth * 1.08) < td.clientWidth && size < maxPx; i++){
+                  size += 0.5;
+                  td.style.fontSize = size + 'px';
+                  if(td.scrollWidth > td.clientWidth){
+                    size -= 0.5;
+                    td.style.fontSize = size + 'px';
+                    break;
+                  }
+                }
+              });
+            }catch(_){ }
+          }
+          requestAnimationFrame(__adjustNumCells);
+          window.addEventListener('resize', __adjustNumCells);
+          window.addEventListener('beforeprint', __adjustNumCells);
+
+          // Totals
+          const __RSYM = ' <span class="currency-symbol">\uE900<\/span>';
+          document.getElementById('sub').innerHTML = fmt(totals.sub_total) + __RSYM;
+          
+          if(Number(totals.extra_value||0) > 0){
+            document.getElementById('extraRow').style.display='';
+            document.getElementById('extra').innerHTML = fmt(totals.extra_value) + __RSYM;
+          }
+          
+          if(Number(totals.discount_amount||0) > 0){
+            document.getElementById('discRow').style.display='';
+            const label = (totals.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+            document.getElementById('discLabel').textContent = label;
+            document.getElementById('disc').innerHTML = fmt(Math.abs(Number(totals.discount_amount||0))) + __RSYM;
+            document.getElementById('afterDiscRow').style.display='';
+          }
+          document.getElementById('afterDisc').innerHTML = fmt(totals.total_after_discount ?? (Number(totals.sub_total||0) - Number(totals.discount_amount||0))) + __RSYM;
+          
+          try{
+            const feeRow = document.getElementById('tobaccoFeeRow');
+            const feeVal = document.getElementById('tobaccoFee');
+            const tf = Number(totals.tobacco_fee || 0);
+            if(feeRow && feeVal){
+              if(tf > 0){
+                feeRow.style.display='';
+                feeVal.innerHTML = fmt(tf) + __RSYM;
+              }
+              else { feeRow.style.display='none'; feeVal.textContent = ''; }
+            }
+          }catch(_){ }
+          
+          document.getElementById('vat').innerHTML = fmt(Number(totals.vat_total||0)) + __RSYM;
+          try{
+            if(Number(settings?.vat_percent||0) === 0){
+              const vatRow = document.getElementById('vat')?.closest('tr');
+              if(vatRow){ vatRow.style.display = 'none'; }
+            }
+          }catch(_){ }
+          document.getElementById('grand').innerHTML = fmt(Number(totals.grand_total||0)) + __RSYM;
+
+          try{
+            if(Number(settings?.vat_percent||0) === 0){
+              const subLabel = document.getElementById('sub')?.previousElementSibling;
+              if(subLabel){ subLabel.textContent = 'المجموع'; }
+              const afterDiscRowEl = document.getElementById('afterDiscRow');
+              if(afterDiscRowEl){ afterDiscRowEl.style.display = 'none'; }
+              const grandLabel = document.getElementById('grand')?.previousElementSibling;
+              if(grandLabel){ grandLabel.innerHTML = '<b>الإجمالي</b>'; }
+            }
+          }catch(_){ }
+
+          // General notes from settings
+          try{
+            const settingsNote = (settings && settings.invoice_footer_note || '').trim();
+            const generalNotesContainer = document.getElementById('generalNotesContainer');
+            const generalNotesContent = document.getElementById('generalNotesContent');
+            if(settingsNote){
+              generalNotesContent.textContent = settingsNote;
+              generalNotesContainer.style.display = 'block';
+            } else {
+              generalNotesContainer.style.display = 'none';
+            }
+          }catch(_){ }
+
+          // Export PDF button
+          try{
+            const exportBtn = document.getElementById('exportBtn');
+            if(exportBtn){
+              exportBtn.addEventListener('click', async () => {
+                try{
+                  const root = document.documentElement.cloneNode(true);
+                  Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn')).forEach(el=>el.remove());
+                  try{
+                    const img = root.querySelector('#logo');
+                    if(img){
+                      let absLogo = '';
+                      if(settings.logo_path){
+                        if(String(settings.logo_path).startsWith('assets/')){
+                          const rp = await api.resolve_path(settings.logo_path);
+                          if(rp && rp.ok){ absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); }
+                        }else{
+                          absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                        }
+                      }
+                      if(absLogo){ img.src = absLogo; }
+                    }
+                  }catch(_){ }
+                  const html = '<!doctype html>' + root.outerHTML;
+                  const fname = `quotation-${refNum}.pdf`;
+                  const r = await window.opener?.api?.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
+                  if(!r || !r.ok){ alert('تعذر إنشاء PDF لعرض السعر'); }
+                }catch(e){ alert('فشل التصدير إلى PDF'); }
+              });
+            }
+          }catch(_){ }
+
+          // Fit to one page
+          function __fitOnePageIfSlightOverflow(){
+            try{
+              const page = document.querySelector('.page');
+              if(!page) return;
+              page.style.transformOrigin = 'top center';
+              page.style.transform = '';
+              const pxPerMm = 96/25.4;
+              const maxHeightPx = 279 * pxPerMm;
+              const contentHeight = page.scrollHeight;
+              if(contentHeight <= maxHeightPx) return;
+              const scale = maxHeightPx / contentHeight;
+              if(scale >= 0.8 && scale < 1){
+                page.style.transform = 'scale(' + scale.toFixed(3) + ')';
+              } else {
+                page.style.transform = '';
+              }
+            }catch(_){ }
+          }
+          window.addEventListener('resize', () => { try{ __fitOnePageIfSlightOverflow(); }catch(_){ } });
+          window.addEventListener('beforeprint', () => { try{ __adjustNumCells(); __fitOnePageIfSlightOverflow(); }catch(_){ } });
+          requestAnimationFrame(() => { try{ __fitOnePageIfSlightOverflow(); }catch(_){ } });
+
+          const __FAST_NO_VAT__ = Number(settings?.vat_percent||0) === 0;
+          
+          // Auto-save quotation to database (like invoices)
+          // viewMode is already defined above
+          console.log('[Quotation] viewMode:', viewMode, '| Will save:', !viewMode);
+          
+          // Save automatically if not in view mode
+          if (!viewMode) {
+            try {
+              // Generate quotation number
+              const quotNumResult = await api.quotations_generate_number();
+              if (!quotNumResult.ok) {
+                console.error('Failed to generate quotation number');
+                refNum = 'Q-ERROR';
+                document.getElementById('invNo').textContent = refNum;
+              } else {
+                const quotationNo = quotNumResult.quotation_no;
+                refNum = quotationNo;
+                
+                // Get customer data
+                let customerData = {};
+                try {
+                  const custId = sessionStorage.getItem('quotation_customer_id');
+                  if (custId) {
+                    const c = await api.customers_get(custId);
+                    if (c && c.ok && c.item) {
+                      customerData = {
+                        customer_id: c.item.id,
+                        customer_name: c.item.name,
+                        customer_phone: c.item.phone,
+                        customer_email: c.item.email,
+                        customer_address: c.item.address,
+                        customer_vat: c.item.vat_number,
+                        customer_cr: c.item.cr_number,
+                        customer_national_address: c.item.national_address
+                      };
+                    }
+                  }
+                } catch (_) {}
+                
+                // Get cashier data
+                let cashierData = {};
+                try {
+                  const u = JSON.parse(localStorage.getItem('pos_user') || 'null');
+                  if (u) {
+                    cashierData = {
+                      cashier_id: u.id,
+                      cashier_name: u.full_name || u.username
+                    };
+                  }
+                } catch (_) {}
+                
+                // Prepare payload with proper item mapping
+                const itemsPayload = items.map(it => {
+                  const qty = Number(it.qty || 1);
+                  const unitPrice = Number(it.price || 0);
+                  const total = Number(it.total || (unitPrice * qty));
+                  return {
+                    product_id: it.id || it.product_id,
+                    name: it.name,
+                    name_en: it.name_en || null,
+                    barcode: it.barcode || '',
+                    description: it.description || null,
+                    operation_id: it.operation_id || null,
+                    operation_name: it.operation_name || null,
+                    price: unitPrice,
+                    qty,
+                    total,
+                    line_total: total,
+                    unit_name: it.unit_name || null,
+                    unit_multiplier: it.unit_multiplier || 1,
+                    category: it.category || null,
+                    is_tobacco: it.is_tobacco || 0,
+                    employee_id: it.employee_id || null,
+                    employee_name: it.employee_name || null,
+                    image_path: it.image_path || null,
+                    manualPriceEdit: it.manualPriceEdit || false
+                  };
+                });
+                
+                const payload = {
+                  quotation_no: quotationNo,
+                  ...customerData,
+                  ...cashierData,
+                  items: itemsPayload,
+                  subtotal: totals.sub_total || 0,
+                  discount_type: totals.discount_type || 'none',
+                  discount_value: totals.discount_value || 0,
+                  discount_amount: totals.discount_amount || 0,
+                  extra_amount: totals.extra_value || 0,
+                  vat_amount: totals.vat_total || 0,
+                  tobacco_fee: totals.tobacco_fee || 0,
+                  total: totals.grand_total || 0,
+                  // pass notes from session storage if any
+                  notes: sessionStorage.getItem('quotation_notes') || null,
+                  created_at: new Date()
+                };
+                
+                const result = await api.quotations_save(payload);
+                
+                if (result.ok) {
+                  // Update quotation number display
+                  document.getElementById('invNo').textContent = quotationNo;
+                  console.log('✓ Quotation saved successfully: ' + quotationNo);
+                } else {
+                  console.error('Failed to save quotation: ' + (result.error || ''));
+                  refNum = 'Q-FAILED';
+                  document.getElementById('invNo').textContent = refNum;
+                }
+              }
+            } catch (e) {
+              console.error('Error saving quotation: ' + e.message);
+              refNum = 'Q-ERROR';
+              document.getElementById('invNo').textContent = refNum;
+            }
+          }
+          
+          setTimeout(()=>{
+            try{ __fitOnePageIfSlightOverflow(); }catch(_){ }
+            if(!viewMode) window.print();
+          }, __FAST_NO_VAT__ ? 10 : 300);
+        }catch(e){
+          document.body.innerHTML = '<div style="padding:12px">حدث خطأ أثناء التحضير لعرض السعر</div>';
+          console.error(e);
+        }
+      })();
+    </script>
+  </body>
+</html>

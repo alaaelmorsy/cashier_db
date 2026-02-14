@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>السندات - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      * {
+        font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, sans-serif;
+      }
+      .currency-symbol { 
+        font-family: 'saudi_riyal', system-ui; 
+        font-size: 1.15em; 
+        line-height: 0; 
+        vertical-align: -0.05em; 
+        margin: 0 2px; 
+      }
+      .hidden { display: none !important; }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 600px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">📃 السندات - سندات القبض والصرف</div>
+      <nav>
+        <button id="btnBack" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white rounded-lg border border-gray-200 p-6 border-r-4 border-r-green-500">
+          <div class="text-sm text-gray-600 mb-2">🟢 إجمالي سندات القبض</div>
+          <div class="text-3xl font-bold text-gray-800" id="totalReceipts">0.00 <span class="currency-symbol">\uE900</span></div>
+          <div class="text-sm text-gray-500 mt-1" id="countReceipts">0 سند</div>
+        </div>
+        <div class="bg-white rounded-lg border border-gray-200 p-6 border-r-4 border-r-amber-500">
+          <div class="text-sm text-gray-600 mb-2">🟡 إجمالي سندات الصرف</div>
+          <div class="text-3xl font-bold text-gray-800" id="totalPayments">0.00 <span class="currency-symbol">\uE900</span></div>
+          <div class="text-sm text-gray-500 mt-1" id="countPayments">0 سند</div>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mb-6 bg-white p-3 rounded-lg border border-gray-200">
+        <button class="tab px-6 py-3 rounded-lg font-bold text-base bg-blue-600 text-white hover:bg-blue-700 transition-colors" data-tab="receipts">🟢 سندات القبض</button>
+        <button class="tab px-6 py-3 rounded-lg font-bold text-base bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors" data-tab="payments">🟡 سندات الصرف</button>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-2">🔍 بحث</label>
+            <input type="text" id="searchInput" placeholder="رقم السند، اسم، رقم فاتورة..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-2">📅 من تاريخ</label>
+            <input type="date" id="dateFrom" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-2">📅 إلى تاريخ</label>
+            <input type="date" id="dateTo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+          <div class="flex gap-2">
+            <button id="btnFilter" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">تطبيق</button>
+            <button id="btnClearFilter" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600">مسح</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center mb-4">
+        <div class="flex gap-2 items-center">
+          <span class="text-gray-600 font-medium">عدد الصفوف في الصفحة:</span>
+          <select id="pageSize" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">الكل</option>
+          </select>
+        </div>
+        <div id="pagerTop" class="flex gap-2 items-center"></div>
+      </div>
+
+      <div id="receiptsTable" class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم السند</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">التاريخ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العميل</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم الفاتورة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المبلغ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">طريقة الدفع</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المستخدم</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">ملاحظات</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200" style="min-width: 200px;">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="receiptsBody">
+            <tr>
+              <td colspan="9" class="text-center py-12 text-gray-400">
+                <div class="text-5xl mb-3">🟢</div>
+                <div>لا توجد سندات قبض</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="paymentsTable" class="overflow-hidden rounded-lg border border-gray-200 hidden">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم السند</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">التاريخ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المورد</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم الفاتورة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المبلغ</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">طريقة الدفع</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المستخدم</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">ملاحظات</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200" style="min-width: 200px;">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsBody">
+            <tr>
+              <td colspan="9" class="text-center py-12 text-gray-400">
+                <div class="text-5xl mb-3">🟡</div>
+                <div>لا توجد سندات صرف</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <dialog id="confirmDlg">
+      <div class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span>⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl">🗑️</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="../theme.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

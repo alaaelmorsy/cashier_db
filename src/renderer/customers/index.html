@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>العملاء - POS SA</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 700px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 99998;
+      }
+      .dark dialog {
+        background: #0d0d0d !important;
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99997;
+      }
+      .dark dialog::backdrop {
+        background: rgba(0, 0, 0, 0.85);
+      }
+      .dark .bg-blue-50 {
+        background: #1a1a1a !important;
+      }
+      .dark .bg-blue-600 {
+        background: #3b82f6 !important;
+      }
+      .dark .border-blue-200 {
+        border-color: #333333 !important;
+      }
+      .dark .text-blue-900 {
+        color: #ffffff !important;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 2147483647;
+        min-width: 300px;
+        max-width: 500px;
+        text-align: center;
+        display: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        pointer-events: auto;
+      }
+      .toast.show { 
+        display: block;
+        animation: slideInRight 0.3s ease-out;
+      }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">👥 إدارة العملاء</div>
+      <nav>
+        <button onclick="window.location.href='../main/index.html'" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+        <input id="q" placeholder="🔍 البحث بالاسم أو رقم الجوال..." class="flex-1 min-w-[250px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="flex gap-2 flex-wrap">
+          <button id="addBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            ➕ إضافة عميل
+          </button>
+          <button id="refreshBtn" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+            🔄 تحديث
+          </button>
+          <button id="exportExcelBtn" class="px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium">
+            📊 تصدير Excel
+          </button>
+        </div>
+      </div>
+
+      <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium"></div>
+
+      <div class="flex justify-between items-center my-3 flex-wrap gap-3">
+        <div class="flex gap-2 items-center">
+          <span class="text-gray-600 font-medium">عدد الصفوف في الصفحة:</span>
+          <select id="pageSize" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">الكل</option>
+          </select>
+        </div>
+        <div id="pagerTop" class="flex gap-2 items-center"></div>
+      </div>
+
+      <div class="overflow-hidden rounded-lg border border-gray-200">
+        <table class="w-full bg-white">
+          <thead>
+            <tr class="bg-blue-50">
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">اسم العميل</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">رقم الجوال</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">البريد الإلكتروني</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العنوان</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="pagerBottom" class="flex gap-2 items-center justify-center mt-4"></div>
+    </div>
+
+    <dialog id="dlg">
+      <div class="px-5 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-lg">
+        <span id="dlgTitle">➕ إضافة عميل جديد</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">اسم العميل الكامل</label>
+            <input id="f_name" placeholder="أدخل اسم العميل..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">رقم الجوال</label>
+            <input id="f_phone" placeholder="مثال: 0501234567" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">البريد الإلكتروني</label>
+            <input id="f_email" type="email" placeholder="مثال: customer@example.com" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">العنوان</label>
+            <input id="f_address" placeholder="أدخل عنوان العميل..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">الرقم الضريبي (اختياري)</label>
+            <input id="f_vat" placeholder="مثال: 300123456700003" maxlength="15" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">رقم السجل التجاري (اختياري)</label>
+            <input id="f_cr" placeholder="مثال: 1010123456" maxlength="20" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">العنوان الوطني (اختياري)</label>
+          <input id="f_nataddr" placeholder="مثال: 1234-حي-مدينة-رمز بريدي" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 class="text-sm font-bold text-blue-900 mb-3">📍 تفاصيل العنوان الوطني</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">الرمز البريدي</label>
+              <input id="f_postal" placeholder="مثال: 12345" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">رقم المبنى</label>
+              <input id="f_street" placeholder="مثال: 123" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">الرقم الفرعي</label>
+              <input id="f_subnumber" placeholder="مثال: 456" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">ملاحظات إضافية</label>
+          <textarea id="f_notes" placeholder="أي ملاحظات خاصة بالعميل..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-y"></textarea>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="dlgSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">✓ حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div id="confirmHeader" class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير الفواتير غير مدفوعة</title>
+    <style>
+      :root{ --primary:#2563eb; --border:#e6eaf0; --bg:#f4f7fb; --text:#0f172a; --muted:#667085 }
+      *{ box-sizing: border-box }
+      body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; background:var(--bg); margin:0; color:var(--text) }
+      header{ position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; background:#fff; padding:14px 20px; border-bottom:1px solid var(--border) }
+      .container{ max-width:1100px; margin:18px auto; padding:0 16px }
+      .btn{ padding:8px 12px; border:1px solid var(--border); background:#fff; border-radius:10px; cursor:pointer }
+      .card{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+      input[type="datetime-local"]{ padding:8px; border:1px solid var(--border); border-radius:8px }
+      table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden }
+      thead th{ background:#f9fbff; text-align:right; border-bottom:1px solid var(--border); padding:10px; font-weight:600 }
+      tbody td{ padding:10px; border-bottom:1px solid var(--border) }
+      tfoot td{ padding:10px; background:#fafafa; font-weight:600 }
+      .muted{ color:var(--muted) }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print{
+        @page{ margin-left: 8mm; margin-right: 8mm; }
+        body{ padding-left: var(--m-left); padding-right: var(--m-right); }
+        *, *::before, *::after{
+          font-family: 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          font-size: 14px !important;
+        }
+      }
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        body.dark header { background: var(--card); border-bottom-color: var(--border); }
+        body.dark .section { background: var(--card); border-color: var(--border); }
+        body.dark .kpi { background: var(--card); border-color: var(--border); }
+        body.dark .kpi .value { color: var(--brand); }
+        body.dark .kpi .label { color: var(--muted); }
+        body.dark th { background: #1a2744; color: #93c5fd; }
+        body.dark td { color: var(--text); border-bottom-color: var(--border); }
+        body.dark table { border-color: var(--border); }
+        body.dark .summary-item { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
+        body.dark .input:focus { border-color: #3b82f6; }
+        body.dark label { color: var(--text); }
+        body.dark .badge { background: #1a1a1a; border-color: var(--border); color: var(--muted); }
+        body.dark .badge-credit { background: #2d1a0a; border-color: #92400e; color: #fdba74; }
+        body.dark .credit-row td { background: #2d1a0a; }
+        body.dark details > summary { color: var(--muted); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>تقرير الفواتير غير مدفوعة</div>
+      <nav>
+        <button id="btnBack" class="btn">الرجوع</button>
+      </nav>
+    </header>
+    <div class="container">
+      <div class="card" style="margin-bottom:14px">
+        <div class="row" style="gap:12px">
+          <label>من: <input id="fromAt" type="datetime-local" /></label>
+          <label>إلى: <input id="toAt" type="datetime-local" /></label>
+          <button id="applyRangeBtn" class="btn">تطبيق</button>
+          <span id="range" class="muted"></span>
+          <div style="margin-inline-start:auto; display:flex; gap:8px">
+            <button id="exportPdfBtn" class="btn">تصدير PDF</button>
+            <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>العميل</th>
+              <th>تاريخ الإنشاء</th>
+              <th>طريقة الدفع</th>
+              <th>المبلغ</th>
+              <th>عرض</th>
+            </tr>
+          </thead>
+          <tbody id="invTbody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">الإجماليات</td>
+              <td>عدد: <span id="sumCount">0</span></td>
+              <td colspan="2">المجموع: <span id="sumGrand">0.00</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <script>
+      // إخفاء زر العودة إذا كان هناك زر الرجوع
+      window.addEventListener('DOMContentLoaded', function() {
+        const btnBack = document.getElementById('btnBack');
+        if (btnBack) {
+          document.querySelectorAll('a, button').forEach(function(el) {
+            if (el !== btnBack && el.textContent.includes('العودة')) {
+              el.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./print-margins.js"></script>
+    <script src="./unpaid_invoices.js"></script>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>السائقون - نظام الرابط</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      * {
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      }
+      .error:empty { display:none; }
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        width: min(95vw, 600px);
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      #confirmDlg {
+        max-width: 420px;
+        width: min(95vw, 420px);
+      }
+      .toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        text-align: center;
+        display: none;
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
+      <div class="text-xl font-semibold text-gray-800">🚗 إدارة السائقين</div>
+      <nav>
+        <button id="btnBackHome" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+          ⬅ العودة
+        </button>
+      </nav>
+    </header>
+
+    <div class="max-w-7xl mx-auto my-6 px-4">
+      <!-- قسم البحث والقائمة -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
+          <h2 class="text-lg font-bold text-gray-800">📋 قائمة السائقين</h2>
+          <div class="flex gap-2 flex-wrap">
+            <input id="dSearch" placeholder="🔍 بحث بالاسم أو رقم الجوال..." class="px-4 py-2.5 border border-gray-300 rounded-lg min-w-[250px]" />
+            <button id="addDriverBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+              ➕ إضافة سائق
+            </button>
+            <button onclick="window.location.reload()" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">
+              🔄 تحديث
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <div id="error" class="error text-red-700 bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg mb-4 font-medium"></div>
+          
+          <div class="overflow-hidden rounded-lg border border-gray-200">
+            <table class="w-full bg-white">
+              <thead>
+                <tr class="bg-blue-50">
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">👤 الاسم</th>
+                  <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">📱 الجوال</th>
+                  <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200 w-32">📊 الحالة</th>
+                  <th class="px-4 py-3 text-center text-sm font-bold text-blue-900 border-b border-gray-200" style="min-width: 320px;">⚙️ العمليات</th>
+                </tr>
+              </thead>
+              <tbody id="dTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <dialog id="driverDialog">
+      <div class="px-6 py-4 bg-blue-600 text-white text-lg font-bold rounded-t-2xl">
+        🚗 <span id="dlgTitle">إضافة سائق جديد</span>
+      </div>
+      <div class="p-6 space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">👤 اسم السائق <span class="text-red-600">*</span></label>
+          <input id="dlgName" placeholder="أدخل اسم السائق" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">📱 رقم الجوال</label>
+          <input id="dlgPhone" placeholder="مثال: 0501234567" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div class="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <button id="dlgCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">❌ إلغاء</button>
+          <button id="dlgSave" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">💾 حفظ</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirmDlg">
+      <div class="px-5 py-4 bg-red-600 text-white text-lg font-bold rounded-t-lg flex items-center gap-2">
+        <span id="confirmHeaderIcon">⚠️</span>
+        <span id="confirmTitle">تأكيد</span>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex gap-3">
+          <div class="text-3xl" id="confirmIcon">❓</div>
+          <div class="text-gray-800 text-base leading-relaxed" id="confirmText"></div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button id="confirmCancel" class="px-5 py-2.5 bg-gray-500 text-white rounded-lg font-medium">إلغاء</button>
+          <button id="confirmOk" class="px-5 py-2.5 bg-slate-600 text-white rounded-lg font-medium">موافق</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast"></div>
+    <script src="../appointment-notifications.js"></script>
+
+    <script src="../theme.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

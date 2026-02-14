@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>إغلاق الشيفت</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{
+        --primary: #8B6B47;
+        --primary-600: #6B4E31;
+        --accent: #C9A961;
+        --danger: #C17858;
+        --success: #4CAF50;
+        --warning: #FF9800;
+        --text: #3E2723;
+        --muted: #8D6E63;
+        --bg: linear-gradient(135deg, #f5e6d3 0%, #e8d4bf 50%, #d7c0a8 100%);
+        --card: rgba(255,250,245,0.95);
+        --border: rgba(62,39,35,0.08);
+        --shadow: 0 20px 40px rgba(139,107,71,0.15);
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{
+        font-family: 'saudi_riyal', 'Cairo', system-ui, -apple-system, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .container{
+        background: var(--card);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        padding: 40px;
+        width: 100%;
+        max-width: 600px;
+        border: 1px solid var(--border);
+      }
+      .header{
+        text-align: center;
+        margin-bottom: 32px;
+      }
+      .header h1{
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+      .header p{
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .info-box{
+        background: rgba(139,107,71,0.06);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border-right: 4px solid var(--primary);
+      }
+      .info-row{
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .info-row:last-child{border-bottom: none}
+      .info-label{
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .info-value{
+        color: var(--text);
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .stats-grid{
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .stat-card{
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        border: 2px solid var(--border);
+        text-align: center;
+      }
+      .stat-label{
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .stat-value{
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .stat-value.success{color: var(--success)}
+      .stat-value.warning{color: var(--warning)}
+      .stat-value.danger{color: var(--danger)}
+      .cash-section{
+        background: linear-gradient(135deg, rgba(76,175,80,0.1) 0%, rgba(76,175,80,0.05) 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 2px solid rgba(76,175,80,0.2);
+      }
+      .cash-row{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px dashed var(--border);
+      }
+      .cash-row:last-child{border-bottom: none;padding-top: 16px;margin-top: 8px}
+      .cash-label{
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .cash-value{
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--success);
+      }
+      .form-group{
+        margin-bottom: 24px;
+      }
+      label{
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text);
+        font-size: 15px;
+      }
+      .required{
+        color: var(--danger);
+        margin-right: 4px;
+      }
+      input, textarea{
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        font-size: 16px;
+        font-family: inherit;
+        transition: all 0.2s;
+        background: white;
+        color: var(--text);
+      }
+      input:focus, textarea:focus{
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(139,107,71,0.1);
+      }
+      textarea{
+        resize: vertical;
+        min-height: 80px;
+      }
+      .cash-input{
+        font-size: 22px;
+        font-weight: 600;
+        text-align: center;
+        letter-spacing: 0.5px;
+      }
+      .difference-alert{
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 16px;
+        font-weight: 600;
+        text-align: center;
+        display: none;
+      }
+      .difference-alert.positive{
+        background: rgba(76,175,80,0.1);
+        color: var(--success);
+        border: 2px solid var(--success);
+      }
+      .difference-alert.negative{
+        background: rgba(244,67,54,0.1);
+        color: #d32f2f;
+        border: 2px solid #d32f2f;
+      }
+      .difference-alert.zero{
+        background: rgba(76,175,80,0.1);
+        color: var(--success);
+        border: 2px solid var(--success);
+      }
+      .buttons{
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+      }
+      button{
+        flex: 1;
+        padding: 16px 24px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-primary{
+        background: var(--danger);
+        color: white;
+      }
+      .btn-primary:hover:not(:disabled){
+        background: #a85845;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(193,120,88,0.3);
+      }
+      .btn-secondary{
+        background: white;
+        color: var(--text);
+        border: 2px solid var(--border);
+      }
+      .btn-secondary:hover{
+        background: rgba(0,0,0,0.02);
+      }
+      button:disabled{
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .error{
+        background: #ffebee;
+        color: #c62828;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        border-right: 4px solid #c62828;
+        display: none;
+      }
+      .error.show{display: block}
+      .loading{
+        text-align: center;
+        padding: 40px;
+        color: var(--muted);
+      }
+      @keyframes fadeIn{
+        from{opacity: 0; transform: translateY(-10px)}
+        to{opacity: 1; transform: translateY(0)}
+      }
+      .container{
+        animation: fadeIn 0.3s ease;
+      }
+      .currency-symbol::before{
+        content: '\ue900';
+      }
+      .modal-overlay{
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+      }
+      .modal-overlay.show{
+        display: flex;
+      }
+      .modal-container{
+        background: white;
+        border-radius: 20px;
+        padding: 40px 30px;
+        max-width: 520px;
+        width: 90%;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+      }
+      @keyframes slideUp{
+        from{
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to{
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .modal-icon{
+        text-align: center;
+        font-size: 72px;
+        margin-bottom: 16px;
+      }
+      .modal-title{
+        text-align: center;
+        color: #d84315;
+        margin-bottom: 24px;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.5;
+      }
+      .modal-info-table{
+        background: rgba(139,107,71,0.06);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      .modal-info-row{
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-info-row:last-child{
+        border-bottom: none;
+      }
+      .modal-info-label{
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .modal-info-value{
+        color: var(--text);
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .modal-info-value.positive{
+        color: #2e7d32;
+      }
+      .modal-info-value.negative{
+        color: #c62828;
+      }
+      .modal-info-value.zero{
+        color: #1976d2;
+      }
+      .modal-warning{
+        background: linear-gradient(135deg, rgba(216,67,21,0.1) 0%, rgba(216,67,21,0.05) 100%);
+        border: 2px solid rgba(216,67,21,0.25);
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 24px;
+        text-align: center;
+        color: #bf360c;
+        font-weight: 600;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      .modal-buttons{
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+      .modal-buttons button{
+        min-width: 140px;
+        padding: 14px 24px;
+        border-radius: 12px;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: 'saudi_riyal', 'Cairo', sans-serif;
+      }
+      .modal-btn-cancel{
+        background: #f1f5f9;
+        color: #475569;
+      }
+      .modal-btn-cancel:hover{
+        background: #e2e8f0;
+      }
+      .modal-btn-confirm{
+        background: #d84315;
+        color: white;
+      }
+      .modal-btn-confirm:hover{
+        background: #bf360c;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 16px rgba(216,67,21,0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>
+          <span>🔒</span>
+          <span>إغلاق الشيفت</span>
+        </h1>
+        <p>راجع ملخص الشيفت وأدخل النقدية الفعلية</p>
+      </div>
+
+      <div class="error" id="errorMsg"></div>
+
+      <div id="loading" class="loading">
+        <p>جاري تحميل بيانات الشيفت...</p>
+      </div>
+
+      <div id="content" style="display:none">
+        <div style="background: #f5f5f5; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px;">
+          <div><strong>الشفت:</strong> <span id="shiftNo">--</span></div>
+          <div><strong>الكاشير:</strong> <span id="username">--</span></div>
+          <div><strong>الفتح:</strong> <span id="openedAt">--</span></div>
+          <div><strong>المدة:</strong> <span id="duration">--</span></div>
+        </div>
+
+        <div style="background: rgba(76, 175, 80, 0.08); border-radius: 8px; padding: 10px; margin-bottom: 8px; border: 2px solid rgba(76, 175, 80, 0.3);">
+          <div style="text-align: center; margin-bottom: 6px;">
+            <div style="font-size: 12px; color: #2e7d32; font-weight: 700;">💰 إجمالي المبيعات</div>
+            <div style="font-size: 22px; font-weight: 800; color: #4CAF50;" id="grossSales">0 <span class="currency-symbol"></span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #2e7d32; margin-bottom: 2px; font-weight: 600;">عدد الفواتير</div>
+              <div style="font-size: 15px; font-weight: 700; color: #4CAF50;" id="totalInvoices">0</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #2e7d32; margin-bottom: 2px; font-weight: 600;">💵 نقدي</div>
+              <div style="font-size: 15px; font-weight: 700; color: #4CAF50;" id="grossCashSales">0 <span class="currency-symbol"></span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #2e7d32; margin-bottom: 2px; font-weight: 600;">💳 بطاقة</div>
+              <div style="font-size: 15px; font-weight: 700; color: #4CAF50;" id="grossCardSales">0 <span class="currency-symbol"></span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: rgba(244, 67, 54, 0.08); border-radius: 8px; padding: 10px; margin-bottom: 8px; border: 2px solid rgba(244, 67, 54, 0.3);">
+          <div style="text-align: center; margin-bottom: 6px;">
+            <div style="font-size: 12px; color: #c62828; font-weight: 700;">🔄 إجمالي المعالجات</div>
+            <div style="font-size: 22px; font-weight: 800; color: #d32f2f;" id="totalRefundsAmount">0 <span class="currency-symbol"></span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #c62828; margin-bottom: 2px; font-weight: 600;">عدد المعالجات</div>
+              <div style="font-size: 15px; font-weight: 700; color: #d32f2f;" id="totalRefunds">0</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #c62828; margin-bottom: 2px; font-weight: 600;">💵 نقدي</div>
+              <div style="font-size: 15px; font-weight: 700; color: #d32f2f;" id="refundsCash">0 <span class="currency-symbol"></span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: #c62828; margin-bottom: 2px; font-weight: 600;">💳 بطاقة</div>
+              <div style="font-size: 15px; font-weight: 700; color: #d32f2f;" id="refundsCard">0 <span class="currency-symbol"></span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);">
+          <div style="text-align: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; color: rgba(255,255,255,0.9); margin-bottom: 4px; font-weight: 700;">📊 صافي المبيعات</div>
+            <div style="font-size: 24px; font-weight: 800; color: #fff;" id="netSales">0 <span class="currency-symbol"></span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
+            <div style="text-align: center;">
+              <div style="font-size: 11px; color: rgba(255,255,255,0.85); margin-bottom: 3px; font-weight: 600;">💵 نقدي</div>
+              <div style="font-size: 18px; font-weight: 700; color: #fff;" id="netCashSales">0 <span class="currency-symbol"></span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 11px; color: rgba(255,255,255,0.85); margin-bottom: 3px; font-weight: 600;">💳 بطاقة</div>
+              <div style="font-size: 18px; font-weight: 700; color: #fff;" id="netCardSales">0 <span class="currency-symbol"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: #fff3e0; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #ffb74d;">
+          <div style="text-align: center; margin-bottom: 6px; font-size: 11px; color: #f57c00; font-weight: 700;">💰 النقدية</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px;">
+            <div style="text-align: center;">
+              <div style="color: #666; margin-bottom: 2px;">الافتتاحي</div>
+              <div style="font-weight: 700; color: #333;" id="openingCash">0 <span class="currency-symbol"></span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #666; margin-bottom: 2px;">المبيعات النقدية</div>
+              <div style="font-weight: 700; color: #333;" id="cashSalesAmount">0 <span class="currency-symbol"></span></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #666; margin-bottom: 2px;">المتوقع</div>
+              <div style="font-weight: 700; color: #f57c00; font-size: 14px;" id="expectedCash">0 <span class="currency-symbol"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <form id="closeShiftForm">
+          <div class="form-group">
+            <label>
+              <span class="required">*</span>
+              💰 النقدية الفعلية في الدرج (ريال)
+            </label>
+            <input 
+              type="number" 
+              id="actualCash" 
+              class="cash-input"
+              placeholder="0.00" 
+              step="0.01" 
+              min="0" 
+              required
+              autofocus
+            />
+            <div class="difference-alert" id="differenceAlert"></div>
+          </div>
+
+          <div class="form-group">
+            <label>ملاحظات الإغلاق (اختيارية)</label>
+            <textarea 
+              id="closingNotes" 
+              placeholder="أي ملاحظات حول الشيفت أو الفارق في النقدية..."
+            ></textarea>
+          </div>
+
+          <div class="buttons">
+            <button type="button" class="btn-secondary" id="cancelBtn">
+              إلغاء
+            </button>
+            <button type="submit" class="btn-primary" id="submitBtn">
+              🔒 إغلاق الشيفت
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-icon">⚠️</div>
+        <h2 class="modal-title">هل أنت متأكد من إغلاق الشفت الحالي؟</h2>
+        
+        <div class="modal-info-table">
+          <div class="modal-info-row">
+            <span class="modal-info-label">النقدية المتوقعة</span>
+            <span class="modal-info-value" id="modalExpectedCash">0 <span class="currency-symbol"></span></span>
+          </div>
+          <div class="modal-info-row">
+            <span class="modal-info-label">النقدية الفعلية</span>
+            <span class="modal-info-value" id="modalActualCash">0 <span class="currency-symbol"></span></span>
+          </div>
+          <div class="modal-info-row">
+            <span class="modal-info-label">الفارق</span>
+            <span class="modal-info-value" id="modalDifference">0 <span class="currency-symbol"></span></span>
+          </div>
+        </div>
+
+        <div class="modal-warning">
+          ⚠️ بعد الإغلاق، سيتم تسجيل خروجك وستحتاج لفتح شفت جديد لبدء العمل
+        </div>
+
+        <div class="modal-buttons">
+          <button class="modal-btn-cancel" id="modalCancelBtn">إلغاء</button>
+          <button class="modal-btn-confirm" id="modalConfirmBtn">✅ نعم، إغلاق الشفت</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../theme.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>

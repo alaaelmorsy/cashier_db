@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير العملاء</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      :root{ --bg:#f6f8fb; --card:#ffffff; --border:#e6eaf0; --text:#0f172a; --muted:#64748b; --brand:#0b3daa; }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-weight:700; background:var(--bg); margin:0; color:var(--text)}
+      header{position:sticky; top:0; z-index:10; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); padding:12px 16px; border-bottom:1px solid var(--border)}
+      .title{font-weight:700}
+      .toolbar{display:flex; gap:8px}
+      
+      @media screen{
+        .btn{padding:10px 16px; border:none; background:#3b82f6; color:#fff; border-radius:8px; cursor:pointer; font-weight:700; transition:background 0.2s}
+        .btn:hover{background:#2563eb}
+        .btn:active{background:#1d4ed8}
+        #btnBack{background:#ef4444; color:#fff}
+        #btnBack:hover{background:#dc2626}
+        #btnBack:active{background:#b91c1c}
+        #applyRangeBtn{background:#3b82f6; color:#fff}
+        #applyRangeBtn:hover{background:#2563eb}
+        #applyRangeBtn:active{background:#1d4ed8}
+        #exportPdfBtn{background:#8b5cf6; color:#fff}
+        #exportPdfBtn:hover{background:#7c3aed}
+        #exportPdfBtn:active{background:#6d28d9}
+        #exportExcelBtn{background:#10b981; color:#fff}
+        #exportExcelBtn:hover{background:#059669}
+        #exportExcelBtn:active{background:#047857}
+        #printReportBtn{background:#f59e0b; color:#fff}
+        #printReportBtn:hover{background:#d97706}
+        #printReportBtn:active{background:#b45309}
+        button[data-view]{background:#0891b2; color:#fff; padding:6px 10px; font-size:13px}
+        button[data-view]:hover{background:#0e7490}
+        button[data-view]:active{background:#155e75}
+      }
+      
+      .container{max-width:1100px; margin:16px auto; padding:0 12px}
+      .muted{color:var(--muted)}
+      .range-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; flex-wrap:wrap}
+      .range-actions{display:flex; gap:8px}
+      .range-inputs{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+      
+      @media screen{
+        .input{padding:10px 12px; border:2px solid #cbd5e1; background:#fff; border-radius:8px; font-weight:700; transition:border-color 0.2s}
+        .input:focus{outline:none; border-color:#3b82f6}
+        label{font-weight:700; color:var(--text)}
+      }
+      
+      .section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0}
+      .section h3{margin:0 0 8px; font-size:16px}
+      table{width:100%; border-collapse:collapse; table-layout:auto}
+      th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
+      th{background:#eef2ff; color:var(--brand); font-weight:600}
+      tfoot th{background:#fff}
+
+      /* Screen and PDF grid styling similar to All Invoices */
+      .grid-table{ border:2px solid #000; }
+      .grid-table th, .grid-table td{ border:1px solid #000; }
+      .grid-table tfoot th{ border-top:2px solid #000; }
+      /* Make date and phone columns fit content more tightly */
+      .tbl-inv th:nth-child(3), .tbl-inv td:nth-child(3){ width: auto; white-space: nowrap; }
+      .tbl-inv th:nth-child(2), .tbl-inv td:nth-child(2){ width: auto; white-space: nowrap; direction:ltr; text-align:left; }
+      .tbl-inv th:nth-child(1), .tbl-inv td:nth-child(1){ width: 10%; }
+      .tbl-inv th:nth-child(4), .tbl-inv td:nth-child(4){ width: 12%; }
+      .tbl-inv th:nth-child(5), .tbl-inv td:nth-child(5){ width: 10%; }
+      .tbl-inv th:nth-child(6), .tbl-inv td:nth-child(6){ width: 8%; }
+      .tbl-inv th:nth-child(7), .tbl-inv td:nth-child(7){ width: 8%; }
+      
+      #customerSuggest{
+        position:absolute; top:100%; right:0; left:0; background:#fff; 
+        border:2px solid #cbd5e1; border-top:none; border-radius:0 0 8px 8px; 
+        box-shadow:0 6px 16px rgba(0,0,0,0.06); max-height:220px; overflow:auto; 
+        display:none; z-index:20;
+      }
+      #customerSuggest .opt{
+        padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border);
+        font-weight:700; transition:background 0.2s;
+      }
+      #customerSuggest .opt:hover{
+        background:#f1f5f9;
+      }
+
+      @media (max-width: 640px){ .btn{padding:8px 10px} th,td{padding:8px} .range-bar{flex-direction:column; align-items:stretch} .range-actions{justify-content:space-between} }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print{
+        @page{ margin-left: 8mm; margin-right: 8mm; }
+        body{ padding-left: var(--m-left); padding-right: var(--m-right); }
+        *, *::before, *::after{
+          font-family: 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          font-size: 14px !important;
+        }
+      }
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        body.dark header { background: var(--card); border-bottom-color: var(--border); }
+        body.dark .section { background: var(--card); border-color: var(--border); }
+        body.dark .kpi { background: var(--card); border-color: var(--border); }
+        body.dark .kpi .value { color: var(--brand); }
+        body.dark .kpi .label { color: var(--muted); }
+        body.dark th { background: #1a2744; color: #93c5fd; }
+        body.dark td { color: var(--text); border-bottom-color: var(--border); }
+        body.dark table { border-color: var(--border); }
+        body.dark .summary-item { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
+        body.dark .input:focus { border-color: #3b82f6; }
+        body.dark label { color: var(--text); }
+        body.dark .badge { background: #1a1a1a; border-color: var(--border); color: var(--muted); }
+        body.dark .badge-credit { background: #2d1a0a; border-color: #92400e; color: #fdba74; }
+        body.dark .credit-row td { background: #2d1a0a; }
+        body.dark details > summary { color: var(--muted); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">تقرير العملاء</div>
+      <div class="toolbar">
+        <button id="btnBack" class="btn">العودة</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="range-bar">
+        <div class="range-inputs">
+          <label for="customerSearch">العميل:</label>
+          <div style="position:relative; min-width:260px">
+            <input id="customerSearch" class="input" type="text" placeholder="ابحث بالاسم أو رقم الجوال" autocomplete="off" style="width:100%" />
+            <div id="customerSuggest"></div>
+          </div>
+          <label for="fromAt">من:</label>
+          <input id="fromAt" class="input" type="datetime-local" />
+          <label for="toAt">إلى:</label>
+          <input id="toAt" class="input" type="datetime-local" />
+          <button id="applyRangeBtn" class="btn">تطبيق</button>
+        </div>
+        <div class="range-actions">
+          <button id="exportPdfBtn" class="btn">تصدير PDF</button>
+          <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+          <button id="printReportBtn" class="btn">طباعة التقرير</button>
+        </div>
+      </div>
+      <div class="muted" id="range"></div>
+
+      <div class="section">
+        <h3>فواتير العميل ضمن الفترة</h3>
+        <div style="overflow:auto">
+          <table class="grid-table tbl-inv">
+            <thead>
+              <tr>
+                <th>رقم</th>
+                <th>الجوال</th>
+                <th>التاريخ</th>
+                <th>طريقة الدفع</th>
+                <th>قبل الضريبة</th>
+                <th>الضريبة</th>
+                <th>الإجمالي</th>
+                <th>عرض</th>
+              </tr>
+            </thead>
+            <tbody id="invTbody"></tbody>
+            <tfoot>
+              <tr>
+                <th colspan="4">الإجماليات</th>
+                <th id="sumPre">0.00</th>
+                <th id="sumVat">0.00</th>
+                <th id="sumGrand">0.00</th>
+                <th title="عدد الفواتير"><span class="muted">عدد الفواتير:</span> <b id="sumCount">0</b></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>إجماليات طرق الدفع</h3>
+        <div id="payTotals" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:10px;"></div>
+      </div>
+
+    </div>
+    <script>
+      // إخفاء زر العودة إذا كان هناك زر الرجوع
+      window.addEventListener('DOMContentLoaded', function() {
+        const btnBack = document.getElementById('btnBack');
+        if (btnBack) {
+          document.querySelectorAll('a, button').forEach(function(el) {
+            if (el !== btnBack && el.textContent.includes('العودة')) {
+              el.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./print-margins.js"></script>
+    <script src="./customer_invoices.js"></script>
+  </body>
+</html>

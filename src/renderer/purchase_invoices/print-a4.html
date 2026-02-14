@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>فاتورة شراء A4</title>
+    <style>
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+        font-weight: 900;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      body{ font-family: 'Cairo', 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; margin:0; color:#000; font-weight:900; font-size:12px; letter-spacing:.1px; }
+      /* Remove fixed min-height to avoid forcing a second blank page */
+      .page{ width: 190mm; min-height: 297mm; margin: 0 auto; padding: 0; box-sizing:border-box; }
+      .header{ display:flex; flex-direction:column; gap:4px; border-bottom:2px solid #cbd5e1; padding-bottom:6px; }
+      .headerTop{ display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:8px; }
+      .brand-center img{ width:60px; height:60px; border-radius:8px; object-fit:contain; border:1px solid #cbd5e1; background:#fff; }
+      .company-box.ar{ text-align:right; direction:rtl; }
+      .company-box.en{ text-align:left; direction:ltr; }
+      .company-box h1{ margin:0; font-size:18px; font-weight:800; }
+      .muted{ color:#000; font-weight:900; font-size: 13px; }
+      .company-box .muted{ white-space: pre-wrap; font-size: 13px !important; }
+      .meta{ display:grid; gap:0; font-size:11px; font-weight:900; border:3px solid #0f172a; border-radius:8px; overflow:hidden; position:relative; }
+      .meta .cell{ 
+        background:#f8fafc; 
+        border-left:2px solid #0f172a !important;
+        border-right:2px solid #0f172a !important;
+        border-bottom:2px solid #0f172a !important;
+        padding:4px 6px; 
+        font-weight:900 !important;
+        position:relative;
+      }
+      .meta .cell:nth-child(4n+1){ border-left:0 !important; }
+      .meta .cell:nth-child(4n){ border-right:0 !important; }
+      .meta .cell:nth-last-child(-n+4){ border-bottom:0 !important; }
+      table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+      th, td{ padding:4px 6px; border-bottom:1px solid #cbd5e1; font-size:11px; font-weight:900; word-wrap:break-word; overflow-wrap:anywhere; }
+      th{ background:#eef2ff; color:#0b3daa; text-align:right; }
+      
+      #itemsTable{ border: 3px solid #0f172a; border-radius: 8px; overflow: visible; table-layout: fixed; }
+      #itemsTable thead{
+        display: table-header-group;
+      }
+      #itemsTable thead tr{
+        background: #f8fafc;
+        border: 0;
+      }
+      #itemsTable thead th{
+        border-bottom: 2px solid #0f172a !important;
+        border-left: 2px solid #0f172a;
+        color: #000 !important;
+        font-weight: 900 !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        padding: 4px 6px !important;
+        vertical-align: middle !important;
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+        min-height: 30px;
+      }
+      #itemsTable thead th:first-child{ border-right: 2px solid #0f172a; }
+      #itemsTable thead th:last-child{ border-left: 2px solid #0f172a; }
+      #itemsTable tbody td{ 
+        border-left: 2px solid #0f172a;
+        border-bottom: 2px solid #0f172a;
+        vertical-align: middle; 
+        overflow-wrap: anywhere; 
+        word-break: break-word; 
+        white-space: normal;
+        min-height: 25px;
+        height: auto;
+        line-height: 1.3;
+      }
+      #itemsTable tbody td:first-child{ border-right: 2px solid #0f172a; }
+      #itemsTable tbody tr{ height: auto; }
+      
+      tbody td.num{
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        direction: ltr;
+        unicode-bidi: plaintext;
+        font-variant-numeric: tabular-nums;
+        font-weight: 900;
+        font-size: 10.5px;
+        line-height: 1.2;
+        letter-spacing: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      
+      /* ضبط عرض أعمدة جدول الشراء عند وجود ضريبة */
+      #itemsTable thead th:nth-child(1), #itemsTable tbody td:nth-child(1){ width:30%; }
+      #itemsTable thead th:nth-child(2), #itemsTable tbody td:nth-child(2){ width:10%; }
+      #itemsTable thead th:nth-child(3), #itemsTable tbody td:nth-child(3){ width:12%; }
+      #itemsTable thead th:nth-child(4), #itemsTable tbody td:nth-child(4){ width:15%; }
+      #itemsTable thead th:nth-child(5), #itemsTable tbody td:nth-child(5){ width:13%; }
+      #itemsTable thead th:nth-child(6), #itemsTable tbody td:nth-child(6){ width:20%; }
+      
+      .totals{ margin-top:6px; width:320px; margin-left:auto; border:2px solid #334155; border-radius:6px; overflow:hidden; }
+      .totals td{ padding:4px 8px; font-weight:900; font-size:14px; white-space:nowrap; }
+      .totals tbody tr td:first-child{ border-left: 1px solid #cbd5e1; }
+      .totals tbody tr{ border-bottom: 1px dashed #cbd5e1; }
+      .totals tbody tr:last-child{ border-bottom: 0; }
+      /* توحيد الإطار الجانبي للصفوف الاختيارية */
+      .totals tbody tr#discRow td,
+      .totals tbody tr#paidRow td,
+      .totals tbody tr#dueRow td{
+        border-left: 2px solid #334155 !important;
+        border-right: 2px solid #334155 !important;
+      }
+      /* ضمان استمرار الفاصل العمودي الأوسط في صفوف المدفوع/المتبقي */
+      .totals tbody tr#paidRow td,
+      .totals tbody tr#dueRow td{ border-left: 0 !important; }
+      .totals tbody tr#paidRow td:first-child,
+      .totals tbody tr#dueRow td:first-child{ border-left: 1px solid #cbd5e1 !important; }
+      .totals tbody tr#paidRow td:last-child,
+      .totals tbody tr#dueRow td:last-child{ border-left: 2px solid #334155 !important; }
+      .totals tbody tr:has(td#sub) td,
+      .totals tbody tr:has(td#vat) td,
+      .totals tbody tr:has(td#grand) td{ background:#eef2ff; }
+      .totals tbody tr:has(td#sub) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:has(td#vat) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:has(td#grand) td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr#discRow td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr:last-child td{ border-bottom: 2px solid #334155 !important; }
+      
+      /* Simplified Tax Invoice badge */
+      .invKind{ text-align:center; margin-top:4px; }
+      .invKind .ar{ font-size:18px; font-weight:900 !important; color:#000; }
+      .invKind .en{ font-size:12px; font-weight:900 !important; color:#000; direction:ltr; }
+      .footer{ margin-top:6px; display:flex; justify-content:space-between; align-items:center; }
+      #companyInfoAr, #companyInfoEn{ white-space:pre-wrap; font-size: 13px !important; }
+      #notesBox{ white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; color:#000; font-weight:900; }
+      
+      /* رأس الصفحة المستمر - يظهر في الصفحات التالية فقط */
+      #itemsTable .continuation-header-row,
+      #itemsTable .invoice-number-row { 
+        display: none; 
+      }
+      
+      /* مربع رقم الفاتورة للصفحات التالية */
+      .invoice-number-box {
+        text-align: center;
+        padding: 6px 14px;
+        border: 2px solid #0b3daa;
+        border-radius: 6px;
+        background: #eef2ff;
+        font-weight: 900;
+        font-size: 14px;
+        color: #0f172a;
+        margin: 0 auto;
+        width: fit-content;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      @media print {
+        @page { size: A4; margin: 6mm 8mm 5mm 8mm; }
+        
+        html, body { height: auto !important; }
+        body{ padding-left: 0; padding-right: 0; }
+        /* Ensure content height doesn't exceed printable area to avoid blank trailing page */
+        .page{ min-height: auto !important; height: auto !important; width: calc(210mm - 8mm - 8mm) !important; margin: 0 auto; }
+        /* Avoid breaking key blocks across pages */
+        .header, .totals, .footer, #itemsTable thead { break-inside: avoid; page-break-inside: avoid; }
+        #itemsTable tbody tr { break-inside: avoid; page-break-inside: avoid; }
+        
+        .header{ position:relative; z-index:1; background:#fff; }
+        .reprint-btn, .export-pdf-btn { display:none !important; }
+        
+        /* إظهار صف رقم الفاتورة - سيتكرر تلقائياً في كل صفحة لأنه في thead */
+        #itemsTable .invoice-number-row { 
+          display: table-row !important;
+        }
+        #itemsTable .invoice-number-row td {
+          padding-top: 0 !important;
+        }
+        
+        /* محاولة إخفاء المربع من الصفحة الأولى عبر جعل الـ header كبير يغطيه */
+        /* أو استخدام visibility بدلاً من display لإخفائه في الصفحة الأولى */
+        .page:first-of-type #itemsTable .invoice-number-row {
+          height: 0 !important;
+          visibility: hidden !important;
+          line-height: 0 !important;
+        }
+        .page:first-of-type #itemsTable .invoice-number-row td {
+          padding: 0 !important;
+          height: 0 !important;
+        }
+        .page:first-of-type .invoice-number-box {
+          display: none !important;
+        }
+        
+        /* إظهار رأس الاستمرار في الصفحات التالية بشكل واضح وبارز */
+        #itemsTable .continuation-header-row { 
+          display: table-row !important;
+          background: #eef2ff !important;
+        }
+        #itemsTable .continuation-header-row td {
+          text-align: center !important;
+          font-weight: 900 !important;
+          font-size: 14px !important;
+          padding: 12px 10px !important;
+          border: 3px solid #000 !important;
+          background: #eef2ff !important;
+          border-radius: 6px;
+        }
+        #itemsTable .continuation-header-row td strong {
+          font-size: 16px !important;
+          color: #0b3daa !important;
+        }
+        /* إخفاء رأس الاستمرار من الصفحة الأولى */
+        #itemsTable .continuation-header-row.first-page-hide {
+          display: none !important;
+        }
+      }
+      
+      .reprint-btn{ position:fixed; top:12px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;}
+      .export-pdf-btn{ position:fixed; top:56px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;}
+      
+      /* تطبيق خط أسود ثقيل على كل عناصر الفاتورة */
+      body{ color:#000 !important; font-weight:900 !important; }
+      .muted, .invKind, h1, h2, th, td, #companyInfoAr, #companyInfoEn, .company-box h1, .totals td, .meta .cell{
+        color:#000 !important; font-weight:900 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="reprint-btn" id="reprintBtn" onclick="window.print()" style="position:fixed; top:12px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15);">إعادة طباعة</button>
+    <button class="export-pdf-btn" id="exportPdfBtn" style="position:fixed; top:56px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15);">تصدير PDF</button>
+    <div class="page">
+      <div class="header">
+        <div class="headerTop">
+          <div class="company-box ar">
+            <h1 id="companyAr">المتجر</h1>
+            <div class="muted" id="companyInfoAr"></div>
+          </div>
+          <div class="brand-center"><img id="logo" alt="" /></div>
+          <div class="company-box en">
+            <h1 id="companyEn">Store</h1>
+            <div class="muted" id="companyInfoEn"></div>
+          </div>
+        </div>
+        <div class="invKind">
+          <div class="ar">فاتورة شراء</div>
+        </div>
+        <div class="meta" style="grid-template-columns: repeat(4, 1fr); margin-top:6px;">
+          <div class="cell">رقم فاتورة الشراء: <span id="invNo"></span></div>
+          <div class="cell">التاريخ: <span id="invDate"></span></div>
+          <div class="cell">طريقة الدفع: <span id="payment"></span></div>
+          <div class="cell">نسبة الضريبة: <span id="vatPct"></span>%</div>
+          <div class="cell">المورد: <span id="suppName"></span></div>
+          <div class="cell">جوال المورد: <span id="suppPhone"></span></div>
+          <div class="cell">الرقم الضريبي للمورد: <span id="suppVat"></span></div>
+          <div class="cell">رقم فاتورة المورد: <span id="refNo"></span></div>
+        </div>
+      </div>
+
+      <table id="itemsTable" style="margin-top:6px;">
+        <thead>
+          <!-- مربع رقم الفاتورة في أعلى الصفحات التالية -->
+          <tr class="invoice-number-row">
+            <td colspan="6" style="border:none; padding:0 0 10px 0; text-align:center; background:transparent;">
+              <div class="invoice-number-box">
+                فاتورة شراء رقم: <span id="topInvNo"></span>
+              </div>
+            </td>
+          </tr>
+          <!-- رأس استمرار الفاتورة - يظهر في الصفحات التالية فقط -->
+          <tr class="continuation-header-row first-page-hide">
+            <td colspan="6">تابع فاتورة شراء رقم: <span id="contInvNo"></span></td>
+          </tr>
+          <tr>
+            <th>الصنف</th>
+            <th>الكمية</th>
+            <th>سعر الشراء</th>
+            <th>الإجمالي قبل الضريبة</th>
+            <th>الضريبة</th>
+            <th>الإجمالي شامل الضريبة</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <table class="totals">
+        <tbody>
+          <tr><td>الإجمالي قبل الضريبة</td><td id="sub" style="text-align:left"></td></tr>
+          <tr id="discRow" style="display:none"><td>الخصم العام (غير شامل)</td><td id="disc" style="text-align:left"></td></tr>
+          <tr><td>قيمة الضريبة</td><td id="vat" style="text-align:left"></td></tr>
+          <tr><td><b>الإجمالي شامل الضريبة</b></td><td id="grand" style="text-align:left"></td></tr>
+          <tr id="paidRow"><td>مدفوع</td><td id="paid" style="text-align:left"></td></tr>
+          <tr id="dueRow"><td>متبقي</td><td id="due" style="text-align:left"></td></tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <div>
+          <div class="muted" id="notesBox"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (async function(){
+        try{
+          // Get invoice id from URL (?id=) first, fallback to sessionStorage
+          const urlParams = new URLSearchParams(location.search);
+          let pid = urlParams.get('id') || sessionStorage.getItem('purchase_invoice_id');
+          if(!pid){ document.body.innerHTML = '<div style="padding:12px">لا يوجد معرّف فاتورة شراء</div>'; return; }
+          const g = await window.opener?.api?.purchase_invoices_get(Number(pid));
+          if(!g || !g.ok){ document.body.innerHTML = '<div style="padding:12px">تعذر جلب الفاتورة</div>'; return; }
+          const it = g.item; const details = g.items||[];
+
+          // Load supplier
+          let supplier = null;
+          try{ const s = await window.opener?.api?.suppliers_get(it.supplier_id); if(s && s.ok) supplier = s.item; }catch(_){ }
+
+          // Load settings for company info/logo
+          let settings = {};
+          try{ const r = await window.opener?.api?.settings_get?.(); if(r && r.ok) settings = r.item || {}; }catch(_){ }
+
+          // Fill header company fields (names + all entered info)
+          try{
+            const arName = settings.seller_legal_name || 'مؤسسة تعلم التقنيات';
+            const enName = settings.seller_legal_name_en || 'Technology Learning Foundation';
+            const arInfo = [];
+            const enInfo = [];
+            if(settings.company_location){ arInfo.push(settings.company_location); }
+            else{ arInfo.push('الرياض - حي العليا العام'); }
+            if(settings.company_location_en || settings.company_location){ enInfo.push(settings.company_location_en || settings.company_location); }
+            else{ enInfo.push('Riyadh - Al-Ulaya General District'); }
+            if(settings.company_site){ arInfo.push(settings.company_site); enInfo.push(settings.company_site); }
+            if(settings.mobile){ arInfo.push('جوال: ' + settings.mobile); enInfo.push('Mobile: ' + settings.mobile); }
+            else{ arInfo.push('جوال: 01550515065'); enInfo.push('Mobile: 01550515065'); }
+            if(settings.email && (typeof settings.show_email_in_invoice === 'undefined' || settings.show_email_in_invoice)){ arInfo.push('إيميل: ' + settings.email); enInfo.push('Email: ' + settings.email); }
+            else{ arInfo.push('إيميل: 20alaa25@gmail.com'); enInfo.push('Email: 20alaa25@gmail.com'); }
+            if(settings.seller_vat_number){ arInfo.push('الرقم الضريبي: ' + settings.seller_vat_number); enInfo.push('VAT No: ' + settings.seller_vat_number); }
+            else{ arInfo.push('الرقم الضريبي: 534575357357367'); enInfo.push('VAT No: 534575357357367'); }
+            if(settings.commercial_register){ arInfo.push('السجل التجاري: ' + settings.commercial_register); enInfo.push('CR No: ' + settings.commercial_register); }
+            else{ arInfo.push('السجل التجاري: 2120632510'); enInfo.push('CR No: 2120632510'); }
+            if(settings.national_number){ arInfo.push('الرقم الوطني: ' + settings.national_number); enInfo.push('National No: ' + settings.national_number); }
+            else{ arInfo.push('الرقم الوطني: 29512956165165'); enInfo.push('National No: 29512956165165'); }
+            document.getElementById('companyAr').textContent = arName;
+            document.getElementById('companyEn').textContent = enName;
+            document.getElementById('companyInfoAr').textContent = arInfo.join('\n');
+            document.getElementById('companyInfoEn').textContent = enInfo.join('\n');
+
+            // Auto-fit long company texts to preserve header layout
+            function fitText(el, maxLines, minPx, maxPx){
+              if(!el) return;
+              try{
+                const cs = window.getComputedStyle(el);
+                let fs = Math.min(maxPx, parseFloat(cs.fontSize) || maxPx);
+                const baseLineH = parseFloat(cs.lineHeight) || (fs * 1.2);
+                const maxH = Math.ceil(baseLineH * maxLines);
+                el.style.maxHeight = maxH + 'px';
+                // keep readable line-height while shrinking
+                el.style.lineHeight = '1.15';
+                // Shrink until content fits within max height
+                while(el.scrollHeight > el.clientHeight && fs > minPx){
+                  fs -= 1;
+                  el.style.fontSize = fs + 'px';
+                }
+              }catch(_){ /* ignore */ }
+            }
+            // Names: keep within 2 lines (24px..14px)
+            fitText(document.getElementById('companyAr'), 2, 14, 24);
+            fitText(document.getElementById('companyEn'), 2, 14, 24);
+            // Info blocks: keep within ~5 lines (13.5px..10px)
+            fitText(document.getElementById('companyInfoAr'), 5, 10, 13.5);
+            fitText(document.getElementById('companyInfoEn'), 5, 10, 13.5);
+          }catch(_){}
+
+          // Logo (prefer DB image; fallback to legacy path) + size
+          try{
+            const logoEl = document.getElementById('logo');
+            const lg = await window.opener?.api?.settings_image_get?.();
+            if(lg && lg.ok && lg.base64){
+              logoEl.src = `data:${lg.mime||'image/png'};base64,${lg.base64}`;
+            } else if(settings.logo_path){
+              if(String(settings.logo_path).startsWith('assets/')){
+                logoEl.src = '../../../' + settings.logo_path;
+              }else{
+                logoEl.src = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+              }
+            } else {
+              logoEl.style.display='none';
+            }
+            const lw = Number(settings.logo_width_px||0), lh = Number(settings.logo_height_px||0);
+            if(lw>0){ logoEl.style.width = lw + 'px'; }
+            if(lh>0){ logoEl.style.height = lh + 'px'; }
+          }catch(_){}
+
+          // Fill meta
+          const __fmtDate = (s)=>{ const d=new Date(s); if(isNaN(d)) return String(s); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+          // Show sequential purchase invoice number (1, 2, 3, ...) extracted from PI-YYYYMM-#####
+          {
+            const inv = String(it.invoice_no||'');
+            const m = inv.match(/^PI-\d{6}-(\d+)$/);
+            const disp = m ? String(Number(m[1])) : (inv || String(it.id||''));
+            document.getElementById('invNo').textContent = disp;
+            // تعبئة رأس استمرار الصفحة بنفس رقم الفاتورة
+            try{
+              const contHeader = document.getElementById('contInvNo');
+              if(contHeader) contHeader.textContent = disp;
+            }catch(_){}
+            // تعبئة مربع رقم الفاتورة في أعلى الصفحات التالية
+            try{
+              const topInvNo = document.getElementById('topInvNo');
+              if(topInvNo) topInvNo.textContent = disp;
+            }catch(_){}
+          }
+          document.getElementById('invDate').textContent = __fmtDate(it.invoice_at);
+          // عرض طريقة الدفع باللغة العربية
+          try{
+            const payMap = { cash:'كاش', card:'شبكة', network:'شبكة', credit:'آجل' };
+            const key = String(it.payment_method||'').toLowerCase();
+            document.getElementById('payment').textContent = payMap[key] || key;
+          }catch(_){ document.getElementById('payment').textContent = it.payment_method || ''; }
+          const priceMode = String(it.price_mode||'inclusive');
+          const vatPct = priceMode === 'zero_vat' ? 0 : (it.vat_percent != null ? Number(it.vat_percent) : 0);
+          document.getElementById('vatPct').textContent = vatPct.toFixed(2);
+          document.getElementById('refNo').textContent = it.reference_no || '';
+          document.getElementById('suppName').textContent = supplier?.name || it.supplier_id;
+          document.getElementById('suppPhone').textContent = supplier?.phone || '';
+          document.getElementById('suppVat').textContent = supplier?.vat_number || '';
+
+          // Hide VAT-related elements if VAT is zero
+          const hideVat = (vatPct === 0);
+          if(hideVat){
+            // Hide VAT percentage row in meta
+            const metaCells = document.querySelectorAll('.meta .cell');
+            if(metaCells[3]) metaCells[3].style.display = 'none';
+            
+            // Update table header - replace with non-VAT columns (الصف الثاني فقط، نحافظ على رأس الاستمرار)
+            const table = document.getElementById('itemsTable');
+            const thead = table.querySelector('thead');
+            const headerRows = thead.querySelectorAll('tr');
+            // تحديث colspan لرأس الاستمرار ومربع رقم الفاتورة ليناسب 4 أعمدة بدلاً من 6
+            const contRow = thead.querySelector('.continuation-header-row td');
+            if(contRow) contRow.setAttribute('colspan', '4');
+            const invNumRow = thead.querySelector('.invoice-number-row td');
+            if(invNumRow) invNumRow.setAttribute('colspan', '4');
+            // تحديث صف الترويسة (الصف الثالث بعد إضافة صف رقم الفاتورة)
+            if(headerRows[2]){
+              headerRows[2].innerHTML = `
+                <th>الصنف</th>
+                <th>الكمية</th>
+                <th>سعر الشراء</th>
+                <th>الإجمالي</th>
+              `;
+            }
+            
+            // Hide VAT row in totals and update labels
+            const totalsRows = document.querySelectorAll('.totals tbody tr');
+            if(totalsRows[0]) totalsRows[0].querySelector('td:first-child').textContent = 'المجموع';
+            // إخفاء صف الضريبة
+            const vatRow = document.getElementById('vat')?.closest('tr');
+            if(vatRow) vatRow.style.display = 'none';
+            // تحديث عنوان الإجمالي
+            const grandCell = document.getElementById('grand')?.previousElementSibling;
+            if(grandCell) grandCell.innerHTML = '<b>الإجمالي</b>';
+          }
+
+          const tbody = document.getElementById('tbody');
+          const divisor = 1 + (vatPct/100);
+          const productCache = {};
+          const getProductName = async(id)=>{
+            if(productCache[id]) return productCache[id];
+            try{ const pr = await window.opener?.api?.products_get(id); const nm = (pr && pr.ok && pr.item) ? (pr.item.name || pr.item.name_en || ('#'+id)) : ('#'+id); productCache[id]=nm; return nm; }catch(_){ return '#'+id; }
+          };
+          for(const x of details){
+            const tr = document.createElement('tr');
+            const qty = Number(x.qty||0);
+            const uiUnit = (x.ui_unit_cost!=null) ? Number(x.ui_unit_cost) : (Number(x.unit_cost||0) * divisor);
+            const unitExclusive = Number(x.unit_cost||0);
+            const lineDiscExclusive = Number(x.discount_line||0);
+            // Net exclusive for the line: qty * unitExclusive - discount_line (already stored in line_total)
+            const netExclusiveLine = (x.line_total!=null) ? Number(x.line_total) : Number(((unitExclusive*qty) - lineDiscExclusive).toFixed(2));
+            const vatAmt = Number((netExclusiveLine * (vatPct/100)).toFixed(2));
+            const total = Number((netExclusiveLine + vatAmt).toFixed(2));
+            const prodName = await getProductName(x.product_id);
+            const description = x.description ? `<div style="font-size: 0.85em; color: #000; font-weight: 900; margin-top: 2px;">${x.description}</div>` : '';
+            if(hideVat){
+              tr.innerHTML = `
+                <td>${prodName}${description}</td>
+                <td class="num" style="text-align:center;">${qty}</td>
+                <td class="num" style="text-align:center;">${uiUnit.toFixed(2)}</td>
+                <td class="num" style="text-align:left;">${netExclusiveLine.toFixed(2)}</td>
+              `;
+            } else {
+              tr.innerHTML = `
+                <td>${prodName}${description}</td>
+                <td class="num" style="text-align:center;">${qty}</td>
+                <td class="num" style="text-align:center;">${uiUnit.toFixed(2)}</td>
+                <td class="num" style="text-align:center;">${netExclusiveLine.toFixed(2)}</td>
+                <td class="num" style="text-align:center;">${vatAmt.toFixed(2)}</td>
+                <td class="num" style="text-align:left;">${total.toFixed(2)}</td>
+              `;
+            }
+            tbody.appendChild(tr);
+          }
+
+          // Totals
+          // الصافي (غير شامل) = الإجمالي بدون الضريبة = sub_total (already after discount in DB)
+          const subExclusive = Number(it.sub_total||0);
+          const discExclusive = Number(it.discount_general||0);
+          // Note: sub_total in DB is already net after discount, so we use it directly
+          const netExclusive = subExclusive;
+          
+          // For zero_vat mode: recalculate totals with 0% VAT regardless of stored values
+          let vatTotal, grandInclusive, paidVal, dueVal;
+          if(priceMode === 'zero_vat'){
+            vatTotal = 0;
+            grandInclusive = netExclusive;
+            // Recalculate paid and due based on payment method
+            const paymentMethod = String(it.payment_method||'').toLowerCase();
+            const isCredit = (paymentMethod === 'credit' || paymentMethod === 'آجل');
+            paidVal = isCredit ? 0 : grandInclusive;
+            dueVal = Number((grandInclusive - paidVal).toFixed(2));
+          } else {
+            vatTotal = Number(it.vat_total||0);
+            grandInclusive = Number(it.grand_total||0) || (netExclusive + vatTotal);
+            paidVal = Number(it.amount_paid||0);
+            dueVal = (it.amount_due!=null) ? Number(it.amount_due) : Number((grandInclusive - paidVal).toFixed(2));
+          }
+          
+          document.getElementById('sub').textContent = netExclusive.toFixed(2) + ' \ue900';
+          // إظهار صف الخصم فقط إذا كان هناك خصم
+          if(discExclusive > 0){
+            document.getElementById('discRow').style.display='';
+            document.getElementById('disc').textContent = discExclusive.toFixed(2) + ' \ue900';
+          }
+          document.getElementById('vat').textContent = vatTotal.toFixed(2) + ' \ue900';
+          document.getElementById('grand').textContent = grandInclusive.toFixed(2) + ' \ue900';
+          document.getElementById('paid').textContent = paidVal.toFixed(2) + ' \ue900';
+          document.getElementById('due').textContent = dueVal.toFixed(2) + ' \ue900';
+
+          // Autosize numeric cells to fit width (shrink large, enlarge small)
+          function __adjustNumCells(){
+            try{
+              const minPx = 10, maxPx = 16;
+              const cells = document.querySelectorAll('#itemsTable tbody td.num');
+              cells.forEach(td => {
+                // Start large, then shrink if needed
+                let size = maxPx;
+                td.style.fontSize = size + 'px';
+                // Shrink if overflow
+                for(let i=0;i<20 && td.scrollWidth > td.clientWidth && size > minPx; i++){
+                  size -= 0.5;
+                  td.style.fontSize = size + 'px';
+                }
+                // If there's ample space, grow a bit (but don't overflow)
+                for(let i=0;i<12 && (td.scrollWidth * 1.08) < td.clientWidth && size < maxPx; i++){
+                  size += 0.5;
+                  td.style.fontSize = size + 'px';
+                  if(td.scrollWidth > td.clientWidth){
+                    size -= 0.5;
+                    td.style.fontSize = size + 'px';
+                    break;
+                  }
+                }
+              });
+            }catch(_){ /* ignore */ }
+          }
+          requestAnimationFrame(() => { __adjustNumCells(); });
+          window.addEventListener('resize', () => { __adjustNumCells(); });
+          window.addEventListener('beforeprint', () => { __adjustNumCells(); });
+
+          // Notes
+          if(it.notes){ document.getElementById('notesBox').textContent = 'ملاحظات: ' + it.notes; }
+
+          // Robust auto-print: ensure layout/fonts/window focus before printing
+          let __printed = false;
+          const __triggerPrint = ()=>{
+            if(__printed) return;
+            __printed = true;
+            try{ window.focus(); window.print(); }catch(_){}
+          };
+          // After layout
+          requestAnimationFrame(()=> requestAnimationFrame(__triggerPrint));
+          // After a short delay as fallback
+          setTimeout(__triggerPrint, 800);
+          // When fonts are ready (if supported)
+          try{ document.fonts && document.fonts.ready && document.fonts.ready.then(()=> setTimeout(__triggerPrint, 0)); }catch(_){}
+          // On full load (extra fallback)
+          window.addEventListener('load', __triggerPrint);
+        }catch(e){ document.body.innerHTML = '<div style="padding:12px">حدث خطأ أثناء تجهيز العرض</div>'; }
+      })();
+
+      // Export PDF functionality
+      document.getElementById('exportPdfBtn').addEventListener('click', async function() {
+        try {
+          const btn = this;
+          btn.disabled = true;
+          btn.textContent = 'جاري التصدير...';
+          
+          // Get invoice number for filename
+          const invNo = document.getElementById('invNo')?.textContent || 'invoice';
+          const filename = `purchase-invoice-${invNo}.pdf`;
+          
+          // Clone the entire document
+          const clone = document.documentElement.cloneNode(true);
+          
+          // Remove all scripts to prevent re-execution
+          clone.querySelectorAll('script').forEach(el => el.remove());
+          
+          // Remove interactive buttons
+          clone.querySelectorAll('.reprint-btn, .export-pdf-btn').forEach(el => el.remove());
+          
+          // Add style to hide buttons in print
+          const style = clone.ownerDocument.createElement('style');
+          style.textContent = `
+            .reprint-btn, .export-pdf-btn { display: none !important; }
+            @media print {
+              .reprint-btn, .export-pdf-btn { display: none !important; }
+            }
+          `;
+          clone.querySelector('head')?.appendChild(style);
+          
+          const html = '<!doctype html>' + clone.outerHTML;
+          
+          // Use window.api if available, otherwise try window.opener.api
+          const api = window.api || window.opener?.api;
+          if (!api) {
+            throw new Error('API not available');
+          }
+          
+          await api.pdf_export(html, { 
+            saveMode: 'auto', 
+            filename: filename, 
+            pageSize: 'A4' 
+          });
+          
+          btn.disabled = false;
+          btn.textContent = 'تصدير PDF';
+        } catch(e) {
+          console.error(e);
+          alert('تعذر تصدير PDF: ' + e.message);
+          this.disabled = false;
+          this.textContent = 'تصدير PDF';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير المنتجات المنتهية الصلاحية</title>
+    <link rel="stylesheet" href="../tailwind-output.css">
+    <style>
+      :root{ --bg:#f6f8fb; --card:#ffffff; --border:#e6eaf0; --text:#0f172a; --muted:#64748b; --brand:#0b3daa; }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; font-weight:700; background:var(--bg); margin:0; color:var(--text)}
+      header{position:sticky; top:0; z-index:10; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--card); padding:12px 16px; border-bottom:1px solid var(--border)}
+      .title{font-weight:700}
+      .toolbar{display:flex; gap:8px}
+      
+      @media screen{
+        .btn{padding:10px 16px; border:none; background:#3b82f6; color:#fff; border-radius:8px; cursor:pointer; font-weight:700; transition:background 0.2s}
+        .btn:hover{background:#2563eb}
+        .btn:active{background:#1d4ed8}
+        #btnBack{background:#ef4444; color:#fff}
+        #btnBack:hover{background:#dc2626}
+        #btnBack:active{background:#b91c1c}
+        #applyRangeBtn{background:#3b82f6; color:#fff}
+        #applyRangeBtn:hover{background:#2563eb}
+        #applyRangeBtn:active{background:#1d4ed8}
+        #exportPdfBtn{background:#8b5cf6; color:#fff}
+        #exportPdfBtn:hover{background:#7c3aed}
+        #exportPdfBtn:active{background:#6d28d9}
+        #exportExcelBtn{background:#10b981; color:#fff}
+        #exportExcelBtn:hover{background:#059669}
+        #exportExcelBtn:active{background:#047857}
+      }
+      .container{max-width:1100px; margin:16px auto; padding:0 12px}
+      .muted{color:var(--muted)}
+      .range-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; flex-wrap: wrap}
+      .range-actions{display:flex; gap:8px}
+      .range-inputs{display:flex; gap:12px; align-items:center; flex-wrap: wrap}
+      
+      @media screen{
+        .input{padding:10px 12px; border:2px solid #cbd5e1; background:#fff; border-radius:8px; font-weight:700; transition:border-color 0.2s}
+        .input:focus{outline:none; border-color:#3b82f6}
+        label{font-weight:700; color:var(--text); white-space: nowrap;}
+        select.input{
+          cursor:pointer; 
+          min-width: 180px; 
+          padding: 12px 16px; 
+          font-size: 15px;
+          appearance: menulist;
+          -webkit-appearance: menulist;
+          -moz-appearance: menulist;
+          background-image: none;
+        }
+        select.input option{
+          padding: 10px;
+          font-size: 15px;
+          font-weight: 700;
+        }
+      }
+      .section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0}
+      .section h3{margin:0 0 8px; font-size:16px}
+      table{width:100%; border-collapse:collapse}
+      th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
+      th{background:#eef2ff; color:var(--brand); font-weight:600}
+      tfoot th{background:#fff}
+      @media (max-width: 640px){ .btn{padding:8px 10px} th,td{padding:8px} .range-bar{flex-direction:column; align-items:stretch} .range-actions{justify-content:space-between} }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'Cairo';
+        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face{
+        font-family: 'saudi_riyal';
+        src: url('../../../assets/fonts/saudi-riyal.woff') format('woff'),
+             url('../../../assets/fonts/saudi-riyal.ttf') format('truetype');
+        font-display: swap;
+        unicode-range: U+E900;
+      }
+      :root{ --m-left: 0mm; --m-right: 0mm; }
+      @media print{
+        @page{ margin-left: 8mm; margin-right: 8mm; }
+        body{ padding-left: var(--m-left); padding-right: var(--m-right); }
+        *, *::before, *::after{
+          font-family: 'saudi_riyal', system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          font-size: 14px !important;
+        }
+      }
+      .expired-row{background:#fee2e2}
+      .valid-row{background:#dcfce7}
+      
+      /* Dark Mode Support */
+      @media screen {
+        body.dark {
+          --bg: #0d0d0d;
+          --card: #1a1a1a;
+          --border: #333333;
+          --text: #ffffff;
+          --muted: #9ca3af;
+          --brand: #3b82f6;
+          background: var(--bg);
+          color: var(--text);
+        }
+        body.dark header { background: var(--card); border-bottom-color: var(--border); }
+        body.dark .section { background: var(--card); border-color: var(--border); }
+        body.dark .kpi { background: var(--card); border-color: var(--border); }
+        body.dark .kpi .value { color: var(--brand); }
+        body.dark .kpi .label { color: var(--muted); }
+        body.dark th { background: #1a2744; color: #93c5fd; }
+        body.dark td { color: var(--text); border-bottom-color: var(--border); }
+        body.dark table { border-color: var(--border); }
+        body.dark .summary-item { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
+        body.dark .input:focus { border-color: #3b82f6; }
+        body.dark label { color: var(--text); }
+        body.dark .expired-row { background: #2d1a1a !important; }
+        body.dark .valid-row { background: #1a2d1a !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title" id="reportTitle">تقرير المنتجات المنتهية الصلاحية</div>
+      <div class="toolbar">
+        <button id="btnBack" class="btn">الرجوع</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="range-bar">
+        <div class="range-inputs">
+          <label for="statusSelect">الحالة:</label>
+          <select id="statusSelect" class="input">
+            <option value="all">الكل</option>
+            <option value="expired">منتهية الصلاحية</option>
+            <option value="valid">سارية الصلاحية</option>
+          </select>
+          <label for="fromAt">من:</label>
+          <input id="fromAt" class="input" type="date" />
+          <label for="toAt">إلى:</label>
+          <input id="toAt" class="input" type="date" />
+          <button id="applyRangeBtn" class="btn">تطبيق</button>
+        </div>
+        <div class="range-actions">
+          <button id="exportPdfBtn" class="btn">تصدير PDF</button>
+          <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+        </div>
+      </div>
+      <div class="muted" id="range"></div>
+
+      <div class="section">
+        <h3>المنتجات ضمن الفترة</h3>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>اسم المنتج</th>
+                <th>الباركود</th>
+                <th>سعر الشراء</th>
+                <th>السعر</th>
+                <th>المخزون</th>
+                <th>تاريخ الصلاحية</th>
+                <th style="cursor:pointer" id="daysSortHeader">عدد الأيام ⇅</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="productsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        const btnBack = document.getElementById('btnBack');
+        if (btnBack) {
+          document.querySelectorAll('a, button').forEach(function(el) {
+            if (el !== btnBack && el.textContent.includes('العودة')) {
+              el.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
+    <script src="./print-margins.js"></script>
+    <script src="./expiry_report.js"></script>
+  </body>
+</html>
