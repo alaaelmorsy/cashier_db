@@ -1,0 +1,78 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CSS
+        run: npm run build:css
+
+      - name: Build Windows installers
+        run: npm run dist:win:all
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          release_name: الرابط كاشير v${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload NSIS installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/cashier${{ steps.version.outputs.VERSION }}.exe
+          asset_name: cashier-setup-${{ steps.version.outputs.VERSION }}.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload MSI installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/cashier${{ steps.version.outputs.VERSION }}.msi
+          asset_name: cashier-setup-${{ steps.version.outputs.VERSION }}.msi
+          asset_content_type: application/octet-stream
+
+      - name: Upload latest.yml
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/latest.yml
+          asset_name: latest.yml
+          asset_content_type: text/yaml
