@@ -29,26 +29,7 @@ jobs:
       - name: Build CSS
         run: npm run build:css
 
-      - name: Build Windows installers
+      - name: Build and Publish
         run: npm run dist:win:all
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get version
-        id: version
-        shell: bash
-        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: الرابط كاشير v${{ steps.version.outputs.VERSION }}
-          draft: false
-          prerelease: false
-          files: |
-            dist/cashier${{ steps.version.outputs.VERSION }}.exe
-            dist/cashier${{ steps.version.outputs.VERSION }}.msi
-            dist/latest.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
