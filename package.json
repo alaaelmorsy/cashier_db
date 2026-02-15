@@ -58,11 +58,7 @@
       "uninstallerIcon": "assets/icon/app.ico",
       "installerHeaderIcon": "assets/icon/app.ico"
     },
-    "publish": {
-      "provider": "github",
-      "owner": "alaaelmorsy",
-      "repo": "cashier_db"
-    }
+    "publish": null
   },
   "keywords": [
     "pos",

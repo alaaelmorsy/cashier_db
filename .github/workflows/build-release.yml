@@ -29,7 +29,53 @@ jobs:
       - name: Build CSS
         run: npm run build:css
 
-      - name: Build and Publish
+      - name: Build installers
         run: npm run dist:win:all
+
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          $version = node -p "require('./package.json').version"
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "الإصدار ${{ steps.package-version.outputs.VERSION }}"
+          body: |
+            ## 📦 الإصدار ${{ steps.package-version.outputs.VERSION }}
+            
+            ### التحسينات:
+            - إصلاح مشكلة طباعة الفواتير بإجمالي صفر
+            - تحسين التركيز التلقائي على حقل الباركود
+            
+            ### الملفات:
+            - **NSIS Installer**: للتثبيت التقليدي
+            - **MSI Installer**: للتثبيت على الشركات
+          draft: false
+          prerelease: false
+
+      - name: Upload NSIS Installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/cashier${{ steps.package-version.outputs.VERSION }}.exe
+          asset_name: cashier-${{ steps.package-version.outputs.VERSION }}-setup.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload MSI Installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/cashier${{ steps.package-version.outputs.VERSION }}.msi
+          asset_name: cashier-${{ steps.package-version.outputs.VERSION }}-setup.msi
+          asset_content_type: application/octet-stream
