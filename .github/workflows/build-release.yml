@@ -30,6 +30,8 @@ jobs:
         run: npm run build:css
 
       - name: Build installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist:win:all
 
       - name: Get version from package.json

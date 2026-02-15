@@ -10,9 +10,9 @@
     "test:watch": "jest --watch",
     "build:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --minify",
     "watch:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --watch",
-    "dist:win": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis",
-    "dist:msi": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win msi",
-    "dist:win:all": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis msi",
+    "dist:win": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis --publish never",
+    "dist:msi": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win msi --publish never",
+    "dist:win:all": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis msi --publish never",
     "dist:portable": "electron-builder --win portable"
   },
   "build": {
