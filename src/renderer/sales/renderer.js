@@ -827,6 +827,7 @@ if(btnQuotation){
     if(customerList){ customerList.innerHTML=''; customerList.style.display='none'; }
     // إرجاع الأسعار للأسعار العادية
     revertPricesToBase().then(() => loadCatalog());
+    setTimeout(() => { const barcodeInput = document.getElementById('scanBarcode'); if(barcodeInput) barcodeInput.focus(); }, 300);
     
     // إعادة تعيين الحقول للفاتورة التالية
     if(discountTypeEl){ discountTypeEl.value = 'none'; }
@@ -1054,6 +1055,7 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
           __selectedDriverId = '';
           try{ customerSearch.value=''; customerList.style.display='none'; if(driverSelect){ driverSelect.value=''; } }catch(_){ }
           if(__currentRoomId){ await __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } }
+          setTimeout(() => { const barcodeInput = document.getElementById('scanBarcode'); if(barcodeInput) barcodeInput.focus(); }, 300);
         }catch(_){ }
       }catch(e){ console.error(e); showErrorNotification('❌ تعذر معالجة كامل الفاتورة'); }
     });
@@ -3832,6 +3834,7 @@ btnClear.addEventListener('click', async () => {
         paymentMethod.value = methods[0];
       }
     }catch(_){ /* ignore */ }
+    setTimeout(() => { const barcodeInput = document.getElementById('scanBarcode'); if(barcodeInput) barcodeInput.focus(); }, 300);
   };
   const onNo = () => { doClose(); };
 
@@ -5508,3 +5511,13 @@ if(btnQuickAddProduct){
   // Periodic check every 30 seconds
   setInterval(checkAndNotify, 30000);
 })();
+
+// Auto-focus on barcode input when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const barcodeInput = document.getElementById('scanBarcode');
+    if (barcodeInput) {
+      barcodeInput.focus();
+    }
+  }, 300);
+});
