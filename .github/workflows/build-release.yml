@@ -60,7 +60,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/cashier${{ steps.package-version.outputs.VERSION }}.exe
-          asset_name: cashier-${{ steps.package-version.outputs.VERSION }}-setup.exe
+          asset_name: cashier${{ steps.package-version.outputs.VERSION }}.exe
           asset_content_type: application/octet-stream
 
       - name: Upload MSI Installer
@@ -70,7 +70,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/cashier${{ steps.package-version.outputs.VERSION }}.msi
-          asset_name: cashier-${{ steps.package-version.outputs.VERSION }}-setup.msi
+          asset_name: cashier${{ steps.package-version.outputs.VERSION }}.msi
           asset_content_type: application/octet-stream
 
       - name: Upload latest.yml
