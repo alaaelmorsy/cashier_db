@@ -183,12 +183,27 @@ function registerProductsIPC(){
   }
 
   ipcMain.handle('products:add', async (_evt, payload) => {
-    const { name, name_en, barcode, price, cost, stock, category, description } = payload || {};
+    const { name, name_en, price, cost, stock, category, description } = payload || {};
+    let { barcode } = payload || {};
     if(!name) return { ok:false, error:'اسم المنتج مطلوب' };
     try{
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTable(conn);
+        
+        // إذا لم يتم إدخال باركود، قم بإنشاء باركود تلقائي يبدأ من 10000
+        if(!barcode || barcode.trim() === ''){
+          let autoBarcode = 10000;
+          while(true){
+            const [existing] = await conn.query('SELECT id FROM products WHERE barcode = ? LIMIT 1', [String(autoBarcode)]);
+            if(!existing || existing.length === 0){
+              barcode = String(autoBarcode);
+              break;
+            }
+            autoBarcode++;
+          }
+        }
+        
         // ضع العنصر الجديد في آخر الترتيب
         const [maxRow] = await conn.query('SELECT MAX(sort_order) AS m FROM products');
         const nextOrder = (Array.isArray(maxRow) && maxRow.length && maxRow[0].m != null) ? (Number(maxRow[0].m)||0)+1 : 0;

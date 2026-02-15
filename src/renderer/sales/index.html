@@ -186,6 +186,50 @@
       }
       
       header{ position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:4px 12px; background:#fff; border-bottom:1px solid var(--border); }
+      
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+      
+      .user-info-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+        cursor: default;
+      }
+      
+      .user-info-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+      
+      .user-info-badge .user-icon {
+        width: 24px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+      }
+      
+      .user-info-badge .user-name {
+        color: #fff;
+        font-weight: 700;
+        font-size: 12px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        white-space: nowrap;
+      }
       .wrap{ max-width:none; width:100vw; margin: 0; padding: 0 8px; }
 
       .layout{ display:flex; gap:0; width:100%; height: calc(100vh - 60px); }
@@ -1902,9 +1946,13 @@ table tr td, table tr th { vertical-align: middle; }
   </head>
   <body>
     <header>
-      <div style="display:flex; gap:6px; align-items:center; font-weight:700; font-size:13px;">
+      <div style="display:flex; gap:12px; align-items:center; font-weight:700; font-size:13px;">
         <div style="width:26px; height:26px; border-radius:6px; display:grid; place-items:center; background:#2563eb; color:#fff; font-size:10px;">POS</div>
         <span>فاتورة جديدة</span>
+        <div id="currentUserBadge" class="user-info-badge" style="display:none;">
+          <div class="user-icon">👤</div>
+          <span class="user-name" id="currentUserName">...</span>
+        </div>
       </div>
       <nav class="header-actions">
         <button id="btnCloseShift" class="btn" style="background:#f59e0b; color:#fff; margin-left:8px">🔒 إغلاق الشيفت</button>
@@ -3882,6 +3930,24 @@ table tr td, table tr th { vertical-align: middle; }
     <script src="../appointment-notifications.js"></script>
 
     <script src="../theme.js"></script>
+    <script>
+      (function() {
+        try {
+          const userStr = localStorage.getItem('pos_user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            const badge = document.getElementById('currentUserBadge');
+            const nameEl = document.getElementById('currentUserName');
+            if (badge && nameEl && user.username) {
+              nameEl.textContent = user.username;
+              badge.style.display = 'flex';
+            }
+          }
+        } catch (e) {
+          console.error('Error loading current user:', e);
+        }
+      })();
+    </script>
     <script src="./renderer.js"></script>
   </body>
 </html>

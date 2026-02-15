@@ -220,6 +220,7 @@
       }
       .reprint-btn{ position:fixed; top:12px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;}
       .export-btn{ position:fixed; top:52px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#16a34a; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;} 
+      .whats-btn{ position:fixed; top:92px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#25D366; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;} 
       .continuation-banner{ display:none; }
       @media print{
         .continuation-banner{ display:block; font-weight:900; font-size:10px; text-align:center; padding:4px 6px; margin-bottom:4px; }
@@ -229,12 +230,78 @@
       .muted, .section-title, .section-badge, h1, h2, th, td, #companyInfoAr, #companyInfoEn, .desc-print, #invType, .brand h1, .company-box h1, .totals td{
         color:#000 !important; font-weight:900 !important;
       }
-      @media print { .reprint-btn, .export-btn{ display:none } }
+      @media print { .reprint-btn, .export-btn, .whats-btn{ display:none } }
+      
+      /* WhatsApp Notification Toast */
+      #whatsappToast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 350px;
+        max-width: 500px;
+        z-index: 10000;
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        border: 2px solid #e5e7eb;
+      }
+      #whatsappToast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+      #whatsappToast.success {
+        border-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      }
+      #whatsappToast.error {
+        border-color: #ef4444;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      }
+      #whatsappToast.info {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      }
+      #whatsappToast .toast-icon {
+        font-size: 24px;
+        line-height: 1;
+      }
+      #whatsappToast .toast-content {
+        flex: 1;
+      }
+      #whatsappToast .toast-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+      #whatsappToast .toast-message {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+      @media print { #whatsappToast { display: none !important; } }
     </style>
   </head>
   <body>
+    <!-- WhatsApp Toast Notification -->
+    <div id="whatsappToast">
+      <span class="toast-icon"></span>
+      <div class="toast-content">
+        <div class="toast-title"></div>
+        <div class="toast-message"></div>
+      </div>
+    </div>
+
     <button class="reprint-btn" id="reprintBtn" onclick="window.print()">طباعة</button>
     <button class="export-btn" id="exportBtn">تصدير PDF</button>
+    <button class="whats-btn" id="whatsBtn">إرسال واتساب</button>
     <div class="page">
       <div class="header">
         <div class="headerTop">
@@ -327,6 +394,45 @@
     </div>
 
     <script>
+      // WhatsApp Toast Notification System
+      let toastTimeout = null;
+      function showWhatsAppToast(title, message, type = 'info') {
+        const toast = document.getElementById('whatsappToast');
+        const icon = toast.querySelector('.toast-icon');
+        const titleEl = toast.querySelector('.toast-title');
+        const messageEl = toast.querySelector('.toast-message');
+        
+        // Clear previous timeout
+        if (toastTimeout) {
+          clearTimeout(toastTimeout);
+        }
+        
+        // Set icon based on type
+        const icons = {
+          success: '✅',
+          error: '❌',
+          info: 'ℹ️',
+          warning: '⚠️'
+        };
+        
+        icon.textContent = icons[type] || icons.info;
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        // Remove all type classes
+        toast.classList.remove('success', 'error', 'info', 'warning');
+        // Add current type
+        toast.classList.add(type);
+        
+        // Show toast
+        toast.classList.add('show');
+        
+        // Hide after 4 seconds
+        toastTimeout = setTimeout(() => {
+          toast.classList.remove('show');
+        }, 4000);
+      }
+
       (async function(){
         try{
           const api = (window.opener && window.opener.api) ? window.opener.api : (window.api || {});
@@ -515,6 +621,8 @@
                 box.style.display = hasAny ? 'block' : 'none';
                 const title = document.getElementById('customerTitle');
                 if(title) title.style.display = hasAny ? 'block' : 'none';
+                // Cache customer phone globally for WhatsApp auto-send
+                try{ window.__CUST_PHONE__ = (phone || '').trim(); }catch(_){ }
               }
             }
           }catch(_){ }
@@ -764,7 +872,7 @@
                 try{
                   const root = document.documentElement.cloneNode(true);
                   Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
-                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn')).forEach(el=>el.remove());
+                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
                   try{
                     const img = root.querySelector('#logo');
                     if(img){
@@ -783,8 +891,135 @@
                   const html = '<!doctype html>' + root.outerHTML;
                   const fname = `quotation-${refNum}.pdf`;
                   const r = await window.opener?.api?.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
-                  if(!r || !r.ok){ alert('تعذر إنشاء PDF لعرض السعر'); }
-                }catch(e){ alert('فشل التصدير إلى PDF'); }
+                  if(!r || !r.ok){ 
+                    showWhatsAppToast('فشل التصدير', 'تعذر إنشاء PDF لعرض السعر', 'error'); 
+                  } else {
+                    showWhatsAppToast('تم التصدير', 'تم حفظ عرض السعر بصيغة PDF بنجاح', 'success');
+                  }
+                }catch(e){ 
+                  showWhatsAppToast('خطأ في التصدير', e.message || String(e), 'error'); 
+                }
+              });
+            }
+          }catch(_){ }
+
+          // WhatsApp send button
+          try{
+            const whatsBtn = document.getElementById('whatsBtn');
+            if(whatsBtn){
+              whatsBtn.addEventListener('click', () => {
+                (async () => {
+                  try{
+                    if(window.__WA_SENDING__){
+                      showWhatsAppToast('جاري الإرسال', 'يرجى الانتظار...', 'info');
+                      return;
+                    }
+
+                    if(!navigator.onLine){
+                      showWhatsAppToast('لا يوجد اتصال بالإنترنت', 'تحقق من اتصال الجهاز بالإنترنت وحاول مرة أخرى', 'error');
+                      return;
+                    }
+
+                    const statusCheck = await api.whatsapp_status();
+                    if(!statusCheck || !statusCheck.success || !statusCheck.connected){
+                      showWhatsAppToast('WhatsApp غير متصل', 'يرجى الذهاب إلى إدارة WhatsApp وربط الحساب أولاً', 'error');
+                      return;
+                    }
+
+                    // Get customer phone
+                    const customerId = sessionStorage.getItem('quotation_customer_id');
+                    let rawPhone = '';
+                    if(customerId){
+                      const c = await api.customers_get(customerId);
+                      if(c && c.ok && c.item && c.item.phone){
+                        rawPhone = String(c.item.phone || '').trim();
+                      }
+                    }
+                    
+                    if(/^05\d{8}$/.test(rawPhone)){ 
+                      rawPhone = '966' + rawPhone.slice(1); 
+                    }
+                    rawPhone = rawPhone.replace(/[^\d+]/g,'');
+                    if(!rawPhone){ 
+                      showWhatsAppToast('لا يوجد رقم جوال', 'يجب إضافة رقم جوال للعميل أولاً', 'error');
+                      return; 
+                    }
+
+                    showWhatsAppToast('جاري الإرسال', 'يتم الآن إرسال عرض السعر عبر WhatsApp...', 'info');
+                    window.__WA_SENDING__ = true;
+
+                    (async () => {
+                      try{
+                        const root = document.documentElement.cloneNode(true);
+                        Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                        Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
+                        
+                        try{
+                          const img = root.querySelector('#logo');
+                          if(img && settings.logo_path){
+                            let absLogo = '';
+                            if(String(settings.logo_path).startsWith('assets/')){
+                              const rp = await api.resolve_path(settings.logo_path);
+                              if(rp && rp.ok){ 
+                                absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); 
+                              }
+                            }else{
+                              absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                            }
+                            if(absLogo){ img.src = absLogo; }
+                          }
+                        }catch(_){ }
+
+                        const html = '<!doctype html>' + root.outerHTML;
+                        const fname = `quotation-${refNum}.pdf`;
+                        
+                        const pdfResult = await api.pdf_export(html, { 
+                          pageSize: 'A4',
+                          printBackground: true, 
+                          saveMode: 'temp', 
+                          filename: fname
+                        });
+                        
+                        if(!pdfResult || !pdfResult.ok){ 
+                          showWhatsAppToast('خطأ في إنشاء PDF', 'فشل في إنشاء ملف PDF لعرض السعر', 'error');
+                          return; 
+                        }
+
+                        const company = (settings && settings.seller_legal_name) ? 
+                                       settings.seller_legal_name : 'عرض سعر';
+                        const quotationNo = String(refNum||'');
+                        const caption = `عرض سعر رقم ${quotationNo} من ${company}`;
+                        
+                        const sendResult = await api.whatsapp_send_file(
+                          rawPhone, 
+                          pdfResult.path, 
+                          fname, 
+                          caption
+                        );
+
+                        if(sendResult && sendResult.success){
+                          showWhatsAppToast('تم الإرسال بنجاح', 'تم إرسال عرض السعر عبر WhatsApp للعميل', 'success');
+                        } else {
+                          const errMsg = sendResult?.error || 'خطأ غير معروف';
+                          showWhatsAppToast('فشل الإرسال', errMsg, 'error');
+                        }
+                        
+                        // Clean up temp PDF after sending
+                        try {
+                          await api.file_delete(pdfResult.path);
+                        } catch(_) {}
+
+                      }catch(e){ 
+                        showWhatsAppToast('خطأ في الإرسال', e.message || String(e), 'error');
+                      } finally {
+                        window.__WA_SENDING__ = false;
+                      }
+                    })();
+
+                  }catch(e){ 
+                    showWhatsAppToast('خطأ في WhatsApp', e.message || String(e), 'error');
+                  }
+                })();
               });
             }
           }catch(_){ }
@@ -929,6 +1164,131 @@
             }
           }
           
+          // Auto-send PDF to WhatsApp after print completes
+          try{
+            if(settings && settings.whatsapp_on_print && !viewMode){
+              window.addEventListener('afterprint', async () => {
+                const eventTime = Date.now();
+                
+                // Check if already sent or sending
+                if(window.__WA_SENT__ || window.__WA_SENDING__){
+                  return;
+                }
+                
+                window.__WA_SENDING__ = true;
+                window.__WA_SENT__ = true;
+                
+                try{
+                  if(!navigator.onLine){
+                    console.error('❌ لا يوجد اتصال بالإنترنت - تم إلغاء الإرسال التلقائي للواتساب');
+                    showWhatsAppToast('لا يوجد اتصال', 'تعذر إرسال عرض السعر تلقائياً عبر WhatsApp', 'error');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return;
+                  }
+
+                  const statusCheck = await api.whatsapp_status();
+                  if(!statusCheck || !statusCheck.success || !statusCheck.connected){
+                    console.error('❌ WhatsApp not connected, skipping auto-send');
+                    showWhatsAppToast('WhatsApp غير متصل', 'تعذر إرسال عرض السعر تلقائياً', 'error');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return;
+                  }
+
+                  let rawPhone = String(window.__CUST_PHONE__ || '').trim();
+                  if(/^05\d{8}$/.test(rawPhone)){ 
+                    rawPhone = '966' + rawPhone.slice(1); 
+                  }
+                  rawPhone = rawPhone.replace(/[^\d+]/g,'');
+                  if(!rawPhone){ 
+                    console.log('❌ No customer phone, skipping WhatsApp send');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return; 
+                  }
+
+                  showWhatsAppToast('جاري الإرسال', 'يتم الآن إرسال عرض السعر تلقائياً عبر WhatsApp...', 'info');
+
+                  console.log(`📄 Creating PDF for quotation... (quotation_no: ${refNum})`);
+                  const root = document.documentElement.cloneNode(true);
+                  Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
+                  Array.from(root.querySelectorAll('.reprint-btn, .export-btn, .whats-btn')).forEach(el=>el.remove());
+                  
+                  try{
+                    const img = root.querySelector('#logo');
+                    if(img && settings.logo_path){
+                      let absLogo = '';
+                      if(String(settings.logo_path).startsWith('assets/')){
+                        const rp = await api.resolve_path(settings.logo_path);
+                        if(rp && rp.ok){ 
+                          absLogo = 'file:///' + String(rp.abs||'').replace(/\\/g,'/'); 
+                        }
+                      }else{
+                        absLogo = 'file:///' + String(settings.logo_path||'').replace(/\\/g,'/');
+                      }
+                      if(absLogo){ img.src = absLogo; }
+                    }
+                  }catch(_){ }
+
+                  const html = '<!doctype html>' + root.outerHTML;
+                  const fname = `quotation-${refNum}.pdf`;
+                  
+                  const pdfResult = await api.pdf_export(html, { 
+                    pageSize: 'A4',
+                    printBackground: true, 
+                    saveMode: 'temp', 
+                    filename: fname
+                  });
+                  
+                  if(!pdfResult || !pdfResult.ok){ 
+                    console.error('❌ Failed to generate PDF for auto-send');
+                    showWhatsAppToast('فشل إنشاء PDF', 'تعذر إنشاء ملف عرض السعر للإرسال', 'error');
+                    window.__WA_SENDING__ = false;
+                    window.__WA_SENT__ = false;
+                    return; 
+                  }
+
+                  console.log(`✅ PDF generated at: ${pdfResult.path}`);
+                  const company = (settings && settings.seller_legal_name) ? 
+                                 settings.seller_legal_name : 'عرض سعر';
+                  const quotationNo = String(refNum||'');
+                  const caption = `عرض سعر رقم ${quotationNo} من ${company}`;
+                  
+                  console.log(`📤 Sending PDF via WhatsApp to: ${rawPhone}`);
+                  
+                  const sendResult = await api.whatsapp_send_file(
+                    rawPhone, 
+                    pdfResult.path, 
+                    fname, 
+                    caption
+                  );
+
+                  if(sendResult && sendResult.success){
+                    console.log(`✅ تم إرسال عرض السعر عبر واتساب تلقائيًا بنجاح!`);
+                    showWhatsAppToast('تم الإرسال بنجاح', 'تم إرسال عرض السعر تلقائياً عبر WhatsApp للعميل', 'success');
+                  } else {
+                    const errorMsg = sendResult?.error || 'خطأ غير معروف';
+                    console.error(`❌ فشل الإرسال التلقائي:`, errorMsg);
+                    showWhatsAppToast('فشل الإرسال التلقائي', errorMsg, 'error');
+                  }
+                  
+                  // Clean up temp PDF
+                  try {
+                    await api.file_delete(pdfResult.path);
+                  } catch(_) {}
+                }catch(e){ 
+                  console.error(`❌ خطأ في الإرسال التلقائي عبر واتساب:`, e);
+                  showWhatsAppToast('خطأ في الإرسال', e.message || String(e), 'error');
+                  window.__WA_SENDING__ = false;
+                  window.__WA_SENT__ = false;
+                }finally{
+                  window.__WA_SENDING__ = false;
+                }
+              }, { once: true });
+            }
+          }catch(_){ /* ignore */ }
+
           setTimeout(()=>{
             try{ __fitOnePageIfSlightOverflow(); }catch(_){ }
             if(!viewMode) window.print();

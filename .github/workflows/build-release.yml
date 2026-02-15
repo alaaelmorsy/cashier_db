@@ -47,16 +47,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           release_name: "الإصدار ${{ steps.package-version.outputs.VERSION }}"
-          body: |
-            ## 📦 الإصدار ${{ steps.package-version.outputs.VERSION }}
-            
-            ### التحسينات:
-            - إصلاح مشكلة طباعة الفواتير بإجمالي صفر
-            - تحسين التركيز التلقائي على حقل الباركود
-            
-            ### الملفات:
-            - **NSIS Installer**: للتثبيت التقليدي
-            - **MSI Installer**: للتثبيت على الشركات
+          body: ""
           draft: false
           prerelease: false
 
@@ -79,3 +70,13 @@ jobs:
           asset_path: ./dist/cashier${{ steps.package-version.outputs.VERSION }}.msi
           asset_name: cashier-${{ steps.package-version.outputs.VERSION }}-setup.msi
           asset_content_type: application/octet-stream
+
+      - name: Upload latest.yml
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/latest.yml
+          asset_name: latest.yml
+          asset_content_type: text/yaml

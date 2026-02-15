@@ -5344,12 +5344,6 @@ async function openAddProductModal(barcode){
         return;
       }
       
-      if(!barcodeVal){
-        showErrorNotification('❌ يرجى إدخال الباركود');
-        if(barcodeInput) barcodeInput.focus();
-        return;
-      }
-      
       if(price <= 0){
         showErrorNotification('❌ يرجى إدخال سعر البيع');
         if(priceInput) priceInput.focus();
@@ -5360,7 +5354,7 @@ async function openAddProductModal(barcode){
       const productData = {
         name,
         name_en: nameEn || null,
-        barcode: barcodeVal,
+        barcode: barcodeVal || null,
         category: category || null,
         cost,
         price,
