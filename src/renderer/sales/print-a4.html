@@ -1481,7 +1481,7 @@
             const afterDiscForGrand = Number(sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0) + Number(sale.tobacco_fee||0)));
             const computedGrand = Number(sale.grand_total ?? (afterDiscForGrand + Number(sale.vat_total||0)));
             const grandCheck = isCreditDoc ? Math.abs(computedGrand) : computedGrand;
-            if(!(grandCheck > 0)){
+            if(!(grandCheck >= 0)){
               errors.push('الإجمالي');
             }
             
