@@ -81,6 +81,23 @@ const fRequireCustomerBeforePrint = document.getElementById('f_require_customer_
 const fRequirePhoneMin10 = document.getElementById('f_require_phone_min_10');
 const fAppointmentReminderMinutes = document.getElementById('f_appointment_reminder_minutes');
 const fAppTheme = document.getElementById('f_app_theme');
+// Barcode label settings
+const fBarcodePrinterDeviceName = document.getElementById('f_barcode_printer_device_name');
+const fBarcodePaperWidthMm = document.getElementById('f_barcode_paper_width_mm');
+const fBarcodePaperHeightMm = document.getElementById('f_barcode_paper_height_mm');
+const fBarcodeShowShopName = document.getElementById('f_barcode_show_shop_name');
+const fBarcodeShowProductName = document.getElementById('f_barcode_show_product_name');
+const fBarcodeShowPrice = document.getElementById('f_barcode_show_price');
+const fBarcodeShowBarcodeText = document.getElementById('f_barcode_show_barcode_text');
+const fBarcodeFontSizeShop = document.getElementById('f_barcode_font_size_shop');
+const fBarcodeFontSizeProduct = document.getElementById('f_barcode_font_size_product');
+const fBarcodeFontSizePrice = document.getElementById('f_barcode_font_size_price');
+const fBarcodeFontSizeBarcodeText = document.getElementById('f_barcode_font_size_barcode_text');
+const fBarcodeHeightPx = document.getElementById('f_barcode_height_px');
+const fBarcodeLabelOffsetRightMm = document.getElementById('f_barcode_label_offset_right_mm');
+const fBarcodeLabelOffsetLeftMm = document.getElementById('f_barcode_label_offset_left_mm');
+const fBarcodeLabelOffsetTopMm = document.getElementById('f_barcode_label_offset_top_mm');
+const fBarcodeLabelOffsetBottomMm = document.getElementById('f_barcode_label_offset_bottom_mm');
 
 const pickLogo = document.getElementById('pickLogo');
 const removeLogo = document.getElementById('removeLogo');
@@ -300,6 +317,29 @@ async function loadSettings(){
   if (fAppointmentReminderMinutes) fAppointmentReminderMinutes.value = String(Number(s.appointment_reminder_minutes ?? 15));
   if (fAppTheme) fAppTheme.value = s.app_theme || 'light';
 
+  // Barcode label settings
+  try{
+    if (fBarcodePrinterDeviceName) {
+      // will be set after loading printers list; keep raw value here
+      fBarcodePrinterDeviceName.dataset.savedDeviceName = s.barcode_printer_device_name || '';
+    }
+    if (fBarcodePaperWidthMm) fBarcodePaperWidthMm.value = s.barcode_paper_width_mm != null ? String(s.barcode_paper_width_mm) : '';
+    if (fBarcodePaperHeightMm) fBarcodePaperHeightMm.value = s.barcode_paper_height_mm != null ? String(s.barcode_paper_height_mm) : '';
+    if (fBarcodeShowShopName) fBarcodeShowShopName.checked = (s.barcode_show_shop_name === undefined || s.barcode_show_shop_name === null) ? true : !!s.barcode_show_shop_name;
+    if (fBarcodeShowProductName) fBarcodeShowProductName.checked = (s.barcode_show_product_name === undefined || s.barcode_show_product_name === null) ? true : !!s.barcode_show_product_name;
+    if (fBarcodeShowPrice) fBarcodeShowPrice.checked = (s.barcode_show_price === undefined || s.barcode_show_price === null) ? true : !!s.barcode_show_price;
+    if (fBarcodeShowBarcodeText) fBarcodeShowBarcodeText.checked = (s.barcode_show_barcode_text === undefined || s.barcode_show_barcode_text === null) ? true : !!s.barcode_show_barcode_text;
+    if (fBarcodeFontSizeShop) fBarcodeFontSizeShop.value = String(Number(s.barcode_font_size_shop ?? 12));
+    if (fBarcodeFontSizeProduct) fBarcodeFontSizeProduct.value = String(Number(s.barcode_font_size_product ?? 12));
+    if (fBarcodeFontSizePrice) fBarcodeFontSizePrice.value = String(Number(s.barcode_font_size_price ?? 12));
+    if (fBarcodeFontSizeBarcodeText) fBarcodeFontSizeBarcodeText.value = String(Number(s.barcode_font_size_barcode_text ?? 10));
+    if (fBarcodeHeightPx) fBarcodeHeightPx.value = String(Number(s.barcode_height_px ?? 40));
+    if (fBarcodeLabelOffsetRightMm) fBarcodeLabelOffsetRightMm.value = String(Number(s.barcode_label_offset_right_mm ?? 0));
+    if (fBarcodeLabelOffsetLeftMm) fBarcodeLabelOffsetLeftMm.value = String(Number(s.barcode_label_offset_left_mm ?? 0));
+    if (fBarcodeLabelOffsetTopMm) fBarcodeLabelOffsetTopMm.value = String(Number(s.barcode_label_offset_top_mm ?? 0));
+    if (fBarcodeLabelOffsetBottomMm) fBarcodeLabelOffsetBottomMm.value = String(Number(s.barcode_label_offset_bottom_mm ?? 0));
+  }catch(_){}
+
   // Footer note
   if (fInvoiceFooterNote) fInvoiceFooterNote.value = s.invoice_footer_note || '';
 
@@ -341,6 +381,37 @@ async function loadSettings(){
   updateLogoPreview();
   // Refresh default product image preview as well
   try{ await updateDefProdPreview(); }catch(_){ }
+}
+
+async function loadBarcodePrintersIntoSelect(){
+  if(!fBarcodePrinterDeviceName) return;
+  try{
+    const r = await window.api.kitchen_list_system_printers();
+    const items = r && r.ok ? (r.items||[]) : [];
+    const saved = fBarcodePrinterDeviceName.dataset.savedDeviceName || '';
+    // Reset options, keep first "default" option
+    fBarcodePrinterDeviceName.innerHTML = '';
+    const defOpt = document.createElement('option');
+    defOpt.value = '';
+    defOpt.textContent = 'الطابعة الافتراضية للنظام';
+    fBarcodePrinterDeviceName.appendChild(defOpt);
+    items.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name + (p.isDefault ? ' (افتراضي)' : '');
+      fBarcodePrinterDeviceName.appendChild(opt);
+    });
+    if(saved){
+      fBarcodePrinterDeviceName.value = saved;
+    }
+  }catch(_){
+    // leave only default option
+    fBarcodePrinterDeviceName.innerHTML = '';
+    const defOpt = document.createElement('option');
+    defOpt.value = '';
+    defOpt.textContent = 'الطابعة الافتراضية للنظام';
+    fBarcodePrinterDeviceName.appendChild(defOpt);
+  }
 }
 
 async function updateLogoPreview(){
@@ -665,7 +736,24 @@ saveBtn.addEventListener('click', async () => {
     // Appointment reminder minutes
     appointment_reminder_minutes: fAppointmentReminderMinutes ? Number(fAppointmentReminderMinutes.value) : 15,
     // App theme
-    app_theme: fAppTheme ? (fAppTheme.value || 'light') : 'light'
+    app_theme: fAppTheme ? (fAppTheme.value || 'light') : 'light',
+    // Barcode label settings
+    barcode_printer_device_name: (fBarcodePrinterDeviceName?.value || '').trim() || null,
+    barcode_paper_width_mm: (fBarcodePaperWidthMm && fBarcodePaperWidthMm.value !== '') ? Number(fBarcodePaperWidthMm.value) : null,
+    barcode_paper_height_mm: (fBarcodePaperHeightMm && fBarcodePaperHeightMm.value !== '') ? Number(fBarcodePaperHeightMm.value) : null,
+    barcode_show_shop_name: !!(fBarcodeShowShopName?.checked),
+    barcode_show_product_name: !!(fBarcodeShowProductName?.checked),
+    barcode_show_price: !!(fBarcodeShowPrice?.checked),
+    barcode_show_barcode_text: !!(fBarcodeShowBarcodeText?.checked),
+    barcode_font_size_shop: fBarcodeFontSizeShop ? Number(fBarcodeFontSizeShop.value || 12) : 12,
+    barcode_font_size_product: fBarcodeFontSizeProduct ? Number(fBarcodeFontSizeProduct.value || 12) : 12,
+    barcode_font_size_price: fBarcodeFontSizePrice ? Number(fBarcodeFontSizePrice.value || 12) : 12,
+    barcode_font_size_barcode_text: fBarcodeFontSizeBarcodeText ? Number(fBarcodeFontSizeBarcodeText.value || 10) : 10,
+    barcode_height_px: fBarcodeHeightPx ? Number(fBarcodeHeightPx.value || 40) : 40,
+    barcode_label_offset_right_mm: fBarcodeLabelOffsetRightMm ? Number(fBarcodeLabelOffsetRightMm.value || 0) : 0,
+    barcode_label_offset_left_mm: fBarcodeLabelOffsetLeftMm ? Number(fBarcodeLabelOffsetLeftMm.value || 0) : 0,
+    barcode_label_offset_top_mm: fBarcodeLabelOffsetTopMm ? Number(fBarcodeLabelOffsetTopMm.value || 0) : 0,
+    barcode_label_offset_bottom_mm: fBarcodeLabelOffsetBottomMm ? Number(fBarcodeLabelOffsetBottomMm.value || 0) : 0
   };
   // Clear logo ONLY if user explicitly removed it
   if(logoRemoved){ payload.logo_clear = true; }
@@ -1105,4 +1193,4 @@ window.api?.on?.('update-status', (payload) => {
   }
 });
 
-loadSettings().then(() => { applySuperAdminView(); });
+loadSettings().then(() => { applySuperAdminView(); loadBarcodePrintersIntoSelect(); });

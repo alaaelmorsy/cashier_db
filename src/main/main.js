@@ -826,7 +826,7 @@ async function createMainWindow() {
     }catch(e){ console.error('csv:export error', e); return { ok:false, error:'تعذر إنشاء CSV' }; }
   });
 
-  // Print raw HTML to system printer (silent, 80mm x 297mm, no margins) — aligned with invoice printing
+  // Print raw HTML to system printer (silent, configurable page size, no margins) — aligned with invoice printing
   ipcMain.handle('print:html', async (_e, { html, options }) => {
     try{
       const { BrowserWindow } = require('electron');
@@ -843,21 +843,27 @@ async function createMainWindow() {
         deviceName = undefined,
         printBackground = true,
         copies = 1,
+        pageSize: customPageSize = null,
       } = options || {};
 
       // Minimal delay for thermal printer speed
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       await new Promise((resolve, reject) => {
-        tmpWin.webContents.print({
+        const baseOptions = {
           silent,
           deviceName,
           printBackground,
           margins: { marginType: 'none' },
           landscape: false,
-          pageSize: { width: 80000, height: 297000 }, // microns: 80mm x 297mm
+          pageSize: { width: 80000, height: 297000 }, // default microns: 80mm x 297mm
           copies,
-        }, (ok, err) => {
+        };
+        const finalOptions = customPageSize
+          ? { ...baseOptions, pageSize: customPageSize }
+          : baseOptions;
+
+        tmpWin.webContents.print(finalOptions, (ok, err) => {
           if(!ok && err){ reject(new Error(err)); } else { resolve(true); }
         });
       });

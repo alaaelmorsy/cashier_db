@@ -198,6 +198,10 @@ function registerSettingsIPC(){
     if(await missing('hide_product_images')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN hide_product_images TINYINT NOT NULL DEFAULT 0 AFTER default_payment_method");
     }
+    // اسم الفرع
+    if(await missing('branch_name')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN branch_name VARCHAR(255) NULL AFTER company_location_en");
+    }
     if(await missing('closing_hour')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN closing_hour TIME NULL AFTER hide_product_images");
     }
@@ -278,9 +282,9 @@ function registerSettingsIPC(){
       await conn.query("ALTER TABLE app_settings ADD COLUMN show_conn_modal TINYINT NOT NULL DEFAULT 0 AFTER recovery_unlocked");
     }
     // Support contract end date (for login screen info)
-    if(await missing('support_end_date')){
-      await conn.query("ALTER TABLE app_settings ADD COLUMN support_end_date DATE NULL AFTER daily_email_last_sent");
-    }
+      if(await missing('support_end_date')){
+        await conn.query("ALTER TABLE app_settings ADD COLUMN support_end_date DATE NULL AFTER daily_email_last_sent");
+      }
     // Activation columns: allow locking to motherboard serial or MAC(Ethernet)
     if(await missing('activation_hw_id')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN activation_hw_id VARCHAR(128) NULL AFTER support_end_date");
@@ -344,6 +348,56 @@ function registerSettingsIPC(){
     }
     if(await missing('app_theme')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN app_theme ENUM('light','gray','dark','auto') NOT NULL DEFAULT 'light' AFTER appointment_reminder_minutes");
+    }
+    // Barcode label printing settings
+    if(await missing('barcode_printer_device_name')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_printer_device_name VARCHAR(255) NULL AFTER app_theme");
+    }
+    if(await missing('barcode_paper_width_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_paper_width_mm DECIMAL(6,2) NULL AFTER barcode_printer_device_name");
+    }
+    if(await missing('barcode_paper_height_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_paper_height_mm DECIMAL(6,2) NULL AFTER barcode_paper_width_mm");
+    }
+    if(await missing('barcode_show_shop_name')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_show_shop_name TINYINT NOT NULL DEFAULT 1 AFTER barcode_paper_height_mm");
+    }
+    if(await missing('barcode_show_product_name')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_show_product_name TINYINT NOT NULL DEFAULT 1 AFTER barcode_show_shop_name");
+    }
+    if(await missing('barcode_show_price')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_show_price TINYINT NOT NULL DEFAULT 1 AFTER barcode_show_product_name");
+    }
+    if(await missing('barcode_show_barcode_text')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_show_barcode_text TINYINT NOT NULL DEFAULT 1 AFTER barcode_show_price");
+    }
+    if(await missing('barcode_font_size_shop')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_font_size_shop TINYINT NOT NULL DEFAULT 12 AFTER barcode_show_barcode_text");
+    }
+    if(await missing('barcode_font_size_product')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_font_size_product TINYINT NOT NULL DEFAULT 12 AFTER barcode_font_size_shop");
+    }
+    if(await missing('barcode_font_size_price')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_font_size_price TINYINT NOT NULL DEFAULT 12 AFTER barcode_font_size_product");
+    }
+    if(await missing('barcode_font_size_barcode_text')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_font_size_barcode_text TINYINT NOT NULL DEFAULT 10 AFTER barcode_font_size_price");
+    }
+    // Barcode height and label offset settings
+    if(await missing('barcode_height_px')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_height_px TINYINT NOT NULL DEFAULT 40 AFTER barcode_font_size_barcode_text");
+    }
+    if(await missing('barcode_label_offset_right_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_label_offset_right_mm DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER barcode_height_px");
+    }
+    if(await missing('barcode_label_offset_left_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_label_offset_left_mm DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER barcode_label_offset_right_mm");
+    }
+    if(await missing('barcode_label_offset_top_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_label_offset_top_mm DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER barcode_label_offset_left_mm");
+    }
+    if(await missing('barcode_label_offset_bottom_mm')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_label_offset_bottom_mm DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER barcode_label_offset_top_mm");
     }
     // Expand app_theme ENUM to include 'gray' for existing installations
     try {
@@ -462,6 +516,27 @@ function registerSettingsIPC(){
         // expose recovery flag
         item.recovery_unlocked = item.recovery_unlocked ? 1 : 0;
         item.require_payment_before_print = item.require_payment_before_print ? 1 : 0;
+        // Barcode label defaults
+        item.barcode_printer_device_name = item.barcode_printer_device_name || null;
+        item.barcode_paper_width_mm = (item.barcode_paper_width_mm===''||item.barcode_paper_width_mm===null||item.barcode_paper_width_mm===undefined)
+          ? 40
+          : Number(item.barcode_paper_width_mm);
+        item.barcode_paper_height_mm = (item.barcode_paper_height_mm===''||item.barcode_paper_height_mm===null||item.barcode_paper_height_mm===undefined)
+          ? 25
+          : Number(item.barcode_paper_height_mm);
+        item.barcode_show_shop_name = item.barcode_show_shop_name === 0 ? 0 : 1;
+        item.barcode_show_product_name = item.barcode_show_product_name === 0 ? 0 : 1;
+        item.barcode_show_price = item.barcode_show_price === 0 ? 0 : 1;
+        item.barcode_show_barcode_text = item.barcode_show_barcode_text === 0 ? 0 : 1;
+        item.barcode_font_size_shop = Number(item.barcode_font_size_shop || 12);
+        item.barcode_font_size_product = Number(item.barcode_font_size_product || 12);
+        item.barcode_font_size_price = Number(item.barcode_font_size_price || 12);
+        item.barcode_font_size_barcode_text = Number(item.barcode_font_size_barcode_text || 10);
+        item.barcode_height_px = Number(item.barcode_height_px || 40);
+        item.barcode_label_offset_right_mm = Number(item.barcode_label_offset_right_mm || 0);
+        item.barcode_label_offset_left_mm = Number(item.barcode_label_offset_left_mm || 0);
+        item.barcode_label_offset_top_mm = Number(item.barcode_label_offset_top_mm || 0);
+        item.barcode_label_offset_bottom_mm = Number(item.barcode_label_offset_bottom_mm || 0);
         
         // Merge with sync config from JSON file (for branch devices in production)
         try {
@@ -622,7 +697,23 @@ function registerSettingsIPC(){
           customer_display_welcome_msg=?,
           customer_display_thankyou_msg=?,
           appointment_reminder_minutes=?,
-          app_theme=?
+          app_theme=?,
+          barcode_printer_device_name=?,
+          barcode_paper_width_mm=?,
+          barcode_paper_height_mm=?,
+          barcode_show_shop_name=?,
+          barcode_show_product_name=?,
+          barcode_show_price=?,
+          barcode_show_barcode_text=?,
+          barcode_font_size_shop=?,
+          barcode_font_size_product=?,
+          barcode_font_size_price=?,
+          barcode_font_size_barcode_text=?,
+          barcode_height_px=?,
+          barcode_label_offset_right_mm=?,
+          barcode_label_offset_left_mm=?,
+          barcode_label_offset_top_mm=?,
+          barcode_label_offset_bottom_mm=?
           WHERE id=1`, [
           p.seller_legal_name || null,
           (p.seller_legal_name_en || null),
@@ -709,7 +800,23 @@ function registerSettingsIPC(){
           (p.customer_display_welcome_msg || 'مرحباً بك'),
           (p.customer_display_thankyou_msg || 'شكراً لزيارتك'),
           (p.appointment_reminder_minutes !== undefined ? Number(p.appointment_reminder_minutes) : 15),
-          (p.app_theme && ['light','gray','dark','auto'].includes(p.app_theme) ? p.app_theme : 'light')
+          (p.app_theme && ['light','gray','dark','auto'].includes(p.app_theme) ? p.app_theme : 'light'),
+          (p.barcode_printer_device_name || null),
+          (p.barcode_paper_width_mm===''||p.barcode_paper_width_mm===null||p.barcode_paper_width_mm===undefined) ? null : Number(p.barcode_paper_width_mm),
+          (p.barcode_paper_height_mm===''||p.barcode_paper_height_mm===null||p.barcode_paper_height_mm===undefined) ? null : Number(p.barcode_paper_height_mm),
+          (p.barcode_show_shop_name ? 1 : 0),
+          (p.barcode_show_product_name ? 1 : 0),
+          (p.barcode_show_price ? 1 : 0),
+          (p.barcode_show_barcode_text ? 1 : 0),
+          (p.barcode_font_size_shop ? Number(p.barcode_font_size_shop) : 12),
+          (p.barcode_font_size_product ? Number(p.barcode_font_size_product) : 12),
+          (p.barcode_font_size_price ? Number(p.barcode_font_size_price) : 12),
+          (p.barcode_font_size_barcode_text ? Number(p.barcode_font_size_barcode_text) : 10),
+          (p.barcode_height_px ? Number(p.barcode_height_px) : 40),
+          (p.barcode_label_offset_right_mm !== undefined && p.barcode_label_offset_right_mm !== null && p.barcode_label_offset_right_mm !== '') ? Number(p.barcode_label_offset_right_mm) : 0,
+          (p.barcode_label_offset_left_mm !== undefined && p.barcode_label_offset_left_mm !== null && p.barcode_label_offset_left_mm !== '') ? Number(p.barcode_label_offset_left_mm) : 0,
+          (p.barcode_label_offset_top_mm !== undefined && p.barcode_label_offset_top_mm !== null && p.barcode_label_offset_top_mm !== '') ? Number(p.barcode_label_offset_top_mm) : 0,
+          (p.barcode_label_offset_bottom_mm !== undefined && p.barcode_label_offset_bottom_mm !== null && p.barcode_label_offset_bottom_mm !== '') ? Number(p.barcode_label_offset_bottom_mm) : 0
         ]);
         // Handle logo updates (DB BLOB), mirroring products image flow
         if(p && p.logo_clear === true){

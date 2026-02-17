@@ -1,4 +1,4 @@
-﻿// Products screen: modal add + list/edit/delete/toggle
+// Products screen: modal add + list/edit/delete/toggle
 const tbody = document.getElementById('tbody');
 const errorDiv = document.getElementById('error');
 const addBtn = document.getElementById('addBtn');
@@ -679,6 +679,7 @@ function renderRows(list){
     const priceExportBtn = '';
     const rowActions = [
       hasProd('products.edit') ? `<button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-id="${p.id}">✏️ تعديل</button>` : '',
+      `<button class="px-3 py-1.5 bg-green-700 text-white rounded-lg text-sm font-medium" data-act="barcode" data-id="${p.id}">🏷️ باركود</button>`,
       hasProd('products.toggle') ? `<button class="px-3 py-1.5 ${p.is_active? 'bg-red-600':'bg-green-600'} text-white rounded-lg text-sm font-medium" data-act="toggle" data-id="${p.id}">${p.is_active? '❌ إيقاف':'✅ تفعيل'}</button>` : '',
       hasProd('products.delete') ? `<button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="delete" data-id="${p.id}">🗑️ حذف</button>` : ''
     ].join(' ');
@@ -1194,6 +1195,12 @@ tbody.addEventListener('click', async (e) => {
   // Prevent duplicate operations
   const opKey = `${act}:${id}`;
   if(pendingOps.has(opKey)){
+    return;
+  }
+
+  if(act==='barcode'){
+    if(!id) return;
+    await openBarcodeDialog(id);
     return;
   }
 
@@ -1779,6 +1786,373 @@ if(btnImportExcel){
     input.click();
   });
 }
+
+// ====== Barcode label printing ======
+const barcodeDlg = document.getElementById('barcodeDlg');
+const barcodePreview = document.getElementById('barcodePreview');
+const barcodeQtyInput = document.getElementById('barcodeQty');
+const barcodeCancelBtn = document.getElementById('barcodeCancel');
+const barcodePrintBtn = document.getElementById('barcodePrint');
+const barcodeDlgError = document.getElementById('barcodeDlgError');
+let currentBarcodeProduct = null;
+let barcodeSettings = null;
+
+function setBarcodeError(msg){
+  if(!barcodeDlgError) return;
+  barcodeDlgError.textContent = msg || '';
+}
+
+function ensureBarcodeSettingsDefaults(s){
+  const copy = Object.assign({}, s || {});
+  if(copy.barcode_paper_width_mm == null || isNaN(Number(copy.barcode_paper_width_mm))){
+    copy.barcode_paper_width_mm = 40;
+  }
+  if(copy.barcode_paper_height_mm == null || isNaN(Number(copy.barcode_paper_height_mm))){
+    copy.barcode_paper_height_mm = 25;
+  }
+  copy.barcode_show_shop_name = (copy.barcode_show_shop_name === undefined || copy.barcode_show_shop_name === null) ? 1 : (copy.barcode_show_shop_name ? 1 : 0);
+  copy.barcode_show_product_name = (copy.barcode_show_product_name === undefined || copy.barcode_show_product_name === null) ? 1 : (copy.barcode_show_product_name ? 1 : 0);
+  copy.barcode_show_price = (copy.barcode_show_price === undefined || copy.barcode_show_price === null) ? 1 : (copy.barcode_show_price ? 1 : 0);
+  copy.barcode_show_barcode_text = (copy.barcode_show_barcode_text === undefined || copy.barcode_show_barcode_text === null) ? 1 : (copy.barcode_show_barcode_text ? 1 : 0);
+  copy.barcode_font_size_shop = Number(copy.barcode_font_size_shop || 12);
+  copy.barcode_font_size_product = Number(copy.barcode_font_size_product || 12);
+  copy.barcode_font_size_price = Number(copy.barcode_font_size_price || 12);
+  copy.barcode_font_size_barcode_text = Number(copy.barcode_font_size_barcode_text || 10);
+  copy.barcode_height_px = Number(copy.barcode_height_px || 40);
+  copy.barcode_label_offset_right_mm = Number(copy.barcode_label_offset_right_mm || 0);
+  copy.barcode_label_offset_left_mm = Number(copy.barcode_label_offset_left_mm || 0);
+  copy.barcode_label_offset_top_mm = Number(copy.barcode_label_offset_top_mm || 0);
+  copy.barcode_label_offset_bottom_mm = Number(copy.barcode_label_offset_bottom_mm || 0);
+  return copy;
+}
+
+// Minimal Code128-B encoder to SVG (supports standard ASCII 32-126)
+function generateCode128Svg(code, opts){
+  const text = String(code || '').trim();
+  if(!text){
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"></svg>';
+  }
+  // Code 128 patterns for codes 0-106
+  const C128_PATTERNS = [
+    '212222','222122','222221','121223','121322','131222','122213','122312','132212','221213',
+    '221312','231212','112232','122132','122231','113222','123122','123221','223211','221132',
+    '221231','213212','223112','312131','311222','321122','321221','312212','322112','322211',
+    '212123','212321','232121','111323','131123','131321','112313','132113','132311','211313',
+    '231113','231311','112133','112331','132131','113123','113321','133121','313121','211331',
+    '231131','213113','213311','213131','311123','311321','331121','312113','312311','332111',
+    '314111','221411','431111','111224','111422','121124','121421','141122','141221','112214',
+    '112412','122114','122411','142112','142211','241211','221114','413111','241112','134111',
+    '111242','121142','121241','114212','124112','124211','411212','421112','421211','212141',
+    '214121','412121','111143','111341','131141','114113','114311','411113','411311','113141',
+    '114131','311141','411131','211412','211214','211232','2331112'
+  ];
+  const START_B = 104;
+  const STOP = 106;
+  const codes = [START_B];
+  for(let i=0;i<text.length;i++){
+    const ch = text.charCodeAt(i);
+    if(ch < 32 || ch > 126){
+      // unsupported char, replace with space
+      codes.push(0); // code for space
+    }else{
+      codes.push(ch - 32);
+    }
+  }
+  let checksum = codes[0];
+  for(let i=1;i<codes.length;i++){
+    checksum += codes[i] * i;
+  }
+  checksum = checksum % 103;
+  codes.push(checksum);
+  codes.push(STOP);
+
+  const moduleWidth = (opts && opts.moduleWidth) || 1;
+  const height = (opts && opts.height) || 40;
+  let x = 0;
+  let svgBars = '';
+
+  // Build bar sequence
+  codes.forEach(codeVal => {
+    const pattern = C128_PATTERNS[codeVal] || '';
+    for(let i=0;i<pattern.length;i++){
+      const width = Number(pattern[i]) * moduleWidth;
+      const isBar = (i % 2) === 0;
+      if(isBar){
+        svgBars += `<rect x="${x}" y="0" width="${width}" height="${height}" fill="black" />`;
+      }
+      x += width;
+    }
+  });
+
+  const totalWidth = x;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${height}" viewBox="0 0 ${totalWidth} ${height}" preserveAspectRatio="xMidYMid meet" style="max-width:100%; height:auto;">${svgBars}</svg>`;
+}
+
+function buildBarcodeLabelHtml(prod, settings){
+  // Preserve seller_legal_name before applying defaults
+  const sellerName = (settings && settings.seller_legal_name) 
+    ? String(settings.seller_legal_name).trim() 
+    : ((window.__barcodeShopName||'') || (window.__settingsSellerName||'') || '');
+  
+  const s = ensureBarcodeSettingsDefaults(settings || {});
+  // Restore seller_legal_name if it was lost
+  if(sellerName && !s.seller_legal_name){
+    s.seller_legal_name = sellerName;
+  }
+  
+  const name = String(prod.name||'').trim();
+  const price = Number(prod.price||0);
+  const barcode = String(prod.barcode||'').trim();
+  // Get shop name from settings
+  const shopName = s.seller_legal_name || sellerName || '';
+
+  const safe = (v)=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const barcodeHeight = s.barcode_height_px || 40;
+  const svg = generateCode128Svg(barcode || name, { moduleWidth: 1, height: barcodeHeight });
+
+  const labelWidthMm = s.barcode_paper_width_mm || 40;
+  const labelHeightMm = s.barcode_paper_height_mm || 25;
+  // Apply offsets
+  const offsetRightMm = s.barcode_label_offset_right_mm || 0;
+  const offsetLeftMm = s.barcode_label_offset_left_mm || 0;
+  const offsetTopMm = s.barcode_label_offset_top_mm || 0;
+  const offsetBottomMm = s.barcode_label_offset_bottom_mm || 0;
+  // Calculate available content area (subtract base padding only)
+  // We don't subtract offsets from contentWidthMm to ensure layout doesn't break when shifting
+  const basePadding = 2; // base padding in mm
+  const contentWidthMm = labelWidthMm - (basePadding * 2);
+
+  const parts = [];
+  if(s.barcode_show_shop_name && shopName){
+    parts.push(`<div style="flex-shrink:0; font-family:'Cairo', system-ui, -apple-system, sans-serif; font-weight:700; font-size:${s.barcode_font_size_shop}px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:${contentWidthMm}mm; line-height:1.3; text-align:center;">${safe(shopName)}</div>`);
+  }
+  if(s.barcode_show_product_name && name){
+    parts.push(`<div style="flex-shrink:0; font-family:'Cairo', system-ui, -apple-system, sans-serif; font-weight:700; font-size:${s.barcode_font_size_product}px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:${contentWidthMm}mm; line-height:1.3; text-align:center;">${safe(name)}</div>`);
+  }
+  // Ensure barcode SVG fits within content width
+  const svgMaxWidth = contentWidthMm - 2; // 1mm margin on each side
+  parts.push(`<div style="flex-shrink:0; line-height:1; display:flex; justify-content:center; align-items:center; max-width:${svgMaxWidth}mm; overflow:hidden; width:100%;"><div style="max-width:100%; height:auto; display:block;"><div style="max-width:100%; overflow:hidden;">${svg}</div></div></div>`);
+  if(s.barcode_show_barcode_text && barcode){
+    parts.push(`<div style="flex-shrink:0; font-family:'Cairo', system-ui, -apple-system, sans-serif; font-weight:700; font-size:${s.barcode_font_size_barcode_text}px; letter-spacing:1px; line-height:1.3; text-align:center; max-width:${contentWidthMm}mm; overflow:hidden; white-space:nowrap;">${safe(barcode)}</div>`);
+  }
+  if(s.barcode_show_price && price>0){
+    parts.push(`<div style="flex-shrink:0; font-family:'Cairo', system-ui, -apple-system, sans-serif; font-weight:700; font-size:${s.barcode_font_size_price}px; line-height:1.3; text-align:center; max-width:${contentWidthMm}mm; overflow:hidden;">${price.toFixed(2)} SAR</div>`);
+  }
+
+  // Calculate translation offsets
+  // Left offset moves right (+X), Right offset moves left (-X)
+  // Top offset moves down (+Y), Bottom offset moves up (-Y)
+  const translateX = offsetLeftMm - offsetRightMm;
+  const translateY = offsetTopMm - offsetBottomMm;
+  
+  return `
+  <div style="
+    box-sizing:border-box;
+    width:${labelWidthMm}mm;
+    height:${labelHeightMm}mm;
+    padding:${basePadding}mm;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    border:1px solid #e5e7eb;
+    border-radius:2px;
+    font-family:'Cairo', system-ui, -apple-system, sans-serif;
+    font-weight:700;
+    text-align:center;
+    overflow:hidden;
+    background:white;
+    max-width:${labelWidthMm}mm;
+    max-height:${labelHeightMm}mm;
+  ">
+    <div style="width:100%; display:flex; flex-direction:column; align-items:center; gap:2px; transform:translate(${translateX}mm, ${translateY}mm)">
+      ${parts.join('')}
+    </div>
+  </div>`;
+}
+
+function renderBarcodePreview(prod, settings){
+  if(!barcodePreview) return;
+  const s = ensureBarcodeSettingsDefaults(settings || {});
+  const labelWidthMm = s.barcode_paper_width_mm || 40;
+  const labelHeightMm = s.barcode_paper_height_mm || 25;
+  
+  // Convert mm to pixels for preview (1mm ≈ 7 pixels for very compact preview)
+  const scale = 7;
+  const previewWidthPx = labelWidthMm * scale;
+  const previewHeightPx = labelHeightMm * scale;
+  
+  // Build preview with exact size - pass full settings object to include seller_legal_name
+  const labelHtml = buildBarcodeLabelHtml(prod, settings);
+  
+  // Scale factor to make the MM-sized content fill the PX-sized container
+  // Container is scaled by 'scale' (7px/mm)
+  // Content is naturally approx 3.78px/mm (96 DPI)
+  // We need to scale content up by (7 / 3.7795) ≈ 1.85
+  const cssPixelsPerMm = 3.7795;
+  const scaleFactor = scale / cssPixelsPerMm;
+
+  barcodePreview.innerHTML = `<div style="transform: scale(${scaleFactor}); transform-origin: center center;">${labelHtml}</div>`;
+  
+  // Apply exact size to preview container with modern styling
+  barcodePreview.style.width = previewWidthPx + 'px';
+  barcodePreview.style.minWidth = previewWidthPx + 'px';
+  barcodePreview.style.height = previewHeightPx + 'px';
+  barcodePreview.style.maxWidth = '100%';
+  barcodePreview.style.overflow = 'hidden';
+  barcodePreview.style.padding = '0';
+  barcodePreview.style.border = 'none';
+  barcodePreview.style.borderRadius = '6px';
+  barcodePreview.style.boxShadow = 'none';
+  
+  // Also ensure wrapper centers properly with minimal spacing
+  const wrapper = document.getElementById('barcodePreviewWrapper');
+  if(wrapper){
+    wrapper.style.display = 'flex';
+    wrapper.style.justifyContent = 'center';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.minHeight = Math.max(previewHeightPx + 12, 120) + 'px';
+    wrapper.style.padding = '6px';
+  }
+}
+
+async function openBarcodeDialog(productId){
+  try{
+    setBarcodeError('');
+    if(!barcodeQtyInput) return;
+    // Load full product details if not already cached
+    const r = await window.api.products_get(productId);
+    if(!r.ok){ setBarcodeError(r.error || 'تعذر جلب بيانات المنتج'); return; }
+    currentBarcodeProduct = r.item;
+    
+    // Always reload settings to get latest values
+    const st = await window.api.settings_get();
+    if(st && st.ok){
+      // Store full settings object (not just defaults) so seller_legal_name is available
+      barcodeSettings = st.item || {};
+      // Ensure defaults are applied
+      barcodeSettings = ensureBarcodeSettingsDefaults(barcodeSettings);
+      // Ensure seller name is available
+      if(st.item && st.item.seller_legal_name){
+        window.__settingsSellerName = String(st.item.seller_legal_name).trim();
+        window.__barcodeShopName = String(st.item.seller_legal_name).trim();
+      }
+    }else{
+      barcodeSettings = ensureBarcodeSettingsDefaults(null);
+    }
+    
+    barcodeQtyInput.value = '1';
+    // Pass full settings object (with seller_legal_name) to preview
+    renderBarcodePreview(currentBarcodeProduct, st && st.ok ? st.item : barcodeSettings);
+    try{ barcodeDlg.showModal(); }catch(_){ try{ barcodeDlg.close(); barcodeDlg.showModal(); }catch(__){} }
+  }catch(e){
+    setBarcodeError('حدث خطأ أثناء فتح شاشة الباركود: ' + (e && e.message ? e.message : ''));
+  }
+}
+
+barcodeCancelBtn?.addEventListener('click', () => {
+  try{ barcodeDlg.close(); }catch(_){}
+});
+
+barcodePrintBtn?.addEventListener('click', async () => {
+  if(!currentBarcodeProduct){ setBarcodeError('لا يوجد منتج محدد'); return; }
+  const rawQty = Number(barcodeQtyInput?.value || 1);
+  const qty = Math.max(1, isFinite(rawQty) ? Math.floor(rawQty) : 1);
+  try{
+    setBarcodeError('');
+    barcodePrintBtn.disabled = true;
+    barcodePrintBtn.textContent = 'جاري الطباعة...';
+    
+    // Reload settings to ensure latest values
+    const st = await window.api.settings_get();
+    const fullSettings = (st && st.ok) ? (st.item || {}) : (barcodeSettings || {});
+    const s = ensureBarcodeSettingsDefaults(fullSettings);
+    
+    // Pass full settings object (with seller_legal_name) to buildBarcodeLabelHtml
+    const labelHtml = buildBarcodeLabelHtml(currentBarcodeProduct, fullSettings);
+    const widthMm = s.barcode_paper_width_mm || 40;
+    const heightMm = s.barcode_paper_height_mm || 25;
+    
+    // Build single label HTML page
+    const buildLabelPage = () => `
+      <!doctype html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="utf-8"/>
+        <style>
+          @page { 
+            margin: 0; 
+            size: ${widthMm}mm ${heightMm}mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            margin:0;
+            padding:0;
+            direction: rtl;
+            font-family:'Cairo', system-ui, -apple-system, sans-serif;
+            font-weight:700;
+            width: ${widthMm}mm;
+            height: ${heightMm}mm;
+            overflow: hidden;
+          }
+        </style>
+      </head>
+      <body>
+        ${labelHtml}
+      </body>
+      </html>
+    `;
+    
+    const pageSize = { width: Math.round(widthMm * 1000), height: Math.round(heightMm * 1000) }; // microns
+    const printOpts = {
+      silent: true,
+      deviceName: s.barcode_printer_device_name || undefined,
+      printBackground: true,
+      copies: 1,
+      pageSize: pageSize
+    };
+    
+    // Print each label as a separate page
+    let successCount = 0;
+    let errorCount = 0;
+    for(let i = 0; i < qty; i++){
+      try{
+        const body = buildLabelPage();
+        const res = await window.api.print_html(body, printOpts);
+        if(res && res.ok){
+          successCount++;
+          // Small delay between prints to avoid overwhelming the printer
+          if(i < qty - 1){
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        } else {
+          errorCount++;
+        }
+      } catch(e){
+        errorCount++;
+        console.error('Print error for label', i + 1, ':', e);
+      }
+    }
+    
+    if(errorCount > 0){
+      setBarcodeError(`تم طباعة ${successCount} من ${qty} استيكر. فشل ${errorCount} استيكر.`);
+    } else {
+      try{ barcodeDlg.close(); }catch(_){}
+    }
+    
+    barcodePrintBtn.disabled = false;
+    barcodePrintBtn.textContent = '🖨️ طباعة';
+  }catch(e){
+    setBarcodeError('فشل طباعة الباركود: ' + (e && e.message ? e.message : ''));
+    console.error('Barcode print error:', e);
+    barcodePrintBtn.disabled = false;
+    barcodePrintBtn.textContent = '🖨️ طباعة';
+  }
+});
 
 const btnDownloadTemplate = document.getElementById('btnDownloadTemplate');
 if(btnDownloadTemplate){

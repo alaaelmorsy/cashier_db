@@ -1535,6 +1535,123 @@
                 </div>
               </div>
 
+              <!-- إعدادات طباعة الباركود -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #22c55e, #16a34a)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="3" y="4" width="2" height="16" fill="white"/>
+                      <rect x="7" y="4" width="1" height="16" fill="white"/>
+                      <rect x="10" y="4" width="3" height="16" fill="white"/>
+                      <rect x="15" y="4" width="1" height="16" fill="white"/>
+                      <rect x="18" y="4" width="2" height="16" fill="white"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="section-title">إعدادات باركود المنتجات</div>
+                    <div class="section-desc">تهيئة طباعة استيكر الباركود لجميع الطابعات والمقاسات</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div>
+                    <label>طابعة الباركود</label>
+                    <select id="f_barcode_printer_device_name">
+                      <option value="">الطابعة الافتراضية للنظام</option>
+                    </select>
+                    <div class="section-desc">يمكن اختيار أي طابعة باركود أو طابعة عادية من طابعات النظام.</div>
+                  </div>
+                  <div>
+                    <label>عرض الاستيكر (مم)</label>
+                    <input id="f_barcode_paper_width_mm" type="number" min="10" step="0.5" placeholder="40" />
+                  </div>
+                  <div>
+                    <label>ارتفاع الاستيكر (مم)</label>
+                    <input id="f_barcode_paper_height_mm" type="number" min="10" step="0.5" placeholder="25" />
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="subsection">
+                  <div class="subsection-title">العناصر الظاهرة في الاستيكر</div>
+                  <div class="form-grid">
+                    <div class="switch">
+                      <input id="f_barcode_show_shop_name" type="checkbox" checked />
+                      <label for="f_barcode_show_shop_name">إظهار اسم المتجر</label>
+                    </div>
+                    <div class="switch">
+                      <input id="f_barcode_show_product_name" type="checkbox" checked />
+                      <label for="f_barcode_show_product_name">إظهار اسم المنتج</label>
+                    </div>
+                    <div class="switch">
+                      <input id="f_barcode_show_price" type="checkbox" checked />
+                      <label for="f_barcode_show_price">إظهار السعر</label>
+                    </div>
+                    <div class="switch">
+                      <input id="f_barcode_show_barcode_text" type="checkbox" checked />
+                      <label for="f_barcode_show_barcode_text">إظهار رقم الباركود كنص أسفل الرسمة</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="subsection">
+                  <div class="subsection-title">حجم الخط في الاستيكر</div>
+                  <div class="form-grid">
+                    <div>
+                      <label>حجم خط اسم المتجر (px)</label>
+                      <input id="f_barcode_font_size_shop" type="number" min="6" max="32" step="1" placeholder="12" />
+                    </div>
+                    <div>
+                      <label>حجم خط اسم المنتج (px)</label>
+                      <input id="f_barcode_font_size_product" type="number" min="6" max="32" step="1" placeholder="12" />
+                    </div>
+                    <div>
+                      <label>حجم خط السعر (px)</label>
+                      <input id="f_barcode_font_size_price" type="number" min="6" max="32" step="1" placeholder="12" />
+                    </div>
+                    <div>
+                      <label>حجم خط رقم الباركود (px)</label>
+                      <input id="f_barcode_font_size_barcode_text" type="number" min="6" max="32" step="1" placeholder="10" />
+                    </div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="subsection">
+                  <div class="subsection-title">إعدادات الباركود والإزاحة</div>
+                  <div class="form-grid">
+                    <div>
+                      <label>ارتفاع الباركود (px)</label>
+                      <input id="f_barcode_height_px" type="number" min="20" max="100" step="1" placeholder="40" />
+                      <div class="section-desc">ارتفاع رسم الباركود بالبكسل</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="subsection">
+                  <div class="subsection-title">إزاحة الاستيكر (مم)</div>
+                  <div class="form-grid">
+                    <div>
+                      <label>إزاحة من اليمين (مم)</label>
+                      <input id="f_barcode_label_offset_right_mm" type="number" min="0" step="0.1" placeholder="0" />
+                    </div>
+                    <div>
+                      <label>إزاحة من اليسار (مم)</label>
+                      <input id="f_barcode_label_offset_left_mm" type="number" min="0" step="0.1" placeholder="0" />
+                    </div>
+                    <div>
+                      <label>إزاحة من الأعلى (مم)</label>
+                      <input id="f_barcode_label_offset_top_mm" type="number" min="0" step="0.1" placeholder="0" />
+                    </div>
+                    <div>
+                      <label>إزاحة من الأسفل (مم)</label>
+                      <input id="f_barcode_label_offset_bottom_mm" type="number" min="0" step="0.1" placeholder="0" />
+                    </div>
+                  </div>
+                  <div class="section-desc" style="margin-top: var(--space-3); padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
+                    💡 استخدم هذه الإعدادات لضبط موضع الاستيكر على الورقة. القيم الموجبة تحرك الاستيكر في الاتجاه المحدد.
+                  </div>
+                </div>
+              </div>
+
               <!-- واتساب -->
               <div class="section">
                 <div class="section-header">

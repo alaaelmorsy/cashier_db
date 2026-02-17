@@ -93,6 +93,31 @@
       .update-notification.show {
         top: 20px;
       }
+      
+      /* عرض اسم الفرع */
+      .branch-display {
+        position: fixed;
+        top: -100px;
+        left: 20px;
+        background: #8B6B47;
+        color: white;
+        padding: 8px 18px;
+        border-radius: 50px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 9999;
+        transition: top 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        display: none;
+        text-align: center;
+        line-height: 1.3;
+        white-space: nowrap;
+      }
+      .branch-display.show {
+        top: 20px;
+        display: inline-block;
+      }
       .update-notification .icon {
         font-size: 24px;
       }
@@ -266,25 +291,27 @@
         75% { transform: rotate(5deg); }
       }
       
-      /* شارة مؤسسة تعلم التقنيات */
+      /* شارة المبيعات */
       .subtitle::after{
-        content: '🏢 مؤسسة تعلم التقنيات';
+        content: '💰 نظام إدارة المبيعات';
         display: block;
         margin-top: 12px;
-        color: #8B6B47;
-        font-size: 17px;
-        font-weight: 900;
-        letter-spacing: .4px;
-        padding: 8px 14px;
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(139,107,71,0.12), rgba(201,169,97,0.08));
-        border: 2px solid rgba(139,107,71,0.2);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: .5px;
+        padding: 9px 28px;
+        border-radius: 50px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: 2px solid rgba(255,255,255,0.3);
         width: fit-content;
         margin-inline: auto;
-        text-shadow: 0 2px 4px rgba(139,107,71,0.2);
-        box-shadow: 0 6px 18px rgba(139,107,71,0.12);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 16px rgba(16,185,129,0.4);
         position: relative;
         overflow: hidden;
+        min-width: 220px;
+        text-align: center;
       }
 
       label{ 
@@ -684,6 +711,9 @@
         <div class="message" id="updateMessage">توجه إلى الإعدادات لتحديث البرنامج</div>
       </div>
     </div>
+
+    <!-- عرض اسم الفرع (مخفي افتراضياً) -->
+    <div id="branchDisplay" class="branch-display"></div>
 
     <div class="container">
       <div class="card">

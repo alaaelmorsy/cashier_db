@@ -163,6 +163,13 @@ if (deleteSavedBtn) {
       }
     }
 
+    // عرض اسم الفرع إن وُجد
+    const branchDisplay = document.getElementById('branchDisplay');
+    if (branchDisplay && st.branch_name) {
+      branchDisplay.textContent = st.branch_name;
+      branchDisplay.classList.add('show');
+    }
+
     // Render support info if date present
     const wrap = document.getElementById('supportInfo');
     const dateEl = document.getElementById('supportEndDate');
