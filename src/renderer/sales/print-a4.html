@@ -1280,6 +1280,42 @@
             }
           }catch(_){ }
 
+          function showA4Notification(type, message) {
+            if(!document.getElementById('a4-notif-styles')){
+              const s = document.createElement('style');
+              s.id = 'a4-notif-styles';
+              s.textContent = `
+                @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+                @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+              `;
+              document.head.appendChild(s);
+            }
+            let container = document.getElementById('a4-notif-container');
+            if(!container){
+              container = document.createElement('div');
+              container.id = 'a4-notif-container';
+              container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;max-width:380px;pointer-events:none;';
+              document.body.appendChild(container);
+            }
+            const colors = {
+              success: 'linear-gradient(135deg,#25D366 0%,#128C7E 100%)',
+              error:   'linear-gradient(135deg,#ef4444 0%,#dc2626 100%)',
+              warning: 'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)',
+              info:    'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)'
+            };
+            const card = document.createElement('div');
+            card.style.cssText = `background:${colors[type]||colors.info};color:white;padding:16px 20px;border-radius:12px;margin-bottom:10px;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:slideInRight 0.5s ease-out;pointer-events:auto;direction:rtl;font-family:'Cairo',system-ui,sans-serif;display:flex;align-items:flex-start;gap:10px;`;
+            card.innerHTML = `<span style="flex:1;font-size:14px;font-weight:600;line-height:1.5;">${message}</span><button style="background:rgba(255,255,255,0.25);border:none;color:white;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">×</button>`;
+            const closeBtn = card.querySelector('button');
+            const dismiss = () => {
+              card.style.animation = 'slideOutRight 0.4s ease-in forwards';
+              setTimeout(() => card.remove(), 400);
+            };
+            const timer = setTimeout(dismiss, 5000);
+            closeBtn.addEventListener('click', () => { clearTimeout(timer); dismiss(); });
+            container.appendChild(card);
+          }
+
           // WhatsApp button handler
           try{
             const whatsBtn = document.getElementById('whatsBtn');
@@ -1288,26 +1324,18 @@
                 (async () => {
                   try{
                     if(window.__WA_SENDING__){
-                      alert('⏳ جاري إرسال الفاتورة... الرجاء الانتظار');
+                      showA4Notification('warning', '⏳ جاري إرسال الفاتورة... الرجاء الانتظار');
                       return;
                     }
 
                     if(!navigator.onLine){
-                      if(typeof window.showWhatsAppErrorNotification === 'function'){
-                        window.showWhatsAppErrorNotification('no-internet', 'لا يمكن إرسال الفاتورة حالياً');
-                      } else {
-                        alert('❌ لا يوجد اتصال بالإنترنت!\n\nالرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.');
-                      }
+                      showA4Notification('error', '❌ لا يوجد اتصال بالإنترنت! الرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.');
                       return;
                     }
 
                     const statusCheck = await api.whatsapp_status();
                     if(!statusCheck || !statusCheck.success || !statusCheck.connected){
-                      if(typeof window.showWhatsAppErrorNotification === 'function'){
-                        window.showWhatsAppErrorNotification('not-connected', 'يرجى ربط WhatsApp أولاً');
-                      } else {
-                        alert('❌ WhatsApp غير متصل!\n\nالرجاء الذهاب إلى إدارة WhatsApp وربط الحساب أولاً.\n\nتأكد من:\n• اتصال الجهاز بالإنترنت\n• مسح رمز QR في شاشة إدارة WhatsApp');
-                      }
+                      showA4Notification('error', '❌ WhatsApp غير متصل! الرجاء الذهاب إلى إدارة WhatsApp وربط الحساب أولاً.');
                       return;
                     }
 
@@ -1317,7 +1345,7 @@
                     }
                     rawPhone = rawPhone.replace(/[^\d+]/g,'');
                     if(!rawPhone){ 
-                      alert('لا يوجد رقم جوال للعميل'); 
+                      showA4Notification('warning', 'لا يوجد رقم جوال للعميل'); 
                       return; 
                     }
 
@@ -1358,7 +1386,7 @@
                         
                         if(!pdfResult || !pdfResult.ok){ 
                           false && console.error('❌ تعذر إنشاء PDF للفاتورة');
-                          alert('❌ فشل في إنشاء ملف PDF للفاتورة');
+                          showA4Notification('error', '❌ فشل في إنشاء ملف PDF للفاتورة');
                           return; 
                         }
 
@@ -1384,7 +1412,7 @@
 
                         if(sendResult && sendResult.success){
                           false && console.log('✅ تم إرسال الفاتورة عبر WhatsApp بنجاح!');
-                          alert('✅ تم إرسال الفاتورة عبر WhatsApp بنجاح!');
+                          showA4Notification('success', '✅ تم إرسال الفاتورة عبر WhatsApp بنجاح!');
                           
                           try {
                             if(typeof api !== 'undefined' && api.emit_whatsapp_invoice_sent){
@@ -1397,7 +1425,7 @@
                         } else {
                           const errMsg = sendResult?.error || 'خطأ غير معروف';
                           false && console.error('❌ فشل الإرسال:', errMsg);
-                          alert('❌ فشل إرسال الفاتورة: ' + errMsg);
+                          showA4Notification('error', '❌ فشل إرسال الفاتورة: ' + errMsg);
                         }
                         
                         try {
@@ -1407,7 +1435,7 @@
 
                       }catch(e){ 
                         false && console.error('❌ خطأ في إرسال الفاتورة:', e);
-                        alert('❌ خطأ في إرسال الفاتورة: ' + (e.message || e));
+                        showA4Notification('error', '❌ خطأ في إرسال الفاتورة: ' + (e.message || e));
                       } finally {
                         window.__WA_SENDING__ = false;
                       }
@@ -1415,7 +1443,7 @@
 
                   }catch(e){ 
                     false && console.error('WhatsApp validation error:', e);
-                    alert('تعذر التحقق من إعدادات WhatsApp: ' + (e.message || e)); 
+                    showA4Notification('error', 'تعذر التحقق من إعدادات WhatsApp: ' + (e.message || e)); 
                   }
                 })();
               });
