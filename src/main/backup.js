@@ -147,13 +147,32 @@ function dumpWithMysqldump(cfg){
     // 4) Fallback to system PATH: 'mysqldump'
     const stripQuotes = (s) => (s || '').replace(/^\s*["']|["']\s*$/g, '').trim();
     const envDumpPath = stripQuotes(process.env.MYSQLDUMP_PATH);
-    const bundledDumpProd = path.join(process.resourcesPath || '', 'assets', 'bin', 'win', 'mysqldump.exe');
-    const bundledDumpDev = path.join(__dirname, '..', '..', 'assets', 'bin', 'win', 'mysqldump.exe');
+    
+    // Check multiple potential locations for the bundled binary
+    const potentialPaths = [];
+    if(envDumpPath) potentialPaths.push(envDumpPath);
+
+    if(app.isPackaged){
+      // Production: look in resources folder relative to app.asar or exe
+      const resPath = process.resourcesPath || path.dirname(app.getAppPath());
+      const exeDir = path.dirname(app.getPath('exe'));
+      
+      potentialPaths.push(path.join(resPath, 'assets', 'bin', 'win', 'mysqldump.exe'));
+      potentialPaths.push(path.join(resPath, 'bin', 'win', 'mysqldump.exe'));
+      potentialPaths.push(path.join(exeDir, 'resources', 'assets', 'bin', 'win', 'mysqldump.exe'));
+      potentialPaths.push(path.join(exeDir, 'resources', 'bin', 'win', 'mysqldump.exe'));
+    } else {
+      // Development: look in project folder
+      potentialPaths.push(path.join(__dirname, '..', '..', 'assets', 'bin', 'win', 'mysqldump.exe'));
+    }
 
     let mysqldumpCmd = 'mysqldump';
-    const candidates = [envDumpPath, bundledDumpProd, bundledDumpDev];
-    for(const p of candidates){
-      if(p && p !== 'mysqldump' && fs.existsSync(p)) { mysqldumpCmd = p; break; }
+    for(const p of potentialPaths){
+      // Ensure we don't try to spawn from inside ASAR
+      if(p && p !== 'mysqldump' && !p.includes('.asar') && fs.existsSync(p)) { 
+        mysqldumpCmd = p; 
+        break; 
+      }
     }
 
     const runOnce = (extraArgs = []) => new Promise((res, rej) => {
