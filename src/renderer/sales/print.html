@@ -787,7 +787,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
               // استبدل الرموز الشائعة بالرمز الخاص للخط المضمّن إن لزم
               // Fix double symbols: if it looks like Saudi Riyal (including the symbol itself), force single symbol
               if(/﷼|SAR|SR|ريال|ر\.س|\uE900/i.test(sym)){ sym = '\ue900'; }
-              const symHtml = `<span class="currency-symbol">${sym}</span>`;
+              const symHtml = `<span class="currency-symbol" style="font-size:13px;font-family:'saudi_riyal',sans-serif;line-height:1;vertical-align:middle;">${sym}</span>`;
               const pos = (settings && settings.currency_symbol_position) === 'before' ? 'before' : 'after';
               return pos === 'before' ? `${symHtml} ${n}` : `${n} ${symHtml}`;
             }catch(_){
