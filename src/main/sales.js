@@ -1328,7 +1328,7 @@ function registerSalesIPC(){
           }
         }catch(_){ }
         if(!sale) return { ok:false, error:'الفاتورة غير موجودة' };
-        const [items] = await conn.query('SELECT si.*, p.is_tobacco, p.category, p.name_en, COALESCE(pv.barcode, p.barcode) AS barcode, e.name as employee_name FROM sales_items si LEFT JOIN products p ON p.id = si.product_id LEFT JOIN product_variants pv ON pv.id = si.operation_id LEFT JOIN employees e ON e.id = si.employee_id WHERE si.sale_id=?', [sid]);
+        const [items] = await conn.query('SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier, si.price, si.qty, si.line_total, si.operation_id, si.operation_name, si.employee_id, p.is_tobacco, p.category, p.name_en, COALESCE(pv.barcode, p.barcode) AS barcode, e.name as employee_name FROM sales_items si LEFT JOIN products p ON p.id = si.product_id LEFT JOIN product_variants pv ON pv.id = si.operation_id LEFT JOIN employees e ON e.id = si.employee_id WHERE si.sale_id=?', [sid]);
         return { ok:true, sale, items };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'تعذر جلب الفاتورة' }; }
