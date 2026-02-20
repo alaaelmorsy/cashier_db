@@ -333,16 +333,104 @@ const { contextBridge, ipcRenderer } = require('electron');
       obs.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     } catch (_) { }
 
-    document.addEventListener('contextmenu', (e) => {
-      try {
-        const el = e.target;
-        const editable = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
-        if (!editable) return;
-        e.preventDefault();
-        try { el.focus(); } catch (_) {}
-        ipcRenderer.invoke('context:show', {}).catch(() => {});
-      } catch (_) {}
-    });
+    (function () {
+      let _ctxMenu = null;
+      let _ctxTarget = null;
+
+      function _ctxGetLang() {
+        try { return document.documentElement.lang === 'en' ? 'en' : 'ar'; } catch (_) { return 'ar'; }
+      }
+
+      function _ctxInit() {
+        if (document.getElementById('__pos_ctx_menu')) return;
+        const st = document.createElement('style');
+        st.textContent = `
+          #__pos_ctx_menu{position:fixed;z-index:999999;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.07);padding:4px;min-width:140px;display:none;font-family:'Cairo','Segoe UI',sans-serif;user-select:none;animation:__ctx_in .13s ease;}
+          @keyframes __ctx_in{from{opacity:0;transform:scale(.95) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+          #__pos_ctx_menu button{display:flex;align-items:center;gap:9px;width:100%;padding:9px 14px;border:none;background:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:#1e293b;text-align:start;transition:background .12s,color .12s;}
+          #__pos_ctx_menu button:hover{background:#eff6ff;color:#2563eb;}
+          #__pos_ctx_menu button svg{width:15px;height:15px;flex-shrink:0;stroke:currentColor;}
+          #__pos_ctx_menu hr{border:none;border-top:1px solid #f1f5f9;margin:3px 8px;}
+        `;
+        document.head.appendChild(st);
+        const m = document.createElement('div');
+        m.id = '__pos_ctx_menu';
+        document.body.appendChild(m);
+        _ctxMenu = m;
+      }
+
+      function _ctxShow(e, el) {
+        _ctxInit();
+        if (!_ctxMenu) return;
+        _ctxTarget = el;
+        const ar = _ctxGetLang() === 'ar';
+        const copyIco = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+        const pasteIco = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>`;
+        _ctxMenu.dir = ar ? 'rtl' : 'ltr';
+        _ctxMenu.innerHTML = `
+          <button id="__ctx_copy">${copyIco}${ar ? 'نسخ' : 'Copy'}</button>
+          <hr/>
+          <button id="__ctx_paste">${pasteIco}${ar ? 'لصق' : 'Paste'}</button>`;
+        _ctxMenu.style.cssText = `display:block;left:${e.clientX}px;top:${e.clientY}px;`;
+        requestAnimationFrame(() => {
+          try {
+            const r = _ctxMenu.getBoundingClientRect();
+            if (r.right > window.innerWidth) _ctxMenu.style.left = (e.clientX - r.width) + 'px';
+            if (r.bottom > window.innerHeight) _ctxMenu.style.top = (e.clientY - r.height) + 'px';
+          } catch (_) {}
+        });
+        document.getElementById('__ctx_copy').onclick = _ctxDoCopy;
+        document.getElementById('__ctx_paste').onclick = _ctxDoPaste;
+      }
+
+      function _ctxHide() { try { if (_ctxMenu) _ctxMenu.style.display = 'none'; _ctxTarget = null; } catch (_) {} }
+
+      function _ctxDoCopy() {
+        _ctxHide();
+        try {
+          const el = document.activeElement || _ctxTarget;
+          let txt = '';
+          if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) txt = el.value.substring(el.selectionStart, el.selectionEnd);
+          else txt = (window.getSelection() || '').toString();
+          if (txt) navigator.clipboard.writeText(txt).catch(() => {});
+        } catch (_) {}
+      }
+
+      async function _ctxDoPaste() {
+        _ctxHide();
+        try {
+          const txt = await navigator.clipboard.readText();
+          if (!txt) return;
+          const el = document.activeElement || _ctxTarget;
+          if (!el) return;
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            const s = el.selectionStart, end = el.selectionEnd;
+            el.value = el.value.substring(0, s) + txt + el.value.substring(end);
+            el.selectionStart = el.selectionEnd = s + txt.length;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          } else if (el.isContentEditable) {
+            document.execCommand('insertText', false, txt);
+          }
+        } catch (_) {}
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        _ctxInit();
+        document.addEventListener('contextmenu', (e) => {
+          try {
+            const el = e.target;
+            if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && !el.isContentEditable) { _ctxHide(); return; }
+            e.preventDefault();
+            try { el.focus(); } catch (_) {}
+            _ctxShow(e, el);
+          } catch (_) {}
+        });
+        document.addEventListener('click', (e) => { try { if (_ctxMenu && !_ctxMenu.contains(e.target)) _ctxHide(); } catch (_) {} });
+        document.addEventListener('keydown', (e) => { try { if (e.key === 'Escape') _ctxHide(); } catch (_) {} });
+        document.addEventListener('scroll', () => _ctxHide(), true);
+      });
+    })();
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
