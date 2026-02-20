@@ -1458,7 +1458,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             const descExtra = Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:8px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : '';
             const empName = it.employee_name ? `<div style='font-size:9px; color:#64748b; margin-top:2px;'>الموظف: ${it.employee_name}</div>` : '';
             trDesc.innerHTML = (it.description || Number(it.is_tobacco||0) || it.employee_name)
-              ? `<td colspan="5"><div class="desc-print">${descExtra}${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div></td>`
+              ? `<td colspan="5"><div class="desc-print">${descExtra}${it.description ? `${it.description}` : ''}${empName}</div></td>`
               : `<td colspan="5"></td>`;
             tbody.appendChild(trDesc);
           });

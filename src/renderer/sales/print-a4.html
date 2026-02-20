@@ -965,7 +965,7 @@
                 <td>
                   <div class="item-name">${it.name||''}</div>
                   ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                  ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `<span class="desc-title">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                  ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                 </td>
                 <td>${opCell}</td>
                 <td class="num">${qtyTxt}</td>
@@ -984,7 +984,7 @@
                   <td>
                     <div class="item-name">${it.name||''}</div>
                     ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `<span class=\"desc-title\">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                   </td>
                   <td>${opCell}</td>
                   <td class="num">${qtyTxt}</td>
@@ -997,7 +997,7 @@
                   <td>
                     <div class="item-name">${it.name||''}</div>
                     ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `<span class=\"desc-title\">وصف الصنف:</span> ${it.description}` : ''}${empName}</div>` : ''}
+                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                   </td>
                   <td class="num">${qtyTxt}</td>
                   <td class="num">${fmt(unitPrice)}</td>
