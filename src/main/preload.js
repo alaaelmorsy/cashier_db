@@ -333,6 +333,17 @@ const { contextBridge, ipcRenderer } = require('electron');
       obs.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     } catch (_) { }
 
+    document.addEventListener('contextmenu', (e) => {
+      try {
+        const el = e.target;
+        const editable = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+        if (!editable) return;
+        e.preventDefault();
+        try { el.focus(); } catch (_) {}
+        ipcRenderer.invoke('context:show', {}).catch(() => {});
+      } catch (_) {}
+    });
+
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         const url = (location.pathname || '').toLowerCase();
