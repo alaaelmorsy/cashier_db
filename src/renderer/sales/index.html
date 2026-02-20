@@ -987,7 +987,9 @@ table tr td, table tr th { vertical-align: middle; }
         font-family: 'Cairo', sans-serif;
       }
       /* اجعل عمود الكمية يعتمد على المحتوى بلا عرض ثابت */
+      thead th:nth-child(3){ text-align: left; }
       thead th:nth-child(4), tbody td:nth-child(4){ white-space: nowrap; }
+      thead th:nth-child(4){ text-align: center; }
       /* اجعل عمود الإجمالي يعتمد على المحتوى بلا عرض ثابت */
       thead th:nth-child(5), tbody td:nth-child(5){ white-space: nowrap; text-align: left; }
       thead th:nth-child(6), tbody td:nth-child(6){ width: 70px; text-align: center; }
