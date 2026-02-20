@@ -1195,12 +1195,12 @@
       <div class="brand">
         <div class="brand-badge">POS</div>
         <div>
-          <div>إعدادات النظام</div>
-          <div class="section-desc">تحكم كامل في هوية المتجر، الضرائب، الطباعة والمدفوعات</div>
+          <div id="headerBrandTitle">إعدادات النظام</div>
+          <div id="headerBrandDesc" class="section-desc">تحكم كامل في هوية المتجر، الضرائب، الطباعة والمدفوعات</div>
         </div>
       </div>
       <nav>
-        <button class="btn back" onclick="history.back()">⬅ العودة</button>
+        <button id="btnBack" class="btn back" onclick="history.back()">⬅ العودة</button>
       </nav>
     </header>
 
@@ -1257,15 +1257,15 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">البيانات العامة</div>
-                    <div class="section-desc">معلومات المتجر للتعاملات والفواتير</div>
+                    <div id="sTitle-general" class="section-title">البيانات العامة</div>
+                    <div id="sDesc-general" class="section-desc">معلومات المتجر للتعاملات والفواتير</div>
                   </div>
                 </div>
                 <div class="divider"></div>
 
                 <!-- اسم المتجر -->
                 <div class="subsection">
-                  <div class="subsection-title">اسم المتجر</div>
+                  <div id="ssTitle-storeName" class="subsection-title">اسم المتجر</div>
                   <div class="form-row">
                     <div>
                       <label>اسم المبيعات (عربي)</label>
@@ -1280,7 +1280,7 @@
 
                 <!-- العنوان -->
                 <div class="subsection">
-                  <div class="subsection-title">العنوان والموقع</div>
+                  <div id="ssTitle-address" class="subsection-title">العنوان والموقع</div>
                   <div class="form-row">
                     <div>
                       <label>موقع الشركة (العنوان)</label>
@@ -1295,7 +1295,7 @@
 
                 <!-- معلومات الاتصال -->
                 <div class="subsection">
-                  <div class="subsection-title">معلومات الاتصال</div>
+                  <div id="ssTitle-contact" class="subsection-title">معلومات الاتصال</div>
                   <div class="form-row">
                     <div>
                       <label>الجوال</label>
@@ -1320,7 +1320,7 @@
 
                 <!-- ملاحظات الفاتورة -->
                 <div class="subsection">
-                  <div class="subsection-title">ملاحظات الفاتورة</div>
+                  <div id="ssTitle-invoiceNotes" class="subsection-title">ملاحظات الفاتورة</div>
                   <div>
                     <label>ملاحظات أسفل الفاتورة</label>
                     <textarea id="f_invoice_footer_note" rows="3" placeholder="مثال: سياسة الاسترجاع خلال 7 أيام..."></textarea>
