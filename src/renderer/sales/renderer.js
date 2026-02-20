@@ -5235,7 +5235,7 @@ async function openAddProductModal(barcode){
   const minPriceInput = document.getElementById('apmMinPrice');
   const stockInput = document.getElementById('apmStock');
   const expiryDateInput = document.getElementById('apmExpiryDate');
-  const isTobaccoSelect = document.getElementById('apmIsTobacco');
+
   const descriptionInput = document.getElementById('apmDescription');
   const thumbImg = document.getElementById('apmThumb');
   const pickImageBtn = document.getElementById('apmPickImage');
@@ -5255,7 +5255,7 @@ async function openAddProductModal(barcode){
   if(minPriceInput) minPriceInput.value = '';
   if(stockInput) stockInput.value = '0';
   if(expiryDateInput) expiryDateInput.value = '';
-  if(isTobaccoSelect) isTobaccoSelect.value = '0';
+
   if(descriptionInput) descriptionInput.value = '';
   if(thumbImg) thumbImg.src = '';
   if(hideFromSalesCheckbox) hideFromSalesCheckbox.checked = false;
@@ -5332,7 +5332,7 @@ async function openAddProductModal(barcode){
       const minPrice = minPriceInput ? Number(minPriceInput.value || 0) : null;
       const stock = stockInput ? Number(stockInput.value || 0) : 0;
       const expiryDate = (expiryDateInput ? expiryDateInput.value : '').trim();
-      const isTobacco = isTobaccoSelect ? Number(isTobaccoSelect.value || 0) : 0;
+
       const description = (descriptionInput ? descriptionInput.value : '').trim();
       const hideFromSales = hideFromSalesCheckbox ? (hideFromSalesCheckbox.checked ? 1 : 0) : 0;
       
@@ -5360,7 +5360,7 @@ async function openAddProductModal(barcode){
         min_price: minPrice,
         stock,
         expiry_date: expiryDate || null,
-        is_tobacco: isTobacco,
+        is_tobacco: 0,
         description: description || null,
         image_path: pickedImagePath || null,
         hide_from_sales: hideFromSales,
