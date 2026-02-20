@@ -49,37 +49,30 @@ async function initInvoiceSequence() {
   }
 }
 
-// Get next invoice number (atomically)
+// Get next invoice number (atomically) — optimized: 2 round trips instead of 6
 async function getNextInvoiceNumber(deviceId) {
 
   const conn = await dbAdapter.getConnection();
   try {
-    await conn.beginTransaction();
-
-    // Lock and increment the sequence
-    await conn.query('SELECT current_number FROM invoice_sequence WHERE id = 1 FOR UPDATE');
-    
-    const [result] = await conn.query(
-      'UPDATE invoice_sequence SET current_number = current_number + 1 WHERE id = 1'
-    );
-
-    // Get the new number
-    const [rows] = await conn.query('SELECT current_number FROM invoice_sequence WHERE id = 1');
-    const invoiceNumber = rows[0].current_number;
-
-    // Reserve the number
+    // RT 1: Atomic increment using LAST_INSERT_ID trick — no transaction needed,
+    //        InnoDB row-lock on the UPDATE serializes concurrent calls automatically.
     await conn.query(
-      'INSERT INTO reserved_invoice_numbers (invoice_number, device_id) VALUES (?, ?)',
-      [invoiceNumber, deviceId]
+      'UPDATE invoice_sequence SET current_number = LAST_INSERT_ID(current_number + 1) WHERE id = 1'
     );
 
-    await conn.commit();
+    // RT 2: Capture the number and reserve it in one multi-statement round trip
+    const [results] = await conn.query(
+      'SET @inv_num = LAST_INSERT_ID(); ' +
+      'INSERT INTO reserved_invoice_numbers (invoice_number, device_id) VALUES (@inv_num, ?); ' +
+      'SELECT @inv_num AS new_number;',
+      [deviceId]
+    );
+    const invoiceNumber = results[2][0].new_number;
 
     console.log(`✓ Reserved invoice number ${invoiceNumber} for device ${deviceId}`);
     return invoiceNumber;
 
   } catch (err) {
-    await conn.rollback();
     throw err;
   } finally {
     conn.release();

@@ -76,22 +76,31 @@ async function initDbFromSaved(){
 
 let pool;
 
+function isRemoteHost(host) {
+  const h = String(host || '').toLowerCase().trim();
+  return h && h !== '127.0.0.1' && h !== 'localhost' && h !== '::1';
+}
+
 async function getPool() {
   if (!pool) {
     // Load saved config before creating pool
     loadSavedConfig();
-    
+
+    const remote = isRemoteHost(currentConfig.host);
+
     pool = mysql.createPool({
       host: currentConfig.host,
       port: currentConfig.port,
       user: currentConfig.user,
       password: currentConfig.password,
       waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
+      connectionLimit: remote ? 5 : 10,
+      queueLimit: 50,
       multipleStatements: true,
-      connectTimeout: 30000,
+      connectTimeout: remote ? 10000 : 30000,
       timezone: 'local',
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 30000,
     });
 
     // Ensure DB and tables exist

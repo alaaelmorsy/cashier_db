@@ -1,6 +1,27 @@
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const axios = require('axios');
+
+const API_TIMEOUT = 8000;
+const API_RETRIES = 2;
+
+const _keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 10, timeout: 60000 });
+
+async function _withRetry(fn) {
+  let lastErr;
+  for (let attempt = 0; attempt <= API_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < API_RETRIES) {
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastErr;
+}
 
 const DEFAULT_MODE = 'primary';
 const DEFAULT_API_HOST = '127.0.0.1';
@@ -68,47 +89,51 @@ function getApiBaseUrl() {
 }
 
 async function fetchFromAPI(endpoint, params = {}) {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
-  try {
-    const response = await axios.get(url, { params, timeout: 30000 });
-    return response.data;
-  } catch (err) {
-    throw new Error(`API fetch failed: ${err.message}`);
-  }
+  const url = `${getApiBaseUrl()}${endpoint}`;
+  return _withRetry(async () => {
+    try {
+      const response = await axios.get(url, { params, timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
+      return response.data;
+    } catch (err) {
+      throw new Error(`API fetch failed: ${err.message}`);
+    }
+  });
 }
 
 async function postToAPI(endpoint, body = {}) {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
-  try {
-    const response = await axios.post(url, body, { timeout: 30000 });
-    return response.data;
-  } catch (err) {
-    throw new Error(`API post failed: ${err.message}`);
-  }
+  const url = `${getApiBaseUrl()}${endpoint}`;
+  return _withRetry(async () => {
+    try {
+      const response = await axios.post(url, body, { timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
+      return response.data;
+    } catch (err) {
+      throw new Error(`API post failed: ${err.message}`);
+    }
+  });
 }
 
 async function putToAPI(endpoint, body = {}) {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
-  try {
-    const response = await axios.put(url, body, { timeout: 30000 });
-    return response.data;
-  } catch (err) {
-    throw new Error(`API put failed: ${err.message}`);
-  }
+  const url = `${getApiBaseUrl()}${endpoint}`;
+  return _withRetry(async () => {
+    try {
+      const response = await axios.put(url, body, { timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
+      return response.data;
+    } catch (err) {
+      throw new Error(`API put failed: ${err.message}`);
+    }
+  });
 }
 
 async function deleteFromAPI(endpoint) {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
-  try {
-    const response = await axios.delete(url, { timeout: 30000 });
-    return response.data;
-  } catch (err) {
-    throw new Error(`API delete failed: ${err.message}`);
-  }
+  const url = `${getApiBaseUrl()}${endpoint}`;
+  return _withRetry(async () => {
+    try {
+      const response = await axios.delete(url, { timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
+      return response.data;
+    } catch (err) {
+      throw new Error(`API delete failed: ${err.message}`);
+    }
+  });
 }
 
 module.exports = {

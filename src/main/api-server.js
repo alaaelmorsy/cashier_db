@@ -64,15 +64,17 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { id } = req.params;
       const conn = await dbAdapter.getConnection();
-      const [rows] = await conn.query('SELECT * FROM sales WHERE id=? LIMIT 1', [id]);
-      if (!rows.length) {
-        conn.release();
+      const [results] = await conn.query(
+        'SELECT * FROM sales WHERE id=? LIMIT 1; SELECT * FROM sales_items WHERE sale_id=? ORDER BY id',
+        [id, id]
+      );
+      conn.release();
+      const invoiceRows = results[0];
+      const items = results[1];
+      if (!invoiceRows.length) {
         return res.status(404).json({ ok: false, error: 'Invoice not found' });
       }
-      const invoice = rows[0];
-      const [items] = await conn.query('SELECT * FROM sales_items WHERE sale_id=? ORDER BY id', [id]);
-      conn.release();
-      res.json({ ok: true, invoice, items });
+      res.json({ ok: true, invoice: invoiceRows[0], items });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
