@@ -26,6 +26,8 @@ let __allInvoices = [];
 let __totalInvoices = 0;
 let __invPage = 1;
 let __invPageSize = 20;
+let __lastId = null;
+let __cursors = {};
 
 // default print format from settings (thermal | a4)
 let __defPrintFormat = 'thermal';
@@ -47,8 +49,25 @@ function renderInvPager(){
   const btn=(l,d,g)=>`<button class="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium" ${d?'disabled':''} data-go="${g}">${l}</button>`;
   const html=[btn('⏮️',__invPage<=1,'first'),btn('◀️',__invPage<=1,'prev'),`<span class="text-gray-600 font-medium px-2">صفحة ${__invPage} من ${pages} (إجمالي: ${__totalInvoices})</span>`,btn('▶️',__invPage>=pages,'next'),btn('⏭️',__invPage>=pages,'last')].join(' ');
   if(top) top.innerHTML=html; if(bottom) bottom.innerHTML=html;
-  const onClick=(e)=>{ const b=e.target.closest('button'); if(!b) return; const act=b.getAttribute('data-go'); const pages = (__invPageSize > 0) ? Math.max(1, Math.ceil(__totalInvoices / __invPageSize)) : 1; if(act==='first') __invPage=1; if(act==='prev') __invPage=Math.max(1,__invPage-1); if(act==='next') __invPage=Math.min(pages,__invPage+1); if(act==='last') __invPage=pages; load(false); };
-  if(top) top.onclick = onClick; if(bottom) bottom.onclick = onClick;
+  const onClick=(e)=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const act=b.getAttribute('data-go');
+    const pages=(__invPageSize>0)?Math.max(1,Math.ceil(__totalInvoices/__invPageSize)):1;
+    if(act==='first'){
+      __invPage=1; __cursors={}; load(false, null);
+    } else if(act==='prev' && __invPage>1){
+      __invPage=Math.max(1,__invPage-1);
+      load(false, __cursors[__invPage]||null);
+    } else if(act==='next' && __invPage<pages){
+      __cursors[__invPage+1]=__lastId;
+      __invPage=Math.min(pages,__invPage+1);
+      load(false, __lastId);
+    } else if(act==='last'){
+      __invPage=pages; __cursors={};
+      load(false, null);
+    }
+  };
+  if(top) top.onclick=onClick; if(bottom) bottom.onclick=onClick;
 }
 
 function renderRows(list){
@@ -168,35 +187,30 @@ function showZatcaResponseModal(raw){
   if(modal) modal.style.display = 'flex';
 }
 
-async function load(resetPage = true){
+async function load(resetPage = true, beforeId = null){
   setError('');
-  // إعادة تحميل إعدادات ZATCA لتحديث حالة الأزرار
-  try{
-    const r = await window.api.settings_get();
-    if(r && r.ok && r.item){
-      __zatcaEnabled = !!(r.item.zatca_enabled);
-    }
-  }catch(_){ }
-  
+  // إعادة تحميل إعدادات ZATCA بشكل غير متزامن (non-blocking) لتجنب تأخير التنقل
+  window.api.settings_get().then(r=>{ if(r&&r.ok&&r.item){ __zatcaEnabled=!!(r.item.zatca_enabled); } }).catch(()=>{});
+
+  if(resetPage){ __invPage=1; __cursors={}; beforeId=null; }
+
   const query = {};
   const v1 = (q.value||'').trim();
   const v2 = (q2.value||'').trim();
-  // priority: invoice field only handles invoice number logic on backend
   if(v1){ query.q = v1; }
-  // secondary filter for customer/phone/tax id
   if(v2){ query.customer_q = v2; }
-  // استبعاد إشعارات الدائن من جانب الخادم
   query.type = 'invoice';
-  if(resetPage){ __invPage = 1; }
-  // Add pagination parameters
   query.page = __invPage;
   query.pageSize = __invPageSize;
+  if(beforeId){ query.before_id = beforeId; }
+
   const r = await window.api.sales_list(query);
   if(!r.ok){ setError(r.error || 'تعذر تحميل الفواتير'); return; }
   __allInvoices = r.items || [];
   __totalInvoices = r.total || 0;
   __invPage = r.page || __invPage;
   __invPageSize = (r.pageSize !== undefined) ? r.pageSize : __invPageSize;
+  __lastId = r.last_id || null;
   renderRows(__allInvoices);
 }
 
@@ -212,10 +226,8 @@ async function load(resetPage = true){
 const pageSizeSel = document.getElementById('pageSize');
 if(pageSizeSel){
   pageSizeSel.addEventListener('change', ()=>{
-    const v = Number(pageSizeSel.value||20);
-    __invPageSize = v;
-    __invPage = 1;
-    load(false);
+    __invPageSize = Number(pageSizeSel.value||20);
+    load(true);
   });
 }
 

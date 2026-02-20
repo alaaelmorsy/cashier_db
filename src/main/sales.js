@@ -241,6 +241,30 @@ function registerSalesIPC(){
     try{ await conn.query("DROP INDEX idx_zatca_status ON sales"); }catch(_){ }
     try{ await conn.query("DROP INDEX idx_customer_date ON sales"); }catch(_){ }
 
+    // Keyset pagination index: (doc_type, id) for fast WHERE doc_type=? ORDER BY id DESC
+    try{
+      const [idxDoctypeId] = await conn.query("SHOW INDEX FROM sales WHERE Key_name='idx_doctype_id'");
+      if(!idxDoctypeId.length){
+        await conn.query("CREATE INDEX idx_doctype_id ON sales(doc_type, id)");
+      }
+    }catch(_){ }
+
+    // Prefix phone index: supports LIKE '05xx%' searches (no leading wildcard)
+    try{
+      const [idxPhonePrefix] = await conn.query("SHOW INDEX FROM sales WHERE Key_name='idx_customer_phone_prefix'");
+      if(!idxPhonePrefix.length){
+        await conn.query("CREATE INDEX idx_customer_phone_prefix ON sales(customer_phone)");
+      }
+    }catch(_){ }
+
+    // Full-Text index for fast text search across name/phone/invoice_no/vat
+    try{
+      const [idxFT] = await conn.query("SHOW INDEX FROM sales WHERE Key_name='ft_sales_search'");
+      if(!idxFT.length){
+        await conn.query("CREATE FULLTEXT INDEX ft_sales_search ON sales(customer_name, customer_phone, invoice_no, customer_vat)");
+      }
+    }catch(_){ }
+
     await conn.query(`
       CREATE TABLE IF NOT EXISTS sales_items (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -816,6 +840,34 @@ function registerSalesIPC(){
       try{
         await ensureTables(conn);
 
+        // FTS early-return: for non-digit text queries use FULLTEXT MATCH instead of LIKE
+        // Falls back silently to LIKE path below if index not ready or query fails
+        if(q.q && !q.customer_q){
+          const _toAsc = (s) => String(s||'').replace(/[\u0660-\u0669]/g, d=>String(d.charCodeAt(0)-0x0660)).replace(/[\u06F0-\u06F9]/g, d=>String(d.charCodeAt(0)-0x06F0));
+          const _qstr = _toAsc(String(q.q).trim());
+          const _digOnly = /^[0-9]+$/.test(_qstr);
+          if(!_digOnly && _qstr.length >= 2){
+            try{
+              const ftsWords = _qstr.split(/\s+/).filter(w=>w.length>0).map(w=>'+'+w+'*').join(' ') || (_qstr+'*');
+              const baseWhere = terms.length ? ('WHERE '+terms.join(' AND ')) : '';
+              const ftCond = 'MATCH(s.customer_name,s.customer_phone,s.invoice_no,s.customer_vat) AGAINST(? IN BOOLEAN MODE)';
+              const ftWhere = baseWhere ? (baseWhere+' AND '+ftCond) : ('WHERE '+ftCond);
+              const ftBaseParams = [...params];
+              const [ftCnt] = await conn.query(
+                `SELECT COUNT(*) as total FROM sales s ${ftWhere}`,
+                [...ftBaseParams, ftsWords]
+              );
+              const ftTotal = Number(ftCnt[0]?.total||0);
+              const ftOffset = (page-1)*(pageSize||0);
+              const ftDataSql = `SELECT s.*, c.name AS disp_customer_name, c.phone AS disp_customer_phone FROM sales s LEFT JOIN customers c ON c.id=s.customer_id ${ftWhere} ORDER BY s.id DESC LIMIT ? OFFSET ?`;
+              const [ftRows] = await conn.query(ftDataSql, [...ftBaseParams, ftsWords, pageSize||20, ftOffset]);
+              const first_id = ftRows.length ? ftRows[0].id : null;
+              const last_id  = ftRows.length ? ftRows[ftRows.length-1].id : null;
+              return { ok:true, items:ftRows, total:ftTotal, page, pageSize, first_id, last_id };
+            }catch(_){ /* FTS unavailable or failed — fall through to LIKE */ }
+          }
+        }
+
         // If free-text provided
         if(q.q){
           const toAsciiDigits = (s) => String(s||'').replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0));
@@ -904,19 +956,36 @@ function registerSalesIPC(){
           total = countRows[0]?.total || 0;
         }
         
-        // Get paginated data - use STRAIGHT_JOIN hint for better performance with large tables
-        let sql = `SELECT s.*, c.name AS disp_customer_name, c.phone AS disp_customer_phone
+        // Get paginated data
+        const beforeId = q.before_id ? Number(q.before_id) : null;
+        const canUseKeyset = beforeId && pageSize > 0;
+
+        if(canUseKeyset){
+          // Keyset pagination: WHERE id < beforeId avoids OFFSET scan — always O(1) regardless of page depth
+          const ksTerms = [...terms, 's.id < ?'];
+          const ksWhere = 'WHERE ' + ksTerms.join(' AND ');
+          const ksSql = `SELECT s.*, c.name AS disp_customer_name, c.phone AS disp_customer_phone
+                         FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+                         ${ksWhere} ORDER BY s.id DESC LIMIT ?`;
+          const [rows] = await conn.query(ksSql, [...params, beforeId, pageSize]);
+          const first_id = rows.length ? rows[0].id : null;
+          const last_id  = rows.length ? rows[rows.length-1].id : null;
+          return { ok:true, items: rows, total, page, pageSize, first_id, last_id };
+        }
+
+        const baseSql = `SELECT s.*, c.name AS disp_customer_name, c.phone AS disp_customer_phone
                    FROM sales s 
                    LEFT JOIN customers c ON c.id = s.customer_id 
                    ${where} 
                    ORDER BY s.id DESC`;
         if (pageSize > 0) {
-          sql += ` LIMIT ? OFFSET ?`;
-          const [rows] = await conn.query(sql, [...params, pageSize, offset]);
-          return { ok:true, items: rows, total, page, pageSize };
+          const [rows] = await conn.query(baseSql + ' LIMIT ? OFFSET ?', [...params, pageSize, offset]);
+          const first_id = rows.length ? rows[0].id : null;
+          const last_id  = rows.length ? rows[rows.length-1].id : null;
+          return { ok:true, items: rows, total, page, pageSize, first_id, last_id };
         } else {
           // Get all records (no pagination)
-          const [rows] = await conn.query(sql, params);
+          const [rows] = await conn.query(baseSql, params);
           return { ok:true, items: rows, total, page: 1, pageSize: 0 };
         }
       } finally { conn.release(); }
