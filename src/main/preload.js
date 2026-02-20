@@ -393,7 +393,7 @@ const { contextBridge, ipcRenderer } = require('electron');
           let txt = '';
           if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) txt = el.value.substring(el.selectionStart, el.selectionEnd);
           else txt = (window.getSelection() || '').toString();
-          if (txt) navigator.clipboard.writeText(txt).catch(() => {});
+          if (txt) ipcRenderer.invoke('clipboard:write', txt).catch(() => {});
         } catch (_) {}
       }
 
@@ -403,7 +403,7 @@ const { contextBridge, ipcRenderer } = require('electron');
           _ctxHide();
           if (!el) return;
           try { el.focus(); } catch (_) {}
-          const txt = await navigator.clipboard.readText();
+          const txt = await ipcRenderer.invoke('clipboard:read');
           if (!txt) return;
           if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
             const s = el.selectionStart || 0, end = el.selectionEnd || 0;

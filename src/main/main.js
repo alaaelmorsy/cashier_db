@@ -1,5 +1,5 @@
 // Electron main process
-const { app, BrowserWindow, ipcMain, session, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, session, Menu, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dns = require('dns');
@@ -328,6 +328,9 @@ function registerLicenseIPC() {
 }
 
 function registerContextMenuIPC() {
+  ipcMain.handle('clipboard:read', () => { try { return clipboard.readText(); } catch(_){ return ''; } });
+  ipcMain.handle('clipboard:write', (_e, text) => { try { clipboard.writeText(String(text || '')); } catch(_){} });
+
   ipcMain.handle('context:show', (event, payload) => {
     try{
       const win = BrowserWindow.fromWebContents(event.sender);
