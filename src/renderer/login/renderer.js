@@ -10,17 +10,6 @@ const toggleEye = document.getElementById('toggleEye');
 const savedUsersList = document.getElementById('savedUsersList');
 const deleteSavedBtn = document.getElementById('deleteSavedBtn');
 
-function attachContextMenu(el){
-  if(!el) return;
-  el.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    try{ el.focus(); }catch(_){ }
-    try{ window.api && window.api.show_context_menu && window.api.show_context_menu({}); }catch(_){ }
-  });
-}
-
-attachContextMenu(usernameInput);
-attachContextMenu(passwordInput);
 
 // Local storage helpers
 const STORAGE_KEY = 'pos_saved_accounts';
