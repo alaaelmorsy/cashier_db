@@ -367,8 +367,6 @@ async function buildInvoiceHTML(invoice, items, supplier, settings) {
           <tr><td>الخصم العام (غير شامل)</td><td>${discExclusive.toFixed(2)} \ue900</td></tr>
           <tr><td>قيمة الضريبة</td><td>${vatTotal.toFixed(2)} \ue900</td></tr>
           <tr><td>الإجمالي شامل الضريبة</td><td>${grandInclusive.toFixed(2)} \ue900</td></tr>
-          <tr><td>مدفوع</td><td>${Number(invoice.amount_paid || 0).toFixed(2)} \ue900</td></tr>
-          <tr><td>متبقي</td><td>${Number(invoice.amount_due || 0).toFixed(2)} \ue900</td></tr>
         </tbody>
       </table>
       

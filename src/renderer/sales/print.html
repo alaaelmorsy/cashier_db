@@ -1585,7 +1585,11 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             const dbPaid = Number(sale.paid_amount||0);
             const dbRemain = Number(sale.remaining_amount||0);
 
-            if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
+            if(pay === 'refund'){
+              try{ paidRow.style.display='none'; }catch(_){}
+              try{ remainRow.style.display='none'; }catch(_){}
+              try{ changeRow.style.display='none'; }catch(_){}
+            } else if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
               if(dbPaid > 0){ paidEl.innerHTML = fmt(dbPaid); paidRow.style.display=''; } else { try{ paidRow.style.display='none'; }catch(_){} }
               if(dbRemain > 0){ remEl.innerHTML = fmt(dbRemain); remainRow.style.display=''; } else { try{ remainRow.style.display='none'; }catch(_){} }
             } else if(!isMixed){
@@ -1666,6 +1670,28 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
               }
             }catch(_){ }
           }catch(_){ /* ignore */ }
+
+          // Force hide paid/remain/change rows if requested via URL param (e.g. from Credit Invoices report)
+          try{
+            if(params.get('hide_pay_remain')){
+              const _paidRow = document.getElementById('paidRow');
+              const _remainRow = document.getElementById('remainRow');
+              const _changeRow = document.getElementById('changeRow');
+              if(_paidRow) _paidRow.style.setProperty('display', 'none', 'important');
+              if(_remainRow) _remainRow.style.setProperty('display', 'none', 'important');
+              if(_changeRow) _changeRow.style.setProperty('display', 'none', 'important');
+              
+              // Also hide mixed payment rows if they exist
+              const totals = document.querySelector('.totals tbody');
+              if(totals){
+                Array.from(totals.querySelectorAll('tr')).forEach(tr => {
+                  if(tr.textContent.includes('المدفوع كاش') || tr.textContent.includes('المدفوع شبكة')){
+                     tr.style.setProperty('display', 'none', 'important');
+                  }
+                });
+              }
+            }
+          }catch(_){ }
 
           // show invoice notes if any
           if(sale.notes){

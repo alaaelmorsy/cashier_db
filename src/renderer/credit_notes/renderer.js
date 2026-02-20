@@ -112,7 +112,7 @@ function onTableAction(e){
     const baseId = Number(b.getAttribute('data-base'));
     const page = (__defPrintFormat === 'a4') ? 'print-a4.html' : 'print.html';
     // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
-    const url = `../sales/${page}?id=${baseId}&refresh=1`;
+    const url = `../sales/${page}?id=${baseId}&refresh=1&hide_pay_remain=1`;
     const w = (__defPrintFormat === 'a4') ? 900 : 500;
     const h = (__defPrintFormat === 'a4') ? 1000 : 700;
     window.open(url, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);

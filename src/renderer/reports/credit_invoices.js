@@ -101,7 +101,7 @@ async function loadRange(startStr, endStr){
           const w = (__defPrintFormat === 'a4') ? 900 : 500;
           const h = (__defPrintFormat === 'a4') ? 1000 : 700;
           // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
-          const url = `${page}?id=${encodeURIComponent(String(id))}&pay=refund&refresh=1`;
+          const url = `${page}?id=${encodeURIComponent(String(id))}&pay=refund&refresh=1&hide_pay_remain=1`;
           window.open(url, 'PRINT_VIEW', `width=${w},height=${h}`);
         });
       });
@@ -113,7 +113,7 @@ async function loadRange(startStr, endStr){
           const w = (__defPrintFormat === 'a4') ? 900 : 500;
           const h = (__defPrintFormat === 'a4') ? 1000 : 700;
           // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
-          const url = `${page}?id=${encodeURIComponent(String(id))}&refresh=1`;
+          const url = `${page}?id=${encodeURIComponent(String(id))}&refresh=1&hide_pay_remain=1`;
           window.open(url, 'PRINT_VIEW', `width=${w},height=${h}`);
         });
       });

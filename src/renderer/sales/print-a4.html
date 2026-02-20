@@ -1110,7 +1110,10 @@
           const dbPaid = Number(sale.paid_amount||0);
           const dbRemain = Number(sale.remaining_amount||0);
 
-          if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
+          if(pay === 'refund'){
+            try{ document.getElementById('paidRow').style.display='none'; }catch(_){}
+            try{ changeRow.style.display='none'; }catch(_){}
+          } else if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
             const paidRow = document.getElementById('paidRow');
             const paidEl = document.getElementById('paid');
             if(dbPaid > 0){ paidEl.innerHTML = fmt(dbPaid); paidRow.style.display=''; } else { try{ paidRow.style.display='none'; }catch(_){} }
@@ -1187,6 +1190,10 @@
             try{ changeRow.style.display='none'; }catch(_){ }
           }
 
+          // Force hide paid/remain/change rows if requested via URL param (e.g. from Credit Invoices report)
+          // (Logic moved to end of file to ensure it overrides mixed payment rows)
+
+
           // عرض تفاصيل مختلط: نقدي + شبكة
           try{
             if(isMixed){
@@ -1216,6 +1223,33 @@
           }catch(_){ }
 
           // legacy inline invoice notes block was removed; handled above in unified notes section
+          // Force hide paid/remain/change rows if requested via URL param (e.g. from Credit Invoices report)
+          try{
+            if(params.get('hide_pay_remain')){
+              const _paidRow = document.getElementById('paidRow');
+              const _remainRow = document.getElementById('remainRow');
+              const _changeRow = document.getElementById('changeRow');
+              if(_paidRow) _paidRow.style.setProperty('display', 'none', 'important');
+              if(_remainRow) _remainRow.style.setProperty('display', 'none', 'important');
+              if(_changeRow) _changeRow.style.setProperty('display', 'none', 'important');
+              
+              // Also hide mixed payment rows if they exist (including dynamically added ones)
+              const _cashRow = document.getElementById('paidCashRow');
+              const _cardRow = document.getElementById('paidCardRow');
+              if(_cashRow) _cashRow.style.setProperty('display', 'none', 'important');
+              if(_cardRow) _cardRow.style.setProperty('display', 'none', 'important');
+              
+              const totals = document.querySelector('.totals tbody');
+              if(totals){
+                Array.from(totals.querySelectorAll('tr')).forEach(tr => {
+                  if(tr.textContent.includes('المدفوع كاش') || tr.textContent.includes('المدفوع شبكة')){
+                     tr.style.setProperty('display', 'none', 'important');
+                  }
+                });
+              }
+            }
+          }catch(_){ }
+
           // ZATCA QR (offline generation)
           try{
             const qrBox = document.querySelector('.qr');
