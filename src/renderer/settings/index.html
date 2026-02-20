@@ -1339,15 +1339,15 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">الهوية البصرية</div>
-                    <div class="section-desc">شعار المتجر والصور الافتراضية</div>
+                    <div id="sTitle-branding" class="section-title">الهوية البصرية</div>
+                    <div id="sDesc-branding" class="section-desc">شعار المتجر والصور الافتراضية</div>
                   </div>
                 </div>
                 <div class="divider"></div>
 
                 <!-- شعار المتجر -->
                 <div class="subsection">
-                  <div class="subsection-title">شعار المتجر</div>
+                  <div id="ssTitle-logo" class="subsection-title">شعار المتجر</div>
                   <div class="logo-row">
                     <img id="logoPreview" alt="" />
                     <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1355,7 +1355,7 @@
                         <button id="pickLogo" class="btn">اختيار الشعار</button>
                         <button id="removeLogo" class="btn secondary">إزالة الشعار</button>
                       </div>
-                      <div class="logo-help">يفضل صورة مربعة .png أو .jpg بحجم لا يقل عن 256×256 لنتيجة أوضح</div>
+                      <div id="logoHelp" class="logo-help">يفضل صورة مربعة .png أو .jpg بحجم لا يقل عن 256×256 لنتيجة أوضح</div>
                     </div>
                   </div>
                   <div class="form-row" style="margin-top: var(--space-4);">
@@ -1372,7 +1372,7 @@
 
                 <!-- الصورة الافتراضية للمنتجات -->
                 <div class="subsection">
-                  <div class="subsection-title">الصورة الافتراضية للمنتجات</div>
+                  <div id="ssTitle-defProdImg" class="subsection-title">الصورة الافتراضية للمنتجات</div>
                   <div class="logo-row">
                     <img id="defProdImgPreview" alt="" />
                     <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1380,7 +1380,7 @@
                         <button id="pickDefProdImg" class="btn">اختيار الصورة الافتراضية</button>
                         <button id="removeDefProdImg" class="btn secondary">إزالة الصورة الافتراضية</button>
                       </div>
-                      <div class="logo-help">الحد الأقصى للحجم 1 ميجابايت. يفضل .png</div>
+                      <div id="defProdImgHelp" class="logo-help">الحد الأقصى للحجم 1 ميجابايت. يفضل .png</div>
                     </div>
                   </div>
                 </div>
@@ -1403,15 +1403,15 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">إعدادات الضرائب</div>
-                    <div class="section-desc">نسبة الضريبة وطريقة احتسابها والبيانات الرسمية</div>
+                    <div id="sTitle-tax" class="section-title">إعدادات الضرائب</div>
+                    <div id="sDesc-tax" class="section-desc">نسبة الضريبة وطريقة احتسابها والبيانات الرسمية</div>
                   </div>
                 </div>
                 <div class="divider"></div>
 
                 <!-- نسبة الضريبة -->
                 <div class="subsection">
-                  <div class="subsection-title">نسبة الضريبة المضافة</div>
+                  <div id="ssTitle-vatRate" class="subsection-title">نسبة الضريبة المضافة</div>
                   <div class="form-row single">
                     <div>
                       <label>نسبة الضريبة VAT %</label>
@@ -1422,7 +1422,7 @@
 
                 <!-- طريقة الحساب -->
                 <div class="subsection">
-                  <div class="subsection-title">طريقة احتساب الضريبة</div>
+                  <div id="ssTitle-taxMethod" class="subsection-title">طريقة احتساب الضريبة</div>
                   <div class="switch">
                     <input id="f_prices_inc" type="checkbox" />
                     <label for="f_prices_inc">أسعار البيع شاملة الضريبة (حسب السعودية)</label>
@@ -1435,7 +1435,7 @@
 
                 <!-- البيانات الضريبية -->
                 <div class="subsection">
-                  <div class="subsection-title">البيانات الضريبية والرسمية</div>
+                  <div id="ssTitle-taxData" class="subsection-title">البيانات الضريبية والرسمية</div>
                   <div class="form-row">
                     <div>
                       <label>الرقم الضريبي (ZATCA)</label>
@@ -1456,7 +1456,7 @@
 
                 <!-- الربط الإلكتروني -->
                 <div class="subsection">
-                  <div class="subsection-title">الربط الإلكتروني مع الهيئة</div>
+                  <div id="ssTitle-zatca" class="subsection-title">الربط الإلكتروني مع الهيئة</div>
                   <div class="switch">
                     <input id="f_zatca_enabled" type="checkbox" />
                     <label for="f_zatca_enabled">تفعيل الربط الإلكتروني مع هيئة الزكاة والضريبة والجمارك (ZATCA)</label>
@@ -1481,8 +1481,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">الطباعة</div>
-                    <div class="section-desc">نوع الطابعة وخيارات الإخراج</div>
+                    <div id="sTitle-print" class="section-title">الطباعة</div>
+                    <div id="sDesc-print" class="section-desc">نوع الطابعة وخيارات الإخراج</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1548,8 +1548,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">إعدادات باركود المنتجات</div>
-                    <div class="section-desc">تهيئة طباعة استيكر الباركود لجميع الطابعات والمقاسات</div>
+                    <div id="sTitle-barcode" class="section-title">إعدادات باركود المنتجات</div>
+                    <div id="sDesc-barcode" class="section-desc">تهيئة طباعة استيكر الباركود لجميع الطابعات والمقاسات</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1559,7 +1559,7 @@
                     <select id="f_barcode_printer_device_name">
                       <option value="">الطابعة الافتراضية للنظام</option>
                     </select>
-                    <div class="section-desc">يمكن اختيار أي طابعة باركود أو طابعة عادية من طابعات النظام.</div>
+                    <div id="barcodePrinterHelp" class="section-desc">يمكن اختيار أي طابعة باركود أو طابعة عادية من طابعات النظام.</div>
                   </div>
                   <div>
                     <label>عرض الاستيكر (مم)</label>
@@ -1572,7 +1572,7 @@
                 </div>
                 <div class="divider"></div>
                 <div class="subsection">
-                  <div class="subsection-title">العناصر الظاهرة في الاستيكر</div>
+                  <div id="ssTitle-barcodeElements" class="subsection-title">العناصر الظاهرة في الاستيكر</div>
                   <div class="form-grid">
                     <div class="switch">
                       <input id="f_barcode_show_shop_name" type="checkbox" checked />
@@ -1594,7 +1594,7 @@
                 </div>
                 <div class="divider"></div>
                 <div class="subsection">
-                  <div class="subsection-title">حجم الخط في الاستيكر</div>
+                  <div id="ssTitle-barcodeFont" class="subsection-title">حجم الخط في الاستيكر</div>
                   <div class="form-grid">
                     <div>
                       <label>حجم خط اسم المتجر (px)</label>
@@ -1616,18 +1616,18 @@
                 </div>
                 <div class="divider"></div>
                 <div class="subsection">
-                  <div class="subsection-title">إعدادات الباركود والإزاحة</div>
+                  <div id="ssTitle-barcodeSettings" class="subsection-title">إعدادات الباركود والإزاحة</div>
                   <div class="form-grid">
                     <div>
                       <label>ارتفاع الباركود (px)</label>
                       <input id="f_barcode_height_px" type="number" min="20" max="100" step="1" placeholder="40" />
-                      <div class="section-desc">ارتفاع رسم الباركود بالبكسل</div>
+                      <div id="barcodeHeightDesc" class="section-desc">ارتفاع رسم الباركود بالبكسل</div>
                     </div>
                   </div>
                 </div>
                 <div class="divider"></div>
                 <div class="subsection">
-                  <div class="subsection-title">إزاحة الاستيكر (مم)</div>
+                  <div id="ssTitle-barcodeOffset" class="subsection-title">إزاحة الاستيكر (مم)</div>
                   <div class="form-grid">
                     <div>
                       <label>إزاحة من اليمين (مم)</label>
@@ -1647,7 +1647,7 @@
                     </div>
                   </div>
                   <div class="section-desc" style="margin-top: var(--space-3); padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
-                    💡 استخدم هذه الإعدادات لضبط موضع الاستيكر على الورقة. القيم الموجبة تحرك الاستيكر في الاتجاه المحدد.
+                    <span id="barcodeOffsetTip">💡 استخدم هذه الإعدادات لضبط موضع الاستيكر على الورقة. القيم الموجبة تحرك الاستيكر في الاتجاه المحدد.</span>
                   </div>
                 </div>
               </div>
@@ -1661,8 +1661,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">واتساب</div>
-                    <div class="section-desc">إرسال الفواتير تلقائياً عبر واتساب</div>
+                    <div id="sTitle-whatsapp" class="section-title">واتساب</div>
+                    <div id="sDesc-whatsapp" class="section-desc">إرسال الفواتير تلقائياً عبر واتساب</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1686,8 +1686,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">قيود الطباعة</div>
-                    <div class="section-desc">شروط يجب تحقيقها قبل الطباعة</div>
+                    <div id="sTitle-printRestrict" class="section-title">قيود الطباعة</div>
+                    <div id="sDesc-printRestrict" class="section-desc">شروط يجب تحقيقها قبل الطباعة</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1722,14 +1722,14 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">طرق الدفع</div>
-                    <div class="section-desc">تفعيل طرق الدفع والطريقة الافتراضية</div>
+                    <div id="sTitle-payment" class="section-title">طرق الدفع</div>
+                    <div id="sDesc-payment" class="section-desc">تفعيل طرق الدفع والطريقة الافتراضية</div>
                   </div>
                 </div>
                 <div class="divider"></div>
                 <div class="form-grid">
                   <div>
-                    <label>طرق الدفع المفعّلة</label>
+                    <label id="pmLabel">طرق الدفع المفعّلة</label>
                     <div class="pm-dropdown">
                       <div class="pm-dropdown-trigger" id="pmDropdownTrigger">
                         <span id="pmDropdownText">اختر طرق الدفع</span>
@@ -1787,8 +1787,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">إعدادات العملة</div>
-                    <div class="section-desc">رمز العملة وموقعه في المبالغ</div>
+                    <div id="sTitle-currency" class="section-title">إعدادات العملة</div>
+                    <div id="sDesc-currency" class="section-desc">رمز العملة وموقعه في المبالغ</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1826,8 +1826,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">عمليات النظام</div>
-                    <div class="section-desc">سلوك الأسعار والمخزون</div>
+                    <div id="sTitle-ops" class="section-title">عمليات النظام</div>
+                    <div id="sDesc-ops" class="section-desc">سلوك الأسعار والمخزون</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1858,12 +1858,12 @@
                       <option value="weight">ميزان الوزن (Weight Scale)</option>
                       <option value="price">ميزان السعر (Price Scale)</option>
                     </select>
-                    <div class="section-desc">اختر نوع الميزان: ميزان الوزن يُخرج الوزن، ميزان السعر يُخرج السعر المحسوب.</div>
+                    <div id="scaleTypeDesc" class="section-desc">اختر نوع الميزان: ميزان الوزن يُخرج الوزن، ميزان السعر يُخرج السعر المحسوب.</div>
                   </div>
                   <div>
                     <label for="f_low_stock_threshold">حد تنبيه انخفاض المخزون</label>
                     <input id="f_low_stock_threshold" type="number" min="0" step="1" placeholder="5" />
-                    <div class="section-desc">سيظهر تحذير عند طباعة الفاتورة إذا كان مخزون أي صنف أقل من أو يساوي هذا الرقم.</div>
+                    <div id="lowStockDesc" class="section-desc">سيظهر تحذير عند طباعة الفاتورة إذا كان مخزون أي صنف أقل من أو يساوي هذا الرقم.</div>
                   </div>
                   <div class="switch">
                     <input id="f_low_stock_email_enabled" type="checkbox" />
@@ -1876,7 +1876,7 @@
                   <div>
                     <label>ساعة الإقفال اليومية</label>
                     <input id="f_closing_hour" type="time" step="60" placeholder="03:00" />
-                    <div class="section-desc">ستُستخدم لتحديد بداية ونهاية اليوم التقاريري.</div>
+                    <div id="closingHourDesc" class="section-desc">ستُستخدم لتحديد بداية ونهاية اليوم التقاريري.</div>
                   </div>
                 </div>
               </div>
@@ -1896,8 +1896,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">إعدادات الواجهة</div>
-                    <div class="section-desc">إظهار أو إخفاء عناصر الواجهة</div>
+                    <div id="sTitle-ui" class="section-title">إعدادات الواجهة</div>
+                    <div id="sDesc-ui" class="section-desc">إظهار أو إخفاء عناصر الواجهة</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1948,8 +1948,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">التقارير والنسخ الاحتياطي</div>
-                    <div class="section-desc">إعداد التقارير اليومية والنسخ الاحتياطية</div>
+                    <div id="sTitle-advanced" class="section-title">التقارير والنسخ الاحتياطي</div>
+                    <div id="sDesc-advanced" class="section-desc">إعداد التقارير اليومية والنسخ الاحتياطية</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -1973,8 +1973,8 @@
                     </svg>
                   </div>
                   <div>
-                    <div class="section-title">استعادة النظام</div>
-                    <div class="section-desc">عمليات خطرة: لا يمكن التراجع عنها</div>
+                    <div id="sTitle-recovery" class="section-title">استعادة النظام</div>
+                    <div id="sDesc-recovery" class="section-desc">عمليات خطرة: لا يمكن التراجع عنها</div>
                   </div>
                 </div>
                 <div class="divider"></div>
@@ -2011,8 +2011,8 @@
               </svg>
             </div>
             <div>
-              <div class="section-title">إعداد إرسال التقرير اليومي</div>
-              <div class="section-desc">تكوين البريد الإلكتروني للحصول على تقارير مبيعات يومية تلقائية</div>
+              <div id="emModalTitle" class="section-title">إعداد إرسال التقرير اليومي</div>
+              <div id="emModalDesc" class="section-desc">تكوين البريد الإلكتروني للحصول على تقارير مبيعات يومية تلقائية</div>
             </div>
           </div>
         </div>
@@ -2037,7 +2037,7 @@
               </div>
               <div style="display: flex; align-items: center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
                 <div style="font-size: 12px; color: var(--gray-600); line-height: 1.4;">
-                  💡 سيتم إرسال تقرير المبيعات اليومي في التوقيت المحدد كل يوم
+                  <span id="emDailyTip">💡 سيتم إرسال تقرير المبيعات اليومي في التوقيت المحدد كل يوم</span>
                 </div>
               </div>
             </div>
@@ -2059,7 +2059,7 @@
               </div>
               <div style="display: flex; align-items: center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
                 <div style="font-size: 12px; color: var(--gray-600); line-height: 1.4;">
-                  💡 سيتم إرسال ملف النسخة الاحتياطية المضغوط (.zip) يوميًا في التوقيت المحدد.
+                  <span id="emBackupTip">💡 سيتم إرسال ملف النسخة الاحتياطية المضغوط (.zip) يوميًا في التوقيت المحدد.</span>
                 </div>
               </div>
             </div>
@@ -2080,7 +2080,7 @@
 
             <!-- إعدادات الخادم المتقدمة -->
             <details style="margin-top: var(--space-4);">
-              <summary style="font-weight: 600; color: var(--gray-700); cursor: pointer; padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+              <summary id="emAdvancedSummary" style="font-weight: 600; color: var(--gray-700); cursor: pointer; padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
                 ⚙️ إعدادات الخادم المتقدمة (اختيارية)
               </summary>
               <div class="form-grid" style="margin-top: var(--space-4);">
@@ -2101,11 +2101,11 @@
 
             <!-- معلومات مفيدة -->
             <div style="background: linear-gradient(135deg, var(--warning-50), rgba(245, 158, 11, 0.1)); border: 1px solid var(--warning-500); border-radius: var(--radius-lg); padding: var(--space-4); margin-top: var(--space-4);">
-              <div style="font-weight: 600; color: var(--warning-600); margin-bottom: var(--space-2);">📋 ملاحظات مهمة:</div>
+              <div id="emNotesTitle" style="font-weight: 600; color: var(--warning-600); margin-bottom: var(--space-2);">📋 ملاحظات مهمة:</div>
               <ul style="font-size: 13px; color: var(--gray-700); line-height: 1.6; margin-right: var(--space-4);">
-                <li>للاستخدام مع Gmail، ينصح باستخدام المنفذ 587 بدون اتصال آمن</li>
-                <li>يجب إنشاء كلمة مرور تطبيق من إعدادات حساب Google</li>
-                <li>التقرير سيحتوي على ملخص المبيعات اليومية والمنتجات الأكثر مبيعاً</li>
+                <li id="emNote1">للاستخدام مع Gmail، ينصح باستخدام المنفذ 587 بدون اتصال آمن</li>
+                <li id="emNote2">يجب إنشاء كلمة مرور تطبيق من إعدادات حساب Google</li>
+                <li id="emNote3">التقرير سيحتوي على ملخص المبيعات اليومية والمنتجات الأكثر مبيعاً</li>
               </ul>
             </div>
 
@@ -2130,8 +2130,8 @@
               </svg>
             </div>
             <div>
-              <div class="section-title">إرسال نسخة قاعدة البيانات</div>
-              <div class="section-desc">سيتم إنشاء نسخة SQL مضغوطة (.gz) وإرسالها بالبريد</div>
+              <div id="bkModalTitle" class="section-title">إرسال نسخة قاعدة البيانات</div>
+              <div id="bkModalDesc" class="section-desc">سيتم إنشاء نسخة SQL مضغوطة (.gz) وإرسالها بالبريد</div>
             </div>
           </div>
         </div>
@@ -2141,7 +2141,7 @@
               <label>البريد المستلم</label>
               <input id="bk_to" type="email" placeholder="example@domain.com" />
             </div>
-            <div style="font-size: 12px; color: var(--gray-600); background: var(--gray-50); border:1px solid var(--gray-200); padding: var(--space-3); border-radius: var(--radius-lg);">
+            <div id="bkSmtpNote" style="font-size: 12px; color: var(--gray-600); background: var(--gray-50); border:1px solid var(--gray-200); padding: var(--space-3); border-radius: var(--radius-lg);">
               يجب ضبط إعدادات SMTP في نافذة "إعداد التقرير اليومي" أولاً (البريد المرسل وكلمة المرور والخادم).
             </div>
             <div class="actions" style="justify-content: flex-end; gap: var(--space-3);">
@@ -2165,8 +2165,8 @@
               </svg>
             </div>
             <div>
-              <div class="section-title">إعداد الحفظ المحلي للنسخة الاحتياطية</div>
-              <div class="section-desc">حدد مجلد الحفظ والوقت اليومي لإنشاء نسخة قاعدة البيانات تلقائياً</div>
+              <div id="lbModalTitle" class="section-title">إعداد الحفظ المحلي للنسخة الاحتياطية</div>
+              <div id="lbModalDesc" class="section-desc">حدد مجلد الحفظ والوقت اليومي لإنشاء نسخة قاعدة البيانات تلقائياً</div>
             </div>
           </div>
         </div>
@@ -2184,7 +2184,7 @@
               </div>
               <div style="display:flex; align-items:center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200);">
                 <div style="font-size: 12px; color: var(--gray-600); line-height: 1.6;">
-                  يتم إنشاء ملف .dump باسم يحتوي على التاريخ والوقت داخل المجلد المحدد في التوقيت اليومي.
+                  <span id="lbDailyTip">يتم إنشاء ملف .dump باسم يحتوي على التاريخ والوقت داخل المجلد المحدد في التوقيت اليومي.</span>
                 </div>
               </div>
             </div>
@@ -2216,10 +2216,10 @@
       <div class="modal-container" style="max-width: 500px;">
         <div class="modal-body" style="padding: 40px 30px; text-align: center;">
           <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
-          <h2 style="color: #dc2626; margin-bottom: 15px; font-size: 24px;">تأكيد عملية الحذف</h2>
+          <h2 id="confirmTitle" style="color: #dc2626; margin-bottom: 15px; font-size: 24px;">تأكيد عملية الحذف</h2>
           <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-            هل أنت متأكد من حذف البيانات المحددة؟<br>
-            <strong style="color: #dc2626;">لا يمكن التراجع عن هذه العملية!</strong>
+            <span id="confirmDesc">هل أنت متأكد من حذف البيانات المحددة؟</span><br>
+            <strong id="confirmStrong" style="color: #dc2626;">لا يمكن التراجع عن هذه العملية!</strong>
           </p>
           <div style="display: flex; gap: 12px; justify-content: center;">
             <button id="cancelConfirmBtn" class="btn secondary" style="min-width: 120px;">إلغاء</button>
@@ -2234,7 +2234,7 @@
       <div style="display: flex; align-items: center; gap: 15px;">
         <div style="font-size: 32px;">✅</div>
         <div>
-          <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">تمت العملية بنجاح</div>
+          <div id="successToastTitle" style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">تمت العملية بنجاح</div>
           <div id="successToastContent" style="font-size: 14px; opacity: 0.95; line-height: 1.5;"></div>
         </div>
       </div>
@@ -2267,68 +2267,68 @@
     <div id="resetModal" class="modal-overlay">
       <div class="modal-container">
         <div class="modal-header">
-          <h3 class="modal-title">🗑️ حذف البيانات وإعادة الترقيم</h3>
+          <h3 id="resetModalTitle" class="modal-title">🗑️ حذف البيانات وإعادة الترقيم</h3>
           <button id="closeModal" class="modal-close">×</button>
         </div>
         <div class="modal-body">
-          <div class="modal-warning">
+          <div id="resetModalWarning" class="modal-warning">
             ⚠️ تحذير: لا يمكن التراجع عن هذه العملية. اختر ما تريد حذفه:
           </div>
           <div class="checkbox-group">
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetSales" checked />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف فواتير البيع</span>
-                <span class="checkbox-desc">حذف جميع فواتير المبيعات وإعادة الترقيم من 1</span>
+                <span id="rmSalesTitle" class="checkbox-title">حذف فواتير البيع</span>
+                <span id="rmSalesDesc" class="checkbox-desc">حذف جميع فواتير المبيعات وإعادة الترقيم من 1</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetPurchaseInvoices" checked />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف فواتير الشراء</span>
-                <span class="checkbox-desc">حذف جميع فواتير الشراء وتفاصيلها</span>
+                <span id="rmPurchInvTitle" class="checkbox-title">حذف فواتير الشراء</span>
+                <span id="rmPurchInvDesc" class="checkbox-desc">حذف جميع فواتير الشراء وتفاصيلها</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetPurchases" checked />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف المصروفات البسيطة</span>
-                <span class="checkbox-desc">حذف جميع عمليات الشراء البسيطة</span>
+                <span id="rmPurchTitle" class="checkbox-title">حذف المصروفات البسيطة</span>
+                <span id="rmPurchDesc" class="checkbox-desc">حذف جميع عمليات الشراء البسيطة</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetSupplierBalance" checked />
               <span class="checkbox-label">
-                <span class="checkbox-title">تصفير أرصدة الموردين</span>
-                <span class="checkbox-desc">إعادة رصيد جميع الموردين إلى صفر</span>
+                <span id="rmSupBalTitle" class="checkbox-title">تصفير أرصدة الموردين</span>
+                <span id="rmSupBalDesc" class="checkbox-desc">إعادة رصيد جميع الموردين إلى صفر</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetProducts" />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف كل المنتجات</span>
-                <span class="checkbox-desc">حذف جميع المنتجات والأنواع الرئيسية والعمليات</span>
+                <span id="rmProdTitle" class="checkbox-title">حذف كل المنتجات</span>
+                <span id="rmProdDesc" class="checkbox-desc">حذف جميع المنتجات والأنواع الرئيسية والعمليات</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetCustomers" />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف كل العملاء</span>
-                <span class="checkbox-desc">حذف جميع بيانات العملاء من النظام</span>
+                <span id="rmCustTitle" class="checkbox-title">حذف كل العملاء</span>
+                <span id="rmCustDesc" class="checkbox-desc">حذف جميع بيانات العملاء من النظام</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetQuotations" />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف عروض الأسعار</span>
-                <span class="checkbox-desc">حذف جميع عروض الأسعار المحفوظة</span>
+                <span id="rmQuotTitle" class="checkbox-title">حذف عروض الأسعار</span>
+                <span id="rmQuotDesc" class="checkbox-desc">حذف جميع عروض الأسعار المحفوظة</span>
               </span>
             </label>
             <label class="checkbox-item">
               <input type="checkbox" id="chkResetShifts" />
               <span class="checkbox-label">
-                <span class="checkbox-title">حذف الشفتات</span>
-                <span class="checkbox-desc">حذف جميع الشفتات وسجلات الفتح والإغلاق</span>
+                <span id="rmShiftsTitle" class="checkbox-title">حذف الشفتات</span>
+                <span id="rmShiftsDesc" class="checkbox-desc">حذف جميع الشفتات وسجلات الفتح والإغلاق</span>
               </span>
             </label>
           </div>
@@ -2351,15 +2351,15 @@
               </svg>
             </div>
             <div>
-              <div class="section-title">تحديث البرنامج</div>
-              <div class="section-desc">البحث عن آخر إصدار متاح</div>
+              <div id="updateModalTitle" class="section-title">تحديث البرنامج</div>
+              <div id="updateModalDesc" class="section-desc">البحث عن آخر إصدار متاح</div>
             </div>
           </div>
         </div>
         <div class="card-body">
           <div id="updateStatus" style="text-align: center; padding: var(--space-8) var(--space-4);">
             <div style="font-size: 48px; margin-bottom: var(--space-4);">🔍</div>
-            <div style="font-size: 16px; color: var(--gray-700); font-weight: 600; margin-bottom: var(--space-2);">جاري البحث عن التحديثات...</div>
+            <div id="updateSearchText" style="font-size: 16px; color: var(--gray-700); font-weight: 600; margin-bottom: var(--space-2);">جاري البحث عن التحديثات...</div>
             <div id="updateMessage" style="font-size: 13px; color: var(--gray-500);"></div>
             <div id="updateProgress" style="margin-top: var(--space-4); display: none;">
               <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
