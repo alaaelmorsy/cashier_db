@@ -2599,40 +2599,39 @@ async function loadCatalog(){
 
   async function loadCardData(card, p){
     try{
-      // تحميل الصور والتفاصيل في الخلفية بدون انتظار - عرض فوري
-      requestAnimationFrame(async () => {
-        try {
-          const img = card.querySelector('img');
-          
-          if(!settings.hide_product_images && img){
-            try {
-              const ir = await batchLoader.add('images', `img_${p.id}`, p.id);
-              if(ir && ir.ok){
-                img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
-                img.style.opacity = '1';
-              } else {
-                if(!loadCatalog.__defaultImg){
-                  const dr = await window.api.settings_default_product_image_get();
-                  loadCatalog.__defaultImg = (dr && dr.ok) ? { data:`data:${dr.mime||'image/png'};base64,${dr.base64}` } : { data:null };
-                }
-                if(loadCatalog.__defaultImg.data){ 
-                  img.src = loadCatalog.__defaultImg.data;
-                  img.style.opacity = '1';
-                }
+      // تأجيل حتى بعد الـ paint frame الحالي ثم تحميل البيانات بشكل async سليم
+      await new Promise(r => requestAnimationFrame(r));
+      try {
+        const img = card.querySelector('img');
+        
+        if(!settings.hide_product_images && img){
+          try {
+            const ir = await batchLoader.add('images', `img_${p.id}`, p.id);
+            if(ir && ir.ok){
+              img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+              img.style.opacity = '1';
+            } else {
+              if(!loadCatalog.__defaultImg){
+                const dr = await window.api.settings_default_product_image_get();
+                loadCatalog.__defaultImg = (dr && dr.ok) ? { data:`data:${dr.mime||'image/png'};base64,${dr.base64}` } : { data:null };
               }
-            } catch(error) {
-              const ir = await cachedRequest(`img_${p.id}`, () => window.api.products_image_get(p.id), 30000);
-              if(ir && ir.ok){
-                img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+              if(loadCatalog.__defaultImg.data){ 
+                img.src = loadCatalog.__defaultImg.data;
                 img.style.opacity = '1';
               }
             }
+          } catch(error) {
+            const ir = await cachedRequest(`img_${p.id}`, () => window.api.products_image_get(p.id), 30000);
+            if(ir && ir.ok){
+              img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+              img.style.opacity = '1';
+            }
           }
-          
-          // تحميل التفاصيل الإضافية
-          await updateCardDetails(card, p);
-        } catch(_) {}
-      });
+        }
+        
+        // تحميل التفاصيل الإضافية
+        await updateCardDetails(card, p);
+      } catch(_) {}
     }catch(_){ }
   }
 
@@ -4640,25 +4639,25 @@ async function populateCategories(){
     ]);
     
     if(globalOfferRes && globalOfferRes.ok && globalOfferRes.item){
-      // Load excluded products for this global offer
-      let excludedSet = new Set();
-      try {
-        const exclRes = await window.api.offers_get_excluded_products(globalOfferRes.item.id);
-        if(exclRes && exclRes.ok && Array.isArray(exclRes.items)){
-          exclRes.items.forEach(it => {
-            // key format matches what we'll use in computeTotals: pid|opid|null -> but let's standardize
-            // In computeTotals, we usually have access to product_id and operation_id
-            const op = (it.operation_id != null) ? String(it.operation_id) : 'null';
-            excludedSet.add(`${it.product_id}|${op}`);
-          });
-        }
-      } catch(exErr){ console.warn('Error loading excluded products:', exErr); }
-
+      // ضبط العرض فوراً بـ Set فارغ لعدم تعطيل بقية التهيئة
       __globalOffer = {
         mode: globalOfferRes.item.mode,
         value: globalOfferRes.item.value,
-        excluded: excludedSet
+        excluded: new Set()
       };
+      // تحميل المنتجات المستثناة في الخلفية بدون تعطيل مسار التهيئة الرئيسي
+      window.api.offers_get_excluded_products(globalOfferRes.item.id)
+        .then(exclRes => {
+          if(exclRes && exclRes.ok && Array.isArray(exclRes.items)){
+            const excludedSet = new Set();
+            exclRes.items.forEach(it => {
+              const op = (it.operation_id != null) ? String(it.operation_id) : 'null';
+              excludedSet.add(`${it.product_id}|${op}`);
+            });
+            __globalOffer.excluded = excludedSet;
+          }
+        })
+        .catch(exErr => console.warn('Error loading excluded products:', exErr));
     }
   }catch(e){
     console.error('Error loading settings or global offer:', e);
@@ -4754,10 +4753,10 @@ async function populateCategories(){
   // تحميل التبويبات والمنتجات بالتوازي لتسريع البداية
   try{ 
     populateCategories().then(() => {
-      // بعد تحميل التبويبات، ابدأ تحميل المنتجات فوراً
+      // بعد تحميل التبويبات، ابدأ تحميل المنتجات فوراً بعد إعطاء الـ event loop فرصة للرسم
       setTimeout(() => {
         loadCatalog().catch(() => {});
-      }, 50);
+      }, 0);
     }).catch(() => {});
   }catch(_){ }
   // عند تغيير طريقة الدفع: إعادة الحساب وتنظيف حالة المختلط فقط
@@ -5513,5 +5512,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (barcodeInput) {
       barcodeInput.focus();
     }
-  }, 300);
+  }, 50);
 });

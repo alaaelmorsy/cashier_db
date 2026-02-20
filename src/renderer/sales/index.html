@@ -676,6 +676,9 @@ table tr td, table tr th { vertical-align: middle; }
         flex-direction:column;
         height:100%;
         min-height:120px;
+        content-visibility: auto;
+        contain-intrinsic-size: 0 120px;
+        contain: layout paint style;
       }
       .p-card:hover{ 
         border-color:#2563eb;
