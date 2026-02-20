@@ -32,9 +32,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Sales Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/invoices', async (req, res) => {
+    let conn;
     try {
       const { limit = 200, offset = 0, search, payment_status } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       let sql = 'SELECT * FROM sales WHERE doc_type="invoice"';
       const params = [];
 
@@ -53,22 +54,23 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       params.push(parseInt(limit), parseInt(offset));
 
       const [rows] = await conn.query(sql, params);
-      conn.release();
       res.json({ ok: true, invoices: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/invoices/:id', async (req, res) => {
+    let conn;
     try {
       const { id } = req.params;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [results] = await conn.query(
         'SELECT * FROM sales WHERE id=? LIMIT 1; SELECT * FROM sales_items WHERE sale_id=? ORDER BY id',
         [id, id]
       );
-      conn.release();
       const invoiceRows = results[0];
       const items = results[1];
       if (!invoiceRows.length) {
@@ -77,39 +79,46 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       res.json({ ok: true, invoice: invoiceRows[0], items });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/credit-invoices', async (req, res) => {
+    let conn;
     try {
       const { limit = 200, offset = 0 } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const sql = 'SELECT * FROM sales WHERE payment_status="unpaid" AND doc_type="invoice" ORDER BY id DESC LIMIT ? OFFSET ?';
       const [rows] = await conn.query(sql, [parseInt(limit), parseInt(offset)]);
-      conn.release();
       res.json({ ok: true, invoices: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/credit-notes', async (req, res) => {
+    let conn;
     try {
       const { limit = 200, offset = 0 } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const sql = 'SELECT * FROM sales WHERE doc_type="credit_note" ORDER BY id DESC LIMIT ? OFFSET ?';
       const [rows] = await conn.query(sql, [parseInt(limit), parseInt(offset)]);
-      conn.release();
       res.json({ ok: true, credit_notes: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/period-summary', async (req, res) => {
+    let conn;
     try {
       const { from, to } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const sql = `
         SELECT 
           COUNT(*) as total_invoices,
@@ -121,10 +130,11 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         AND created_at BETWEEN ? AND ?
       `;
       const [rows] = await conn.query(sql, [from, to]);
-      conn.release();
       res.json({ ok: true, summary: rows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -132,9 +142,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Products Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/products', async (req, res) => {
+    let conn;
     try {
       const { limit = 500, offset = 0, search, category_id, is_active } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       let sql = 'SELECT * FROM products WHERE 1=1';
       const params = [];
 
@@ -158,75 +169,83 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       params.push(parseInt(limit), parseInt(offset));
 
       const [rows] = await conn.query(sql, params);
-      conn.release();
       res.json({ ok: true, products: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/products/:id', async (req, res) => {
+    let conn;
     try {
       const { id } = req.params;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM products WHERE id=? LIMIT 1', [id]);
       if (!rows.length) {
-        conn.release();
         return res.status(404).json({ ok: false, error: 'Product not found' });
       }
-      conn.release();
       res.json({ ok: true, product: rows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/products/barcode/:code', async (req, res) => {
+    let conn;
     try {
       const { code } = req.params;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM products WHERE barcode=? LIMIT 1', [code]);
-      conn.release();
       if (!rows.length) {
         return res.json({ ok: true, product: null });
       }
       res.json({ ok: true, product: rows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/products-images-batch', async (req, res) => {
+    let conn;
     try {
       const { ids } = req.query;
       if (!ids) return res.json({ ok: true, images: [] });
       const idArray = String(ids).split(',').map(x => parseInt(x)).filter(x => x > 0);
       if (!idArray.length) return res.json({ ok: true, images: [] });
 
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const placeholders = idArray.map(() => '?').join(',');
       const [rows] = await conn.query(`SELECT id, image_data FROM products WHERE id IN (${placeholders})`, idArray);
-      conn.release();
       res.json({ ok: true, images: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/products-ops-batch', async (req, res) => {
+    let conn;
     try {
       const { ids } = req.query;
       if (!ids) return res.json({ ok: true, operations: [] });
       const idArray = String(ids).split(',').map(x => parseInt(x)).filter(x => x > 0);
       if (!idArray.length) return res.json({ ok: true, operations: [] });
 
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const placeholders = idArray.map(() => '?').join(',');
       const [rows] = await conn.query(`SELECT * FROM product_operations WHERE product_id IN (${placeholders}) ORDER BY product_id, id`, idArray);
-      conn.release();
       res.json({ ok: true, operations: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -234,9 +253,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Customers Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/customers', async (req, res) => {
+    let conn;
     try {
       const { limit = 500, offset = 0, search } = req.query;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       let sql = 'SELECT * FROM customers WHERE 1=1';
       const params = [];
 
@@ -250,25 +270,28 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       params.push(parseInt(limit), parseInt(offset));
 
       const [rows] = await conn.query(sql, params);
-      conn.release();
       res.json({ ok: true, customers: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
   app.get('/api/customers/:id', async (req, res) => {
+    let conn;
     try {
       const { id } = req.params;
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM customers WHERE id=? LIMIT 1', [id]);
-      conn.release();
       if (!rows.length) {
         return res.status(404).json({ ok: false, error: 'Customer not found' });
       }
       res.json({ ok: true, customer: rows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -276,13 +299,15 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Operations Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/operations', async (req, res) => {
+    let conn;
     try {
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM operations ORDER BY id');
-      conn.release();
       res.json({ ok: true, operations: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -290,13 +315,15 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Types/Categories Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/types', async (req, res) => {
+    let conn;
     try {
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM types ORDER BY id');
-      conn.release();
       res.json({ ok: true, types: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -304,16 +331,18 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Settings Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/settings', async (req, res) => {
+    let conn;
     try {
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1');
-      conn.release();
       if (!rows.length) {
         return res.json({ ok: true, settings: {} });
       }
       res.json({ ok: true, settings: rows[0] });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
@@ -321,13 +350,15 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   // Offers Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/offers', async (req, res) => {
+    let conn;
     try {
-      const conn = await dbAdapter.getConnection();
+      conn = await dbAdapter.getConnection();
       const [rows] = await conn.query('SELECT * FROM offers ORDER BY id DESC');
-      conn.release();
       res.json({ ok: true, offers: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 
