@@ -355,6 +355,7 @@ const { contextBridge, ipcRenderer } = require('electron');
         document.head.appendChild(st);
         const m = document.createElement('div');
         m.id = '__pos_ctx_menu';
+        m.addEventListener('mousedown', (ev) => ev.preventDefault(), true);
         document.body.appendChild(m);
         _ctxMenu = m;
       }
@@ -383,12 +384,12 @@ const { contextBridge, ipcRenderer } = require('electron');
         document.getElementById('__ctx_paste').onclick = _ctxDoPaste;
       }
 
-      function _ctxHide() { try { if (_ctxMenu) _ctxMenu.style.display = 'none'; _ctxTarget = null; } catch (_) {} }
+      function _ctxHide() { try { if (_ctxMenu) _ctxMenu.style.display = 'none'; } catch (_) {} }
 
       function _ctxDoCopy() {
-        _ctxHide();
         try {
-          const el = document.activeElement || _ctxTarget;
+          const el = _ctxTarget;
+          _ctxHide();
           let txt = '';
           if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) txt = el.value.substring(el.selectionStart, el.selectionEnd);
           else txt = (window.getSelection() || '').toString();
@@ -397,14 +398,15 @@ const { contextBridge, ipcRenderer } = require('electron');
       }
 
       async function _ctxDoPaste() {
-        _ctxHide();
         try {
+          const el = _ctxTarget;
+          _ctxHide();
+          if (!el) return;
+          try { el.focus(); } catch (_) {}
           const txt = await navigator.clipboard.readText();
           if (!txt) return;
-          const el = document.activeElement || _ctxTarget;
-          if (!el) return;
           if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            const s = el.selectionStart, end = el.selectionEnd;
+            const s = el.selectionStart || 0, end = el.selectionEnd || 0;
             el.value = el.value.substring(0, s) + txt + el.value.substring(end);
             el.selectionStart = el.selectionEnd = s + txt.length;
             el.dispatchEvent(new Event('input', { bubbles: true }));
