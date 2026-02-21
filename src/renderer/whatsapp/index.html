@@ -629,8 +629,8 @@
       <div style="display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 28px;">⚠️</span>
         <div>
-          <div style="font-size: 18px; font-weight: 900; margin-bottom: 4px;">انتهى عدد الرسائل المتاحة!</div>
-          <div style="font-size: 14px; font-weight: 700; opacity: 0.9;">يرجى التواصل مع الدعم الفني للتجديد</div>
+          <div id="toastTitle" style="font-size: 18px; font-weight: 900; margin-bottom: 4px;">انتهى عدد الرسائل المتاحة!</div>
+          <div id="toastSubtitle" style="font-size: 14px; font-weight: 700; opacity: 0.9;">يرجى التواصل مع الدعم الفني للتجديد</div>
         </div>
         <button onclick="hideToast()" style="margin-right: auto; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s;">
           <span style="font-size: 24px; color: white;">✕</span>
@@ -644,11 +644,11 @@
       <div class="brand">
         <div class="brand-icon">📱</div>
         <div class="brand-text">
-          <h1>إدارة WhatsApp</h1>
-          <p>ربط حساب WhatsApp لإرسال الفواتير تلقائياً</p>
+          <h1 id="brandTitle">إدارة WhatsApp</h1>
+          <p id="brandDesc">ربط حساب WhatsApp لإرسال الفواتير تلقائياً</p>
         </div>
       </div>
-      <button class="btn-back" onclick="window.location.href='../main/index.html'">
+      <button id="btnBack" class="btn-back" onclick="window.location.href='../main/index.html'">
         ⬅ العودة للرئيسية
       </button>
     </div>
@@ -676,33 +676,33 @@
         <div style="background: linear-gradient(to bottom right, #3b82f6, #2563eb); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 16px; color: white;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-size: 24px;">📊</span>
-            <div style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">إجمالي</div>
+            <div id="totalBadge" style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">إجمالي</div>
           </div>
           <div style="text-align: center;">
             <div id="totalMessages" style="font-size: 36px; font-weight: 900; margin-bottom: 4px;">-</div>
-            <div style="font-size: 12px; font-weight: 700; opacity: 0.9;">عدد الرسائل</div>
+            <div id="totalLabel" style="font-size: 12px; font-weight: 700; opacity: 0.9;">عدد الرسائل</div>
           </div>
         </div>
 
         <div id="remainingCard" style="background: linear-gradient(to bottom right, #a855f7, #9333ea); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 16px; color: white;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-size: 24px;">💬</span>
-            <div style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">متبقي</div>
+            <div id="remainingBadge" style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">متبقي</div>
           </div>
           <div style="text-align: center;">
             <div id="remainingMessages" style="font-size: 36px; font-weight: 900; margin-bottom: 4px;">-</div>
-            <div style="font-size: 12px; font-weight: 700; opacity: 0.9;">الرسائل المتبقية</div>
+            <div id="remainingLabel" style="font-size: 12px; font-weight: 700; opacity: 0.9;">الرسائل المتبقية</div>
           </div>
         </div>
 
         <div style="background: linear-gradient(to bottom right, #10b981, #059669); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 16px; color: white;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-size: 24px;">✅</span>
-            <div style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">مُرسل</div>
+            <div id="sentBadge" style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">مُرسل</div>
           </div>
           <div style="text-align: center;">
             <div id="sentMessages" style="font-size: 36px; font-weight: 900; margin-bottom: 4px;">-</div>
-            <div style="font-size: 12px; font-weight: 700; opacity: 0.9;">الرسائل المستخدمة</div>
+            <div id="sentLabel" style="font-size: 12px; font-weight: 700; opacity: 0.9;">الرسائل المستخدمة</div>
           </div>
         </div>
       </div>
@@ -711,7 +711,7 @@
     <div class="main-grid">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">
+          <h2 id="connCardTitle" class="card-title">
             <span>🔗</span>
             حالة الاتصال
           </h2>
@@ -725,10 +725,10 @@
           <div class="qr-container" id="qrContainer">
             <div>
               <div class="whatsapp-icon">📱</div>
-              <p style="color: #6b7280; font-size: 15px; margin-bottom: 20px;">
+              <p id="qrInitText" style="color: #6b7280; font-size: 15px; margin-bottom: 20px;">
                 انقر على "ربط WhatsApp" لبدء الاتصال
               </p>
-              <button class="btn btn-primary" onclick="initializeWhatsApp()">
+              <button id="btnConnect" class="btn btn-primary" onclick="initializeWhatsApp()">
                 🚀 ربط WhatsApp الآن
               </button>
             </div>
@@ -736,35 +736,35 @@
         </div>
 
         <div class="btn-group">
-          <button class="btn btn-secondary" onclick="checkStatus()">
+          <button id="btnRefreshStatus" class="btn btn-secondary" onclick="checkStatus()">
             🔄 تحديث الحالة
           </button>
-          <button class="btn btn-danger" onclick="logout()">
+          <button id="btnLogout" class="btn btn-danger" onclick="logout()">
             🚪 تسجيل خروج
           </button>
         </div>
       </div>
 
       <div class="card">
-        <h2 class="card-title" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f3f4f6;">
+        <h2 id="testCardTitle" class="card-title" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f3f4f6;">
           <span>📤</span>
           اختبار الإرسال
         </h2>
 
         <div class="form-group">
-          <label class="form-label">📞 رقم الجوال</label>
+          <label id="testPhoneLabel" class="form-label">📞 رقم الجوال</label>
           <input type="text" id="testPhone" class="form-input" 
                  placeholder="05xxxxxxxx أو 9665xxxxxxxx">
-          <p class="help-text">💡 مثال: 0501234567 أو 966501234567</p>
+          <p id="testPhoneHelp" class="help-text">💡 مثال: 0501234567 أو 966501234567</p>
         </div>
 
         <div class="form-group">
-          <label class="form-label">💬 الرسالة</label>
+          <label id="testMessageLabel" class="form-label">💬 الرسالة</label>
           <textarea id="testMessage" rows="4" class="form-input"
                     placeholder="اكتب رسالة تجريبية..."></textarea>
         </div>
 
-        <button class="btn btn-primary" style="width: 100%; margin-bottom: 24px;" onclick="sendTestMessage()">
+        <button id="btnSendTest" class="btn btn-primary" style="width: 100%; margin-bottom: 24px;" onclick="sendTestMessage()">
           🚀 إرسال رسالة تجريبية
         </button>
 
@@ -772,8 +772,8 @@
           <div style="display: flex; align-items: flex-start; gap: 12px;">
             <span style="font-size: 24px;">💡</span>
             <div>
-              <h3 class="info-box-title">ملاحظة مهمة</h3>
-              <p class="info-box-text">
+              <h3 id="infoBoxTitle" class="info-box-title">ملاحظة مهمة</h3>
+              <p id="infoBoxText" class="info-box-text">
                 بعد ربط WhatsApp بنجاح، سيتم إرسال الفواتير تلقائياً كملفات PDF للعملاء حسب الإعدادات.
               </p>
             </div>
@@ -786,17 +786,17 @@
   <div id="logoutModal" class="modal-overlay" onclick="if(event.target === this) closeLogoutModal()">
     <div class="modal-content">
       <div class="modal-icon">⚠️</div>
-      <h2 class="modal-title">تأكيد تسجيل الخروج</h2>
-      <p class="modal-text">
+      <h2 id="logoutModalTitle" class="modal-title">تأكيد تسجيل الخروج</h2>
+      <p id="logoutModalText" class="modal-text">
         سيتم قطع الاتصال وحذف جميع بيانات الجلسة الحالية.
         ستحتاج إلى إعادة مسح رمز QR للربط مرة أخرى.
       </p>
       
       <div class="modal-buttons">
-        <button class="btn btn-danger" onclick="confirmLogout()">
+        <button id="btnConfirmLogout" class="btn btn-danger" onclick="confirmLogout()">
           🚪 نعم، تسجيل الخروج
         </button>
-        <button class="btn" style="background: #e5e7eb; color: #374151; border: 2px solid #9ca3af;" onclick="closeLogoutModal()">
+        <button id="btnCancelLogout" class="btn" style="background: #e5e7eb; color: #374151; border: 2px solid #9ca3af;" onclick="closeLogoutModal()">
           ❌ إلغاء
         </button>
       </div>
@@ -804,6 +804,57 @@
   </div>
 
   <script>
+    let __wpIsAr = true;
+    function __t(ar, en){ return __wpIsAr ? ar : en; }
+    function __txt(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
+    function __btn(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
+    function __attr(id, attr, text){ const el = document.getElementById(id); if(el) el.setAttribute(attr, text); }
+
+    function translateUI(isAr){
+      __wpIsAr = isAr;
+      document.documentElement.lang = isAr ? 'ar' : 'en';
+      document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+      try{ document.title = isAr ? 'إدارة WhatsApp - POS SA' : 'WhatsApp Management - POS SA'; }catch(_){}
+
+      __txt('brandTitle', isAr ? 'إدارة WhatsApp' : 'WhatsApp Management');
+      __txt('brandDesc', isAr ? 'ربط حساب WhatsApp لإرسال الفواتير تلقائياً' : 'Connect your WhatsApp account to send invoices automatically');
+      __btn('btnBack', isAr ? '⬅ العودة للرئيسية' : '⬅ Back to Home');
+
+      __txt('totalBadge', isAr ? 'إجمالي' : 'Total');
+      __txt('totalLabel', isAr ? 'عدد الرسائل' : 'Messages');
+      __txt('remainingBadge', isAr ? 'متبقي' : 'Remaining');
+      __txt('remainingLabel', isAr ? 'الرسائل المتبقية' : 'Remaining Messages');
+      __txt('sentBadge', isAr ? 'مُرسل' : 'Sent');
+      __txt('sentLabel', isAr ? 'الرسائل المستخدمة' : 'Used Messages');
+
+      const connTitle = document.getElementById('connCardTitle');
+      if(connTitle){ const sp = connTitle.querySelector('span'); connTitle.childNodes[connTitle.childNodes.length-1].textContent = ' ' + (isAr ? 'حالة الاتصال' : 'Connection Status'); }
+      __txt('statusText', isAr ? 'غير متصل' : 'Disconnected');
+      __txt('qrInitText', isAr ? 'انقر على "ربط WhatsApp" لبدء الاتصال' : 'Click "Connect WhatsApp" to start');
+      __btn('btnConnect', isAr ? '🚀 ربط WhatsApp الآن' : '🚀 Connect WhatsApp Now');
+      __btn('btnRefreshStatus', isAr ? '🔄 تحديث الحالة' : '🔄 Refresh Status');
+      __btn('btnLogout', isAr ? '🚪 تسجيل خروج' : '🚪 Logout');
+
+      const testTitle = document.getElementById('testCardTitle');
+      if(testTitle){ const sp = testTitle.querySelector('span'); testTitle.childNodes[testTitle.childNodes.length-1].textContent = ' ' + (isAr ? 'اختبار الإرسال' : 'Send Test'); }
+      __txt('testPhoneLabel', isAr ? '📞 رقم الجوال' : '📞 Phone Number');
+      __attr('testPhone', 'placeholder', isAr ? '05xxxxxxxx أو 9665xxxxxxxx' : '05xxxxxxxx or 9665xxxxxxxx');
+      __txt('testPhoneHelp', isAr ? '💡 مثال: 0501234567 أو 966501234567' : '💡 Example: 0501234567 or 966501234567');
+      __txt('testMessageLabel', isAr ? '💬 الرسالة' : '💬 Message');
+      __attr('testMessage', 'placeholder', isAr ? 'اكتب رسالة تجريبية...' : 'Write a test message...');
+      __btn('btnSendTest', isAr ? '🚀 إرسال رسالة تجريبية' : '🚀 Send Test Message');
+      __txt('infoBoxTitle', isAr ? 'ملاحظة مهمة' : 'Important Note');
+      __txt('infoBoxText', isAr ? 'بعد ربط WhatsApp بنجاح، سيتم إرسال الفواتير تلقائياً كملفات PDF للعملاء حسب الإعدادات.' : 'After connecting WhatsApp successfully, invoices will be sent automatically as PDF files to customers according to settings.');
+
+      __txt('logoutModalTitle', isAr ? 'تأكيد تسجيل الخروج' : 'Confirm Logout');
+      __txt('logoutModalText', isAr ? 'سيتم قطع الاتصال وحذف جميع بيانات الجلسة الحالية. ستحتاج إلى إعادة مسح رمز QR للربط مرة أخرى.' : 'The connection will be disconnected and all current session data will be deleted. You will need to scan the QR code again to reconnect.');
+      __btn('btnConfirmLogout', isAr ? '🚪 نعم، تسجيل الخروج' : '🚪 Yes, Logout');
+      __btn('btnCancelLogout', isAr ? '❌ إلغاء' : '❌ Cancel');
+
+      __txt('toastTitle', isAr ? 'انتهى عدد الرسائل المتاحة!' : 'Message limit reached!');
+      __txt('toastSubtitle', isAr ? 'يرجى التواصل مع الدعم الفني للتجديد' : 'Please contact technical support to renew');
+    }
+
     let qrCheckInterval = null;
     let toastTimeout = null;
     let toastShownOnLoad = false;
@@ -872,9 +923,10 @@
         }
       } catch (error) {
         console.error('Error loading messages stats:', error);
-        document.getElementById('remainingMessages').textContent = 'خطأ';
-        document.getElementById('totalMessages').textContent = 'خطأ';
-        document.getElementById('sentMessages').textContent = 'خطأ';
+        const errTxt = __t('خطأ', 'Error');
+        document.getElementById('remainingMessages').textContent = errTxt;
+        document.getElementById('totalMessages').textContent = errTxt;
+        document.getElementById('sentMessages').textContent = errTxt;
       }
     }
 
@@ -944,17 +996,17 @@
       const statusIndicator = document.getElementById('statusIndicator');
       
       if (connected) {
-        statusText.textContent = 'متصل';
+        statusText.textContent = __t('متصل', 'Connected');
         statusText.style.color = '#166534';
         statusIndicator.className = 'status-indicator status-connected';
-        setSuccess('تم الاتصال بنجاح! يمكنك الآن إرسال الفواتير عبر WhatsApp');
+        setSuccess(__t('تم الاتصال بنجاح! يمكنك الآن إرسال الفواتير عبر WhatsApp', 'Connected successfully! You can now send invoices via WhatsApp'));
       } else {
         if (state === 'connecting') {
-          statusText.textContent = 'جاري الاتصال...';
+          statusText.textContent = __t('جاري الاتصال...', 'Connecting...');
           statusText.style.color = '#d97706';
           statusIndicator.className = 'status-indicator status-connecting';
         } else {
-          statusText.textContent = 'غير متصل';
+          statusText.textContent = __t('غير متصل', 'Disconnected');
           statusText.style.color = '#991b1b';
           statusIndicator.className = 'status-indicator status-disconnected';
         }
@@ -965,7 +1017,7 @@
       try {
         if(!navigator.onLine){
           updateStatus(false);
-          setError('❌ لا يوجد اتصال بالإنترنت - WhatsApp غير متصل');
+          setError(__t('❌ لا يوجد اتصال بالإنترنت - WhatsApp غير متصل', '❌ No internet connection - WhatsApp is disconnected'));
           return;
         }
         
@@ -973,13 +1025,13 @@
         if (result.success) {
           updateStatus(result.connected);
           if(result.connected){
-            setSuccess('✅ WhatsApp متصل ويعمل بشكل طبيعي');
+            setSuccess(__t('✅ WhatsApp متصل ويعمل بشكل طبيعي', '✅ WhatsApp is connected and working normally'));
           }
         } else {
           updateStatus(false);
         }
       } catch (error) {
-        setError('خطأ في التحقق من الحالة: ' + (error.message || error));
+        setError(__t('خطأ في التحقق من الحالة: ', 'Error checking status: ') + (error.message || error));
         updateStatus(false);
       }
     }
@@ -997,9 +1049,9 @@
             const qrContainer = document.getElementById('qrContainer');
             qrContainer.innerHTML = `
               <div style="text-align: center;">
-                <p style="color: #166534; margin-bottom: 14px; font-size: 16px;">📱 امسح هذا الرمز من تطبيق WhatsApp</p>
+                <p style="color: #166534; margin-bottom: 14px; font-size: 16px;">📱 ${__t('امسح هذا الرمز من تطبيق WhatsApp', 'Scan this QR code with WhatsApp app')}</p>
                 <img src="${qrResult.qr}" alt="QR Code" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                <p style="color: #6b7280; margin-top: 14px; font-size: 13px;">⏱ ينتهي خلال دقيقتين</p>
+                <p style="color: #6b7280; margin-top: 14px; font-size: 13px;">⏱ ${__t('ينتهي خلال دقيقتين', 'Expires in 2 minutes')}</p>
               </div>
             `;
           }
@@ -1012,8 +1064,8 @@
             qrContainer.innerHTML = `
               <div style="text-align: center;">
                 <div style="font-size: 72px; margin-bottom: 20px;">✅</div>
-                <p style="color: #166534; font-size: 24px; margin-bottom: 10px;">تم الاتصال بنجاح!</p>
-                <p style="color: #6b7280; font-size: 15px;">WhatsApp جاهز للاستخدام الآن</p>
+                <p style="color: #166534; font-size: 24px; margin-bottom: 10px;">${__t('تم الاتصال بنجاح!', 'Connected successfully!')}</p>
+                <p style="color: #6b7280; font-size: 15px;">${__t('WhatsApp جاهز للاستخدام الآن', 'WhatsApp is ready to use now')}</p>
               </div>
             `;
           }
@@ -1029,7 +1081,7 @@
         setSuccess('');
         
         if(!navigator.onLine){
-          setError('❌ لا يوجد اتصال بالإنترنت! الرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.');
+          setError(__t('❌ لا يوجد اتصال بالإنترنت! الرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.', '❌ No internet connection! Please check your device internet connection and try again.'));
           return;
         }
         
@@ -1039,57 +1091,57 @@
         qrContainer.innerHTML = `
           <div style="text-align: center;">
             <div style="font-size: 56px; margin-bottom: 14px; animation: spin 1s linear infinite;">⏳</div>
-            <p style="color: #6b7280; font-size: 15px;">جاري التهيئة وإغلاق الجلسات السابقة...</p>
+            <p style="color: #6b7280; font-size: 15px;">${__t('جاري التهيئة وإغلاق الجلسات السابقة...', 'Initializing and closing previous sessions...')}</p>
           </div>
         `;
 
-        setSuccess('⏳ جاري إغلاق Chrome والتحضير للاتصال...');
+        setSuccess(__t('⏳ جاري إغلاق Chrome والتحضير للاتصال...', '⏳ Closing Chrome and preparing to connect...'));
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         qrContainer.innerHTML = `
           <div style="text-align: center;">
             <div style="font-size: 56px; margin-bottom: 14px; animation: spin 1s linear infinite;">⏳</div>
-            <p style="color: #6b7280; font-size: 15px;">جاري الاتصال بخادم WhatsApp...</p>
+            <p style="color: #6b7280; font-size: 15px;">${__t('جاري الاتصال بخادم WhatsApp...', 'Connecting to WhatsApp server...')}</p>
           </div>
         `;
 
         startQRPolling();
 
-        setSuccess('تم بدء الاتصال، انتظر ظهور رمز QR...');
+        setSuccess(__t('تم بدء الاتصال، انتظر ظهور رمز QR...', 'Connection started, waiting for QR code...'));
         
         window.api.whatsapp_initialize().then(result => {
           if (!result.success) {
-            setError('خطأ في التهيئة: ' + (result.error || 'فشل التهيئة'));
+            setError(__t('خطأ في التهيئة: ', 'Initialization error: ') + (result.error || __t('فشل التهيئة', 'Initialization failed')));
             qrContainer.innerHTML = `
               <div>
                 <div class="whatsapp-icon">❌</div>
                 <p style="color: #dc2626; font-size: 15px; margin-bottom: 20px;">
-                  فشل الاتصال، حاول مرة أخرى
+                  ${__t('فشل الاتصال، حاول مرة أخرى', 'Connection failed, try again')}
                 </p>
                 <button class="btn btn-primary" onclick="initializeWhatsApp()">
-                  🔄 إعادة المحاولة
+                  🔄 ${__t('إعادة المحاولة', 'Retry')}
                 </button>
               </div>
             `;
           }
         }).catch(error => {
-          setError('خطأ في التهيئة: ' + (error.message || error));
+          setError(__t('خطأ في التهيئة: ', 'Initialization error: ') + (error.message || error));
           qrContainer.innerHTML = `
             <div>
               <div class="whatsapp-icon">❌</div>
               <p style="color: #dc2626; font-size: 15px; margin-bottom: 20px;">
-                فشل الاتصال، حاول مرة أخرى
+                ${__t('فشل الاتصال، حاول مرة أخرى', 'Connection failed, try again')}
               </p>
               <button class="btn btn-primary" onclick="initializeWhatsApp()">
-                🔄 إعادة المحاولة
+                🔄 ${__t('إعادة المحاولة', 'Retry')}
               </button>
             </div>
           `;
         });
 
       } catch (error) {
-        setError('خطأ في التهيئة: ' + (error.message || error));
+        setError(__t('خطأ في التهيئة: ', 'Initialization error: ') + (error.message || error));
         updateStatus(false);
       }
     }
@@ -1100,7 +1152,7 @@
         setSuccess('');
 
         if(!navigator.onLine){
-          setError('❌ لا يوجد اتصال بالإنترنت! الرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.');
+          setError(__t('❌ لا يوجد اتصال بالإنترنت! الرجاء التحقق من اتصال الجهاز بالإنترنت ثم المحاولة مرة أخرى.', '❌ No internet connection! Please check your device internet connection and try again.'));
           return;
         }
 
@@ -1108,21 +1160,21 @@
         const message = document.getElementById('testMessage').value.trim();
 
         if (!phone) {
-          setError('⚠️ يرجى إدخال رقم الجوال أولاً');
+          setError(__t('⚠️ يرجى إدخال رقم الجوال أولاً', '⚠️ Please enter a phone number first'));
           return;
         }
 
         if (!message) {
-          setError('⚠️ يرجى كتابة الرسالة أولاً');
+          setError(__t('⚠️ يرجى كتابة الرسالة أولاً', '⚠️ Please write a message first'));
           return;
         }
 
-        setSuccess('⏳ جاري إرسال الرسالة...');
+        setSuccess(__t('⏳ جاري إرسال الرسالة...', '⏳ Sending message...'));
 
         const result = await window.api.whatsapp_send_text(phone, message);
         
         if (result.success) {
-          setSuccess('✅ تم إرسال الرسالة بنجاح!');
+          setSuccess(__t('✅ تم إرسال الرسالة بنجاح!', '✅ Message sent successfully!'));
           document.getElementById('testMessage').value = '';
           await loadMessagesStats();
         } else {
@@ -1130,12 +1182,12 @@
             showToast();
             await loadMessagesStats();
           } else {
-            setError('❌ فشل الإرسال: ' + (result.error || 'خطأ غير معروف'));
+            setError(__t('❌ فشل الإرسال: ', '❌ Send failed: ') + (result.error || __t('خطأ غير معروف', 'Unknown error')));
           }
         }
       } catch (error) {
         console.error(error);
-        setError('❌ خطأ في الإرسال: ' + (error.message || error));
+        setError(__t('❌ خطأ في الإرسال: ', '❌ Send error: ') + (error.message || error));
       }
     }
 
@@ -1152,7 +1204,7 @@
       
       try {
         setError('');
-        setSuccess('⏳ جاري تسجيل الخروج وحذف بيانات الجلسة...');
+        setSuccess(__t('⏳ جاري تسجيل الخروج وحذف بيانات الجلسة...', '⏳ Logging out and deleting session data...'));
         
         if (qrCheckInterval) {
           clearInterval(qrCheckInterval);
@@ -1162,7 +1214,7 @@
         const result = await window.api.whatsapp_logout();
         
         if (result.success) {
-          setSuccess('✅ تم تسجيل الخروج بنجاح وحذف جميع بيانات الجلسة. جاري إعادة تحميل الصفحة...');
+          setSuccess(__t('✅ تم تسجيل الخروج بنجاح وحذف جميع بيانات الجلسة. جاري إعادة تحميل الصفحة...', '✅ Logged out successfully and all session data deleted. Reloading page...'));
           updateStatus(false);
           
           const qrContainer = document.getElementById('qrContainer');
@@ -1170,10 +1222,10 @@
             <div>
               <div class="whatsapp-icon">📱</div>
               <p style="color: #6b7280; font-size: 15px; margin-bottom: 20px;">
-                انقر على "ربط WhatsApp" لبدء الاتصال
+                ${__t('انقر على "ربط WhatsApp" لبدء الاتصال', 'Click "Connect WhatsApp" to start')}
               </p>
               <button class="btn btn-primary" onclick="initializeWhatsApp()">
-                🚀 ربط WhatsApp الآن
+                🚀 ${__t('ربط WhatsApp الآن', 'Connect WhatsApp Now')}
               </button>
             </div>
           `;
@@ -1182,10 +1234,10 @@
             window.location.reload();
           }, 3000);
         } else {
-          setError('❌ فشل تسجيل الخروج: ' + (result.error || 'خطأ غير معروف'));
+          setError(__t('❌ فشل تسجيل الخروج: ', '❌ Logout failed: ') + (result.error || __t('خطأ غير معروف', 'Unknown error')));
         }
       } catch (error) {
-        setError('❌ خطأ في تسجيل الخروج: ' + (error.message || error));
+        setError(__t('❌ خطأ في تسجيل الخروج: ', '❌ Logout error: ') + (error.message || error));
       }
     }
 
@@ -1197,6 +1249,24 @@
     }, 500);
 
     setInterval(loadMessagesStats, 30000);
+
+    (function initLocale(){
+      (async ()=>{
+        try{
+          const res = await window.api.app_get_locale();
+          const lang = (res && res.lang) || 'ar';
+          const isAr = lang.split('-')[0].toLowerCase() !== 'en';
+          translateUI(isAr);
+        }catch(_){ translateUI(true); }
+      })();
+      try{
+        window.api.app_on_locale_changed((L)=>{
+          const isAr = (typeof L === 'string' ? L.split('-')[0].toLowerCase() : 'ar') !== 'en';
+          translateUI(isAr);
+          try{ window.__i18n_burst && window.__i18n_burst(L); }catch(_){}
+        });
+      }catch(_){}
+    })();
   </script>
 
   <style>
