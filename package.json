@@ -1,6 +1,6 @@
 {
   "name": "pos1",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "description": "POS Desktop App for KSA - Login skeleton (Electron + Node.js + MySQL)",
   "main": "src/main/main.js",
   "scripts": {

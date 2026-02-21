@@ -189,8 +189,8 @@ function showZatcaResponseModal(raw){
 
 async function load(resetPage = true, beforeId = null){
   setError('');
-  // إعادة تحميل إعدادات ZATCA بشكل غير متزامن (non-blocking) لتجنب تأخير التنقل
-  window.api.settings_get().then(r=>{ if(r&&r.ok&&r.item){ __zatcaEnabled=!!(r.item.zatca_enabled); } }).catch(()=>{});
+  // إعادة تحميل إعدادات ZATCA والانتظار حتى اكتمالها قبل رسم الصفوف
+  try{ const r = await window.api.settings_get(); if(r&&r.ok&&r.item){ __zatcaEnabled=!!(r.item.zatca_enabled); __defPrintFormat=(r.item.default_print_format==='a4')?'a4':'thermal'; } }catch(_){}
 
   if(resetPage){ __invPage=1; __cursors={}; beforeId=null; }
 
