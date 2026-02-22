@@ -659,6 +659,17 @@ async function loadSettings(){
   updateLogoPreview();
   // Refresh default product image preview as well
   try{ await updateDefProdPreview(); }catch(_){ }
+
+  // تعطيل الحقول المحمية عند تفعيل وضع النسخة التجريبية
+  const trialLocked = s.show_trial_notice == 1;
+  const trialLockedFields = [fSellerLegal, fSellerLegalEn, fSellerVat];
+  trialLockedFields.forEach(el => {
+    if (!el) return;
+    el.readOnly = trialLocked;
+    el.style.opacity = trialLocked ? '0.5' : '';
+    el.style.cursor = trialLocked ? 'not-allowed' : '';
+    el.title = trialLocked ? 'هذا الحقل محمي في النسخة التجريبية' : '';
+  });
 }
 
 async function loadBarcodePrintersIntoSelect(){
