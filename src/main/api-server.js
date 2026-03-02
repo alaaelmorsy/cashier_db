@@ -34,27 +34,71 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/invoices', async (req, res) => {
     let conn;
     try {
-      const { limit = 200, offset = 0, search, payment_status } = req.query;
+      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status } = req.query;
       conn = await dbAdapter.getConnection();
-      let sql = 'SELECT * FROM sales WHERE doc_type="invoice"';
+      const SELECT_COLS = `id, invoice_no, order_no, doc_type, created_at,
+        customer_id, customer_name, customer_phone, customer_vat,
+        payment_method, payment_status, sub_total, vat_total, grand_total,
+        total_after_discount, discount_type, discount_value, discount_amount,
+        paid_amount, remaining_amount, settled_at, settled_method, settled_cash,
+        pay_cash_amount, pay_card_amount, shift_id,
+        zatca_uuid, zatca_submitted, zatca_status, zatca_rejection_reason, zatca_response,
+        created_by_user_id, created_by_username`;
+
+      const whereClauses = ["(doc_type IS NULL OR doc_type='invoice')"];
       const params = [];
+      const hasFilters = !!(search || customer_q || payment_status);
 
       if (search) {
-        sql += ' AND (invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)';
+        whereClauses.push('(invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR customer_vat LIKE ?)');
         const s = `%${search}%`;
-        params.push(s, s, s);
+        params.push(s, s, s, s);
       }
-
+      if (customer_q) {
+        whereClauses.push('(customer_phone LIKE ? OR customer_name LIKE ? OR customer_vat LIKE ?)');
+        const cq = `%${customer_q}%`;
+        params.push(cq, cq, cq);
+      }
       if (payment_status) {
-        sql += ' AND payment_status = ?';
+        whereClauses.push('payment_status = ?');
         params.push(payment_status);
       }
 
-      sql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), parseInt(offset));
+      const where = 'WHERE ' + whereClauses.join(' AND ');
+      const lim = Math.min(parseInt(limit) || 20, 500);
 
-      const [rows] = await conn.query(sql, params);
-      res.json({ ok: true, invoices: rows });
+      // Fast COUNT: use index stats for unfiltered, exact COUNT only when filters applied
+      let total = 0;
+      if (!hasFilters) {
+        const [cntRows] = await conn.query(
+          `SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`
+        );
+        total = Number(cntRows[0]?.total || 0);
+      } else {
+        const [[countRow]] = await conn.query(`SELECT COUNT(*) AS total FROM sales ${where}`, params);
+        total = Number(countRow.total || 0);
+      }
+
+      // Keyset pagination (before_id): O(1) regardless of page depth — avoids OFFSET scan
+      let rows;
+      const beforeId = before_id ? Number(before_id) : null;
+      if (beforeId) {
+        const ksWhere = 'WHERE ' + [...whereClauses, 'id < ?'].join(' AND ');
+        const [ksRows] = await conn.query(
+          `SELECT ${SELECT_COLS} FROM sales ${ksWhere} ORDER BY id DESC LIMIT ?`,
+          [...params, beforeId, lim]
+        );
+        rows = ksRows;
+      } else {
+        const off = parseInt(offset) || 0;
+        const [offRows] = await conn.query(
+          `SELECT ${SELECT_COLS} FROM sales ${where} ORDER BY id DESC LIMIT ? OFFSET ?`,
+          [...params, lim, off]
+        );
+        rows = offRows;
+      }
+
+      res.json({ ok: true, invoices: rows, total, limit: lim });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {

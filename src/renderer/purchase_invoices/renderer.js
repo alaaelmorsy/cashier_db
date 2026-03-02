@@ -213,10 +213,7 @@ async function buildInvoiceHTML(invoice, items, supplier, settings) {
   };
   
   // استخراج رقم الفاتورة التسلسلي من PI-YYYYMM-#####
-  const extractInvoiceNo = (fullNo) => {
-    const m = String(fullNo || '').match(/^PI-\d{6}-(\d+)$/);
-    return m ? String(Number(m[1])) : (fullNo || '');
-  };
+  const extractInvoiceNo = (fullNo) => String(fullNo || '');
   
   // معلومات الشركة بالعربي
   const companyNameAr = settings.seller_legal_name || 'مؤسسة تعلم التقنيات';
@@ -790,12 +787,7 @@ btnSearch?.addEventListener('click', ()=>{ switchTab('saved'); });
 async function fillFormFromInvoice(it, details){
   editingId = it.id;
   btnSave.textContent = '💾 تحديث الفاتورة';
-  // Show short display number like print: extract sequence from PI-YYYYMM-#####
-  (function(){
-    const raw = String(it.invoice_no||'');
-    const m = raw.match(/^PI-\d{6}-(\d+)$/);
-    invNo.value = m ? String(Number(m[1])) : (raw || String(it.id||''));
-  })();
+  invNo.value = String(it.invoice_no || it.id || '');
   try{
     const d = new Date(String(it.invoice_at).replace(' ','T'));
     invDt.value = new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -976,12 +968,8 @@ function renderCurrentPage(suppliersCache){
     };
     const dt = fmtDateEn(it.invoice_at);
     
-    // Extract sequential number from PI-YYYYMM-##### to display like 1,2,...
-    const seqNo = (()=>{ 
-      const inv=String(it.invoice_no||''); 
-      const m=inv.match(/^PI-\d{6}-(\d+)$/); 
-      return m ? String(Number(m[1])) : (inv || String(it.id||'')); 
-    })();
+    // Show invoice_no directly — now stored as plain sequential number (1, 2, 3...)
+    const seqNo = String(it.invoice_no || it.id || '');
     
     // Get supplier name
     const supplierName = suppliersCache[it.supplier_id] || `#${it.supplier_id}`;

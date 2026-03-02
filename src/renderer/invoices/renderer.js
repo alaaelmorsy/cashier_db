@@ -32,8 +32,8 @@ let __cursors = {};
 // default print format from settings (thermal | a4)
 let __defPrintFormat = 'thermal';
 let __zatcaEnabled = false;
-// Load print format and ZATCA enabled from settings
-(async()=>{
+// Load settings once — store the Promise so load() can await it on first call
+const __settingsReady = (async()=>{
   try{
     const r = await window.api.settings_get();
     if(r && r.ok && r.item){
@@ -71,35 +71,47 @@ function renderInvPager(){
 }
 
 function renderRows(list){
-  tbody.innerHTML='';
-  list.forEach((row, i) => {
+  const PMETH = {cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'};
+  const canView = hasInvoice('invoices.view');
+  const frag = document.createDocumentFragment();
+  list.forEach((row) => {
     const tr = document.createElement('tr');
     tr.className = 'border-b border-gray-100 last:border-b-0';
-    const zatcaStatusCell = (() => {
-      if(!__zatcaEnabled) return '<td class="px-4 py-3 text-center text-gray-400 text-sm">غير مفعل</td>';
-      const rejected = row.zatca_status==='rejected';
-      const sent = !rejected && (row.zatca_status==='submitted'||row.zatca_status==='accepted'||row.zatca_submitted);
-      if(sent) return '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-bold">✅ تم الإرسال</span></td>';
-      if(rejected) return '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-bold">❌ فشل</span></td>';
-      return '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">⏳ لم يتم الإرسال</span></td>';
-    })();
+    const rejected = row.zatca_status==='rejected';
+    const sent = !rejected && (row.zatca_status==='submitted'||row.zatca_status==='accepted'||row.zatca_submitted);
+    const zatcaStatusCell = !__zatcaEnabled
+      ? '<td class="px-4 py-3 text-center text-gray-400 text-sm">غير مفعل</td>'
+      : sent
+        ? '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-bold">✅ تم الإرسال</span></td>'
+        : rejected
+          ? '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-bold">❌ فشل</span></td>'
+          : '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">⏳ لم يتم الإرسال</span></td>';
+    const pmeth = PMETH[String(row.payment_method||'').toLowerCase()] || (row.payment_method||'');
+    let zatcaBtns = '';
+    if(canView && __zatcaEnabled){
+      const sendBtn = sent ? '' : `<button class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium" data-act="send" data-id="${row.id}">📤 إرسال للهيئة</button>`;
+      const viewBtn = (row.zatca_response||row.zatca_rejection_reason) ? `<button class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium" data-act="show_zresp" data-id="${row.id}">📄 رد الهيئة</button>` : '';
+      zatcaBtns = sendBtn + ' ' + viewBtn;
+    }
     tr.innerHTML = `
       <td class="px-4 py-3 text-gray-900 font-semibold">${row.invoice_no}</td>
       <td class="px-4 py-3 text-gray-700">${row.disp_customer_name || ''}</td>
       <td class="px-4 py-3 text-gray-700">${row.disp_customer_phone || ''}</td>
-      <td class="px-4 py-3"><span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">${(() => { const L={cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'}; const k=String(row.payment_method||'').toLowerCase(); return L[k] || (row.payment_method||''); })()}</span></td>
+      <td class="px-4 py-3"><span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">${pmeth}</span></td>
       <td class="px-4 py-3 text-gray-900 font-bold">${Number(row.grand_total).toFixed(2)}</td>
       <td class="px-4 py-3 text-gray-600 text-sm">${fmtDate(row.created_at)}</td>
       ${zatcaStatusCell}
       <td class="px-4 py-3">
         <div class="flex flex-wrap gap-2 items-center">
-          ${hasInvoice('invoices.view') ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">عرض الفاتورة</button>` : ''}
-          ${(hasInvoice('invoices.view') && __zatcaEnabled) ? (()=>{ const rejected = row.zatca_status==='rejected'; const sent = !rejected && (row.zatca_status==='submitted'||row.zatca_status==='accepted'||row.zatca_submitted); const sendBtn = sent ? '' : `<button class=\"px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium\" data-act=\"send\" data-id=\"${row.id}\">📤 إرسال للهيئة</button>`; const viewBtn = (row.zatca_response||row.zatca_rejection_reason) ? `<button class=\"px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium\" data-act=\"show_zresp\" data-id=\"${row.id}\">📄 رد الهيئة</button>` : ''; return `${sendBtn} ${viewBtn}`; })() : ''}
+          ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">عرض الفاتورة</button>` : ''}
+          ${zatcaBtns}
         </div>
       </td>
     `;
-    tbody.appendChild(tr);
+    frag.appendChild(tr);
   });
+  tbody.innerHTML='';
+  tbody.appendChild(frag);
   if(!tbody.__inited){ tbody.addEventListener('click', onTableAction); tbody.__inited = true; }
   renderInvPager();
 }
@@ -189,8 +201,7 @@ function showZatcaResponseModal(raw){
 
 async function load(resetPage = true, beforeId = null){
   setError('');
-  // إعادة تحميل إعدادات ZATCA والانتظار حتى اكتمالها قبل رسم الصفوف
-  try{ const r = await window.api.settings_get(); if(r&&r.ok&&r.item){ __zatcaEnabled=!!(r.item.zatca_enabled); __defPrintFormat=(r.item.default_print_format==='a4')?'a4':'thermal'; } }catch(_){}
+  await __settingsReady;
 
   if(resetPage){ __invPage=1; __cursors={}; beforeId=null; }
 

@@ -122,6 +122,27 @@ function registerPurchaseInvoicesIPC(){
         await conn.query("ALTER TABLE purchase_invoice_details ADD COLUMN description VARCHAR(255) NULL AFTER product_id");
       }
     }catch(_){ /* ignore */ }
+    // Global sequential counter for purchase invoices (never resets)
+    try{
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS app_counters (
+          name VARCHAR(64) PRIMARY KEY,
+          value INT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      // Initialize counter from existing data on first run
+      // MAX(CAST(invoice_no AS UNSIGNED)) picks up any plain numeric invoice_no already saved
+      // COUNT(*) ensures we don't start below the number of existing invoices
+      await conn.query(`
+        INSERT IGNORE INTO app_counters (name, value)
+        SELECT 'purchase_invoice_seq',
+               GREATEST(
+                 COALESCE(MAX(CAST(invoice_no AS UNSIGNED)), 0),
+                 COUNT(*)
+               )
+        FROM purchase_invoices
+      `);
+    }catch(_){ /* ignore */ }
     // Payments table for partial settlements of purchase invoices
     try{
       await conn.query(`
@@ -143,20 +164,12 @@ function registerPurchaseInvoicesIPC(){
   }
 
   async function nextInvoiceNo(conn){
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth()+1).padStart(2,'0');
-    const prefix = `PI-${yyyy}${mm}-`;
-    const [[row]] = await conn.query(
-      "SELECT invoice_no FROM purchase_invoices WHERE invoice_no LIKE ? ORDER BY invoice_no DESC LIMIT 1",
-      [prefix + '%']
+    // Atomic increment using LAST_INSERT_ID trick — safe under concurrent connections
+    await conn.query(
+      `UPDATE app_counters SET value = LAST_INSERT_ID(value + 1) WHERE name = 'purchase_invoice_seq'`
     );
-    let seq = 1;
-    if(row && row.invoice_no){
-      const m = String(row.invoice_no).match(/-(\d+)$/);
-      if(m){ seq = Number(m[1]||'0') + 1; }
-    }
-    return prefix + String(seq).padStart(5,'0');
+    const [[row]] = await conn.query(`SELECT LAST_INSERT_ID() AS seq`);
+    return String(row.seq);
   }
 
   function computeHeaderTotals(payload, lines){

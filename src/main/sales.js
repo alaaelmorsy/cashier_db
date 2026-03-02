@@ -7,6 +7,8 @@ const LocalZatcaBridge = require('./local-zatca');
 function registerSalesIPC(){
   // Cache flag: check invoice counter only once per session
   let invoiceCounterChecked = false;
+  // Cache flag: run ensureTables only once per session (avoids 30+ DB queries on every IPC call)
+  let __tablesEnsured = false;
   
   async function autoSubmitZatcaIfEnabled(saleId){
     try{
@@ -23,6 +25,7 @@ function registerSalesIPC(){
   }
   
   async function ensureTables(conn){
+    if(__tablesEnsured) return;
     await conn.query(`
       CREATE TABLE IF NOT EXISTS sales (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -324,6 +327,7 @@ function registerSalesIPC(){
       const [idxProductId] = await conn.query("SHOW INDEX FROM sales_items WHERE Key_name='idx_product_id'");
       if(!idxProductId.length){ await conn.query("CREATE INDEX idx_product_id ON sales_items(product_id)"); }
     }catch(_){ }
+    __tablesEnsured = true;
   }
 
   async function getNextSequentialNo(conn){
@@ -789,8 +793,24 @@ function registerSalesIPC(){
     // If Secondary device, fetch from API
     if (isSecondaryDevice()) {
       try {
-        const result = await fetchFromAPI('/invoices', query || {});
-        return { ok: true, items: result.invoices || [], total: result.invoices?.length || 0 };
+        const _q = query || {};
+        const _page = Math.max(1, Number(_q.page) || 1);
+        const _pageSize = Math.max(1, Number(_q.pageSize) || 20);
+        const apiParams = { limit: _pageSize };
+        if (_q.q) apiParams.search = _q.q;
+        if (_q.customer_q) apiParams.customer_q = _q.customer_q;
+        if (_q.payment_status) apiParams.payment_status = _q.payment_status;
+        // Pass before_id for keyset pagination (avoids OFFSET scan on millions of rows)
+        if (_q.before_id) {
+          apiParams.before_id = _q.before_id;
+        } else {
+          apiParams.offset = (_page - 1) * _pageSize;
+        }
+        const result = await fetchFromAPI('/invoices', apiParams);
+        const items = result.invoices || [];
+        const total = result.total != null ? result.total : items.length;
+        const last_id = items.length ? items[items.length - 1].id : null;
+        return { ok: true, items, total, page: _page, pageSize: _pageSize, last_id };
       } catch (err) {
         return { ok: false, error: err.message };
       }
@@ -907,14 +927,11 @@ function registerSalesIPC(){
         let total = 0;
         
         if (!hasFilters && q.type === 'invoice') {
-          // Ultra-fast estimation: use MySQL table stats for unfiltered invoice list
-          // This is approximate but instant for large tables
-          const [statsRows] = await conn.query(`
-            SELECT TABLE_ROWS 
-            FROM information_schema.TABLES 
-            WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'sales'
-          `, [DB_NAME]);
-          total = Math.floor((statsRows[0]?.TABLE_ROWS || 0) * 0.95);
+          // Exact count using idx_doctype_id index (fast index-only scan even on large tables)
+          const [cntRows] = await conn.query(
+            `SELECT COUNT(*) as total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`
+          );
+          total = Number(cntRows[0]?.total || 0);
         } else if (needsJoinForCount) {
           // Need JOIN because search includes customer table fields
           const countSql = `SELECT COUNT(DISTINCT s.id) as total FROM sales s LEFT JOIN customers c ON c.id = s.customer_id ${where}`;
