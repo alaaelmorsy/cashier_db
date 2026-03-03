@@ -655,6 +655,8 @@ contextBridge.exposeInMainWorld('api', {
   csv_export: (csv, options) => ipcRenderer.invoke('csv:export', { csv, options }),
   // Silent print invoice
   print_invoice_silent: (args) => ipcRenderer.invoke('print:invoice_silent', args),
+  // Preview print invoice (hidden BrowserWindow → resize → show)
+  print_invoice_preview: (args) => ipcRenderer.invoke('print:invoice_preview', args),
   // Generic HTML print (used for daily report)
   print_html: (html, options) => ipcRenderer.invoke('print:html', { html, options }),
   // Get assets path for font URLs in print

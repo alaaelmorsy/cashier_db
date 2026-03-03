@@ -930,6 +930,114 @@ async function createMainWindow() {
     }catch(e){ false && console.error('print:invoice_silent error', e); return { ok:false, error:'فشل الطباعة الصامتة' }; }
   });
 
+  // Preview print invoice: open hidden BrowserWindow, wait for content + autoshrink, resize, then show
+  ipcMain.handle('print:invoice_preview', async (_e, { file, format, query, silentMode }) => {
+    const { BrowserWindow, screen } = require('electron');
+    const path = require('path');
+    try {
+      const isA4 = String(format || '').toLowerCase() === 'a4';
+      const fileName = file || (isA4 ? 'print-a4.html' : 'print.html');
+      const filePath = path.join(__dirname, '..', 'renderer', 'sales', fileName);
+      const queryObj = { preview: '1' };
+      if (query) { Object.keys(query).forEach(k => { if (query[k] !== '' && query[k] != null) queryObj[k] = String(query[k]); }); }
+
+      const initW = isA4 ? 800 : 420;
+      const initH = isA4 ? 900 : 680;
+
+      const previewWin = new BrowserWindow({
+        width: initW,
+        height: initH,
+        show: false,
+        title: 'طباعة الفاتورة',
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+          backgroundThrottling: false,
+        }
+      });
+
+      await previewWin.loadFile(filePath, { query: queryObj });
+
+      previewWin.center();
+      previewWin.show();
+
+      try {
+        await previewWin.webContents.executeJavaScript(`new Promise((resolve) => {
+          const step = () => {
+            try { if (window.__CONTENT_READY__ === true) { resolve(true); return; } } catch(_) {}
+            setTimeout(step, 25);
+          };
+          step();
+          setTimeout(() => resolve(false), 5000);
+        })`);
+      } catch(_) {}
+
+      if (!isA4) {
+        try {
+          await previewWin.webContents.executeJavaScript(`new Promise((resolve) => {
+            let lastW = 0;
+            let lastH = 0;
+            let stableCount = 0;
+            const startedAt = Date.now();
+            const maxWaitMs = 1800;
+            const step = () => {
+              try {
+                if (window.__LAYOUT_READY__ === true) { resolve(true); return; }
+                const ticket = document.querySelector('.ticket');
+                if (ticket) {
+                  const rect = ticket.getBoundingClientRect();
+                  const w = Math.ceil(rect.width || 0);
+                  const h = Math.ceil(rect.height || 0);
+                  if (w > 0 && h > 0 && Math.abs(w - lastW) <= 1 && Math.abs(h - lastH) <= 1) {
+                    stableCount += 1;
+                    if (stableCount >= 2) { resolve(true); return; }
+                  } else {
+                    stableCount = 0;
+                  }
+                  lastW = w;
+                  lastH = h;
+                }
+              } catch(_) {}
+              if (Date.now() - startedAt >= maxWaitMs) { resolve(false); return; }
+              setTimeout(step, 25);
+            };
+            step();
+          })`);
+        } catch(_) {}
+        try {
+          const [outerW, outerH] = previewWin.getSize();
+          const [innerW, innerH] = previewWin.getContentSize();
+          const frameW = outerW - innerW;
+          const frameH = outerH - innerH;
+          const dims = await previewWin.webContents.executeJavaScript(`(() => {
+            try {
+              const ticket = document.querySelector('.ticket');
+              if (!ticket) return null;
+              const rect = ticket.getBoundingClientRect();
+              return { w: Math.ceil(rect.width), h: Math.ceil(rect.height) };
+            } catch(_) { return null; }
+          })()`);
+          if (dims && dims.w && dims.h) {
+            const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
+            previewWin.setSize(
+              Math.min(Math.max(360, dims.w + frameW), screenW),
+              Math.min(Math.max(320, dims.h + 16 + frameH), screenH)
+            );
+            previewWin.center();
+          }
+        } catch(_) {}
+      }
+
+      if(!silentMode){
+        try { previewWin.webContents.executeJavaScript('setTimeout(function(){ window.print(); }, 80)'); } catch(_) {}
+      }
+      return { ok: true };
+    } catch(e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
   // QR generation handlers (run in main to ensure availability)
   ipcMain.handle('qr:to_data_url', async (_e, { text, opts }) => {
     try{

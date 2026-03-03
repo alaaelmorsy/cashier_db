@@ -327,6 +327,26 @@ function registerSalesIPC(){
       const [idxProductId] = await conn.query("SHOW INDEX FROM sales_items WHERE Key_name='idx_product_id'");
       if(!idxProductId.length){ await conn.query("CREATE INDEX idx_product_id ON sales_items(product_id)"); }
     }catch(_){ }
+
+    // Composite index for order_no fallback COUNT query: (created_at, id, doc_type)
+    // Allows fast range scan: WHERE created_at >= ? AND id <= ? AND doc_type=...
+    try{
+      const [idxOrderNoFallback] = await conn.query("SHOW INDEX FROM sales WHERE Key_name='idx_created_at_id_doctype'");
+      if(!idxOrderNoFallback.length){
+        await conn.query("CREATE INDEX idx_created_at_id_doctype ON sales(created_at, id, doc_type)");
+      }
+    }catch(_){ }
+
+    // ensure driver columns exist (moved here from sales:get to run only once per session)
+    try{
+      const [colDrvId] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_id'");
+      if(!colDrvId.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_id INT NULL AFTER customer_vat"); }
+      const [colDrvName] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_name'");
+      if(!colDrvName.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_name VARCHAR(255) NULL AFTER driver_id"); }
+      const [colDrvPhone] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_phone'");
+      if(!colDrvPhone.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"); }
+    }catch(_){ }
+
     __tablesEnsured = true;
   }
 
@@ -1386,13 +1406,7 @@ function registerSalesIPC(){
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
-        // ensure driver columns exist
-        const [colDrvId] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_id'");
-        if(!colDrvId.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_id INT NULL AFTER customer_vat"); }
-        const [colDrvName] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_name'");
-        if(!colDrvName.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_name VARCHAR(255) NULL AFTER driver_id"); }
-        const [colDrvPhone] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_phone'");
-        if(!colDrvPhone.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"); }
+        // driver columns are now guaranteed by ensureTables (runs once per session)
 
         const [[sale]] = await conn.query('SELECT * FROM sales WHERE id=? LIMIT 1', [sid]);
         // backward-compat: if order_no is null and this is a normal invoice, try to infer a reasonable order_no from date bucket
@@ -1405,10 +1419,15 @@ function registerSalesIPC(){
             const created = new Date(sale.created_at);
             const curStart = new Date(created); curStart.setHours(hh||0, mm||0, 0, 0);
             let dayStart = curStart; if(created < curStart){ dayStart = new Date(curStart); dayStart.setDate(curStart.getDate()-1); }
-            // count number of invoices since that dayStart
-            const y = dayStart.getFullYear(); const m = String(dayStart.getMonth()+1).padStart(2,'0'); const d = String(dayStart.getDate()).padStart(2,'0');
-            const startStr = `${y}-${m}-${d} ${String(hh||0).toString().padStart(2,'0')}:${String(mm||0).toString().padStart(2,'0')}:00`;
-            const [[cnt]] = await conn.query("SELECT COUNT(*) AS c FROM sales WHERE (doc_type IS NULL OR doc_type='invoice') AND created_at >= ? AND id <= ?", [startStr, Number(sid)]);
+            const y = dayStart.getFullYear(); const mo = String(dayStart.getMonth()+1).padStart(2,'0'); const dy = String(dayStart.getDate()).padStart(2,'0');
+            const startStr = `${y}-${mo}-${dy} ${String(hh||0).padStart(2,'0')}:${String(mm||0).padStart(2,'0')}:00`;
+            // dayEnd = dayStart + 24h — bounds the scan to a single day only, uses idx_created_at_id_doctype
+            const dayEnd = new Date(dayStart); dayEnd.setDate(dayStart.getDate()+1);
+            const endStr = `${dayEnd.getFullYear()}-${String(dayEnd.getMonth()+1).padStart(2,'0')}-${String(dayEnd.getDate()).padStart(2,'0')} ${String(hh||0).padStart(2,'0')}:${String(mm||0).padStart(2,'0')}:00`;
+            const [[cnt]] = await conn.query(
+              "SELECT COUNT(*) AS c FROM sales WHERE (doc_type IS NULL OR doc_type='invoice') AND created_at >= ? AND created_at < ? AND id <= ?",
+              [startStr, endStr, Number(sid)]
+            );
             const ord = Number(cnt?.c||0);
             if(ord > 0){ sale.order_no = ord; }
           }

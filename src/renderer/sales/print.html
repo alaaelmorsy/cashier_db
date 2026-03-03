@@ -439,6 +439,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
       }
 
       (async function(){
+        try{ window.__LAYOUT_READY__ = false; }catch(_){ }
         // دالة انتظار عشوائية لتقليل مخاطر الحظر من واتساب (1-8 ثواني)
         function randomDelay(minMs, maxMs) {
           const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
@@ -1058,49 +1059,23 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             }catch(_){ }
           }catch(_){ /* ignore */ }
 
-          // تصغير الأرقام الطويلة قبل تحديد حجم النافذة
+          // تصغير الأرقام والأسماء مع تمريرتين سريعتين فقط لتسريع المعاينة
           try{
-            false && console.log('🚀 Starting autoshrink sequence...');
-            
-            // استدعاء فوري أول
-            false && console.log('📞 Call 1: immediate');
-            autoshrinkNumericCells();
-            autoshrinkProductNames();
-            
-            // استدعاءات متعددة بتأخيرات مختلفة لضمان التطبيق
-            setTimeout(()=>{
-              false && console.log('📞 Call 2: after 0ms');
+            const __layoutPass = () => {
               autoshrinkNumericCells();
               autoshrinkProductNames();
-            }, 0);
-            
-            setTimeout(()=>{
-              false && console.log('📞 Call 3: after 20ms');
-              autoshrinkNumericCells();
-              autoshrinkProductNames();
-            }, 20);
-            
-            setTimeout(()=>{
-              false && console.log('📞 Call 4: after 50ms');
-              autoshrinkNumericCells();
-              autoshrinkProductNames();
-            }, 50);
-            
-            setTimeout(()=>{
-              false && console.log('📞 Call 5: after 100ms');
-              autoshrinkNumericCells();
-              autoshrinkProductNames();
-            }, 100);
-            
-            setTimeout(()=>{
-              false && console.log('📞 Call 6: after 200ms (final)');
-              autoshrinkNumericCells();
-              autoshrinkProductNames();
-            }, 200);
-          }catch(_){ /* ignore */ }
-
-          // After building invoice content, resize preview window to fit
-          resizeWindowToTicket();
+              resizeWindowToTicket();
+            };
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                __layoutPass();
+                setTimeout(() => {
+                  __layoutPass();
+                  try{ window.__LAYOUT_READY__ = true; }catch(_){ }
+                }, 40);
+              });
+            });
+          }catch(_){ try{ window.__LAYOUT_READY__ = true; }catch(__){ } }
 
           // Check and notify parent window about WhatsApp status
           try{
@@ -1827,22 +1802,9 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             });
           }catch(_){ }
           
-          // 🚀 طباعة تلقائية فور اكتمال البيانات (حد أقصى 800ms)
-          const MAX_WAIT = 800;
-          const CHECK_INTERVAL = 50;
+          // 🚀 طباعة تلقائية فور جاهزية المحتوى (انتظار شرطي بدل polling)
+          const MAX_READY_WAIT = 1200;
           const startTime = Date.now();
-          
-          function checkDataReady(){
-            const invNoEl = document.getElementById('invNo');
-            const invDateEl = document.getElementById('invDate');
-            const invPayEl = document.getElementById('invPay');
-            const tbody = document.querySelector('table tbody');
-            
-            return invNoEl?.textContent?.trim() &&
-                   invDateEl?.textContent?.trim() &&
-                   invPayEl?.textContent?.trim() &&
-                   tbody?.children?.length > 0;
-          }
           
           function executePrint(){
             const elapsed = Date.now() - startTime;
@@ -1873,32 +1835,32 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
               return;
             }
             
-            if(!(settings && settings.silent_print)){
+            const __isPreviewMode = params.get('preview') === '1';
+            if(!(settings && settings.silent_print) && !__isPreviewMode){
               false && console.log(`🖨️ [${Date.now()}] Calling window.print() now`);
               window.print();
             } else {
-              false && console.log(`⏭️ [${Date.now()}] Skipping window.print() - silent_print is enabled`);
+              false && console.log(`⏭️ [${Date.now()}] Skipping window.print() - silent_print or preview mode`);
             }
           }
-          
-          const checkInterval = setInterval(() => {
-            if(checkDataReady()){
-              clearInterval(checkInterval);
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  executePrint();
-                });
-              });
-            } else if(Date.now() - startTime >= MAX_WAIT){
-              clearInterval(checkInterval);
-              false && console.warn(`⚠️ [${Date.now()}] Max wait time reached (${MAX_WAIT}ms), printing anyway`);
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  executePrint();
-                });
-              });
-            }
-          }, CHECK_INTERVAL);
+
+          await new Promise((resolve) => {
+            const __started = Date.now();
+            const __step = () => {
+              try{
+                if(window.__CONTENT_READY__ === true){ resolve(true); return; }
+              }catch(_){ }
+              if(Date.now() - __started >= MAX_READY_WAIT){ resolve(false); return; }
+              setTimeout(__step, 25);
+            };
+            __step();
+          });
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              executePrint();
+            });
+          });
           
           // Notify opener after printing so kitchen can print next
           try{

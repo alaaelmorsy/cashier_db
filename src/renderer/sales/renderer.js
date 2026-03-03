@@ -1025,9 +1025,7 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
           const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
           const page = fmt === 'a4' ? 'print-a4.html' : 'print.html';
           const params = new URLSearchParams({ id: String(r.credit_sale_id), pay: String(r.base_payment_method||''), base: String(r.base_sale_id||''), base_no: String(r.base_invoice_no||'') });
-          const w = fmt==='a4' ? 800 : 500;
-          const h = fmt==='a4' ? 900 : 700;
-          window.open(`../sales/${page}?${params.toString()}`, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+          window.api.print_invoice_preview({ file: page, format: fmt, query: Object.fromEntries(params.entries()) }).catch(()=>{});
         }catch(_){ /* ignore */ }
         // بعد فتح الطباعة، أعد شاشة فاتورة جديدة إلى حالتها (تفريغ السلة وتمكين الحقول)
         try{
@@ -1563,9 +1561,7 @@ async function showPartialRefundModal(saleId){
             base: String(r.base_sale_id||''), 
             base_no: String(r.base_invoice_no||'') 
           });
-          const w = fmt==='a4' ? 800 : 500;
-          const h = fmt==='a4' ? 900 : 700;
-          window.open(`../sales/${page}?${params.toString()}`, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+          window.api.print_invoice_preview({ file: page, format: fmt, query: Object.fromEntries(params.entries()) }).catch(()=>{});
         }catch(_){ }
         
         closeModal();
@@ -4050,10 +4046,15 @@ btnPay.addEventListener('click', async () => {
   const cashierParam = cashierName ? ('&cashier=' + encodeURIComponent(cashierName)) : '';
   const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
   const basePath = fmt === 'a4' ? './print-a4.html' : './print.html';
-  const printUrl = basePath + '?id=' + encodeURIComponent(r.sale_id) + query + roomParam + orderParam + cashierParam + '&copy=1';
 
-  const w = (fmt==='a4' ? 800 : 420); const h = (fmt==='a4' ? 900 : 680);
-  const win = window.open(printUrl, 'PRINT', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+  const __buildPreviewQuery = (copyNum) => {
+    const q = { id: String(r.sale_id), pay: paymentMethod.value, cash: String(cash), copy: String(copyNum) };
+    if(__currentRoomId) q.room = String(__currentRoomId);
+    if(r.order_no != null) q.order = String(r.order_no);
+    if(cashierName) q.cashier = cashierName;
+    return q;
+  };
+  window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(1), silentMode: !!settings.silent_print }).catch(()=>{});
 
   // تحضير kitchen payload بعد فتح النافذة
   let __kitchenPayload = null;
@@ -4075,11 +4076,10 @@ btnPay.addEventListener('click', async () => {
     }
   }catch(_){ }
   const copies = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
-  if(!settings.silent_print && copies > 1){
+  if(copies > 1){
     setTimeout(()=>{
       for(let i=2;i<=copies;i++){
-        const printUrlN = basePath + '?id=' + encodeURIComponent(r.sale_id) + query + roomParam + orderParam + cashierParam + '&copy=' + i;
-        window.open(printUrlN, 'PRINT_COPY_'+i, `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+        window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(i), silentMode: !!settings.silent_print }).catch(()=>{});
       }
     }, 0);
   }
@@ -4131,7 +4131,7 @@ btnPay.addEventListener('click', async () => {
       }
     }
     try{ window.addEventListener('message', (ev)=>{ try{ if(ev && ev.data && ev.data.type==='invoice-after-print'){ __sendKitchenIfNeeded(); } }catch(_){ } }); }catch(_){ }
-    const checkClosed = setInterval(()=>{ try{ if(!win || win.closed){ clearInterval(checkClosed); __sendKitchenIfNeeded(); } }catch(_){ clearInterval(checkClosed); __sendKitchenIfNeeded(); } }, 250);
+    setTimeout(()=>{ __sendKitchenIfNeeded(); }, 1500);
   }
   
   cart = []; if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();
@@ -4440,10 +4440,15 @@ async function processPrint(){
   const cashierParam = cashierName ? ('&cashier=' + encodeURIComponent(cashierName)) : '';
   const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
   const basePath = fmt === 'a4' ? './print-a4.html' : './print.html';
-  const printUrl = basePath + '?id=' + encodeURIComponent(r.sale_id) + query + roomParam + orderParam + cashierParam + '&copy=1';
 
-  const w = (fmt==='a4' ? 800 : 420); const h = (fmt==='a4' ? 900 : 680);
-  const win = window.open(printUrl, 'PRINT', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+  const __buildPreviewQuery = (copyNum) => {
+    const q = { id: String(r.sale_id), pay: paymentMethod.value, cash: String(cash), copy: String(copyNum) };
+    if(__currentRoomId) q.room = String(__currentRoomId);
+    if(r.order_no != null) q.order = String(r.order_no);
+    if(cashierName) q.cashier = cashierName;
+    return q;
+  };
+  window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(1), silentMode: !!settings.silent_print }).catch(()=>{});
 
   // تحضير kitchen payload بعد فتح النافذة
   let __kitchenPayload = null;
@@ -4465,11 +4470,10 @@ async function processPrint(){
     }
   }catch(_){ }
   const copies = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
-  if(!settings.silent_print && copies > 1){
+  if(copies > 1){
     setTimeout(()=>{
       for(let i=2;i<=copies;i++){
-        const printUrlN = basePath + '?id=' + encodeURIComponent(r.sale_id) + query + roomParam + orderParam + cashierParam + '&copy=' + i;
-        window.open(printUrlN, 'PRINT_COPY_'+i, `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+        window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(i), silentMode: !!settings.silent_print }).catch(()=>{});
       }
     }, 0);
   }
@@ -4521,7 +4525,7 @@ async function processPrint(){
       }
     }
     try{ window.addEventListener('message', (ev)=>{ try{ if(ev && ev.data && ev.data.type==='invoice-after-print'){ __sendKitchenIfNeeded(); } }catch(_){ } }); }catch(_){ }
-    const checkClosed = setInterval(()=>{ try{ if(!win || win.closed){ clearInterval(checkClosed); __sendKitchenIfNeeded(); } }catch(_){ clearInterval(checkClosed); __sendKitchenIfNeeded(); } }, 250);
+    setTimeout(()=>{ __sendKitchenIfNeeded(); }, 1500);
   }
   
   cart = []; if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();

@@ -1664,7 +1664,8 @@
             }
             
             try{ __fitOnePageIfSlightOverflow(); }catch(_){ }
-            if(!(settings && settings.silent_print)){
+            const __isPreviewMode = params.get('preview') === '1';
+            if(!(settings && settings.silent_print) && !__isPreviewMode){
               false && console.log(`🖨️ [${Date.now()}] Calling window.print() now`);
               window.print();
             }
