@@ -663,6 +663,32 @@ async function createMainWindow() {
     return { ok:true };
   });
 
+  // Zoom level persist + broadcast
+  ipcMain.handle('zoom:get', async () => {
+    try {
+      const p = path.join(app.getPath('userData'), 'app-zoom.json');
+      if (fs.existsSync(p)) {
+        const f = parseFloat(JSON.parse(fs.readFileSync(p, 'utf-8')).factor);
+        if (!isNaN(f) && f >= 0.5 && f <= 2.0) return f;
+      }
+    } catch (_) {}
+    return 1.0;
+  });
+
+  ipcMain.handle('zoom:set', async (event, factor) => {
+    const f = Math.max(0.5, Math.min(2.0, parseFloat(factor) || 1.0));
+    try {
+      const p = path.join(app.getPath('userData'), 'app-zoom.json');
+      fs.writeFileSync(p, JSON.stringify({ factor: f }), 'utf-8');
+    } catch (_) {}
+    try {
+      BrowserWindow.getAllWindows().forEach(w => {
+        try { if (!w.isDestroyed()) w.webContents.send('zoom:apply', f); } catch (_) {}
+      });
+    } catch (_) {}
+    return { ok: true };
+  });
+
   // Saved accounts fallback (userData JSON)
   ipcMain.handle('saved_accounts:get', async () => {
     try{

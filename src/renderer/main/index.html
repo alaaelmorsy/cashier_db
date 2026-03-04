@@ -441,6 +441,20 @@
         <p class="font-semibold">نظام الرابط</p>
       </div>
     </div>
+    <!-- Zoom Toggle Button (right edge) -->
+    <div id="zoomToggleBtn" style="position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:9999;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:8px 0 0 8px;width:22px;height:56px;display:flex;align-items:center;justify-content:center;box-shadow:-3px 2px 10px rgba(59,130,246,0.35);transition:background 0.2s;" title="تكبير/تصغير">
+      <svg id="zoomArrowIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </div>
+
+    <!-- Zoom Panel -->
+    <div id="zoomPanel" style="position:fixed;top:50%;right:22px;transform:translateY(-50%);z-index:9998;background:white;border-radius:12px 0 0 12px;box-shadow:-4px 2px 18px rgba(0,0,0,0.13);padding:14px 10px;display:none;flex-direction:column;align-items:center;gap:8px;border:1px solid #e2e8f0;border-right:none;">
+      <button id="zoomInBtn" style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;font-size:24px;font-weight:bold;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(99,102,241,0.3);line-height:1;">+</button>
+      <span id="zoomLabel" style="font-size:12px;font-weight:700;color:#475569;min-width:38px;text-align:center;letter-spacing:0.5px;">100%</span>
+      <button id="zoomOutBtn" style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#64748b,#94a3b8);color:white;font-size:24px;font-weight:bold;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(100,116,139,0.25);line-height:1;">−</button>
+    </div>
+
     <script src="../appointment-notifications.js"></script>
 
     <script src="../theme.js"></script>

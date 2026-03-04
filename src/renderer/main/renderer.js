@@ -458,3 +458,72 @@ document.addEventListener('keydown', (e) => {
     window.location.href = '../sales/index.html';
   }
 });
+
+// ===== Zoom Panel =====
+(function () {
+  const ZOOM_STEP = 0.1;
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 2.0;
+
+  const toggleBtn = document.getElementById('zoomToggleBtn');
+  const panel = document.getElementById('zoomPanel');
+  const arrowIcon = document.getElementById('zoomArrowIcon');
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const zoomLabel = document.getElementById('zoomLabel');
+
+  if (!toggleBtn || !panel) return;
+
+  let panelOpen = false;
+  let currentZoom = 1.0;
+
+  function updateLabel(f) {
+    if (zoomLabel) zoomLabel.textContent = Math.round(f * 100) + '%';
+  }
+
+  function setArrow(open) {
+    if (!arrowIcon) return;
+    const poly = arrowIcon.querySelector('polyline');
+    if (!poly) return;
+    poly.setAttribute('points', open ? '9 18 15 12 9 6' : '15 18 9 12 15 6');
+  }
+
+  function togglePanel() {
+    panelOpen = !panelOpen;
+    panel.style.display = panelOpen ? 'flex' : 'none';
+    setArrow(panelOpen);
+  }
+
+  async function applyZoom(f) {
+    f = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, parseFloat(f.toFixed(1))));
+    currentZoom = f;
+    updateLabel(f);
+    try { await window.api.zoom_set(f); } catch (_) {}
+  }
+
+  toggleBtn.addEventListener('click', togglePanel);
+
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applyZoom(currentZoom + ZOOM_STEP);
+    });
+  }
+
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applyZoom(currentZoom - ZOOM_STEP);
+    });
+  }
+
+  (async function init() {
+    try {
+      const saved = await window.api.zoom_get();
+      if (saved && saved >= ZOOM_MIN && saved <= ZOOM_MAX) {
+        currentZoom = saved;
+        updateLabel(saved);
+      }
+    } catch (_) {}
+  })();
+})();

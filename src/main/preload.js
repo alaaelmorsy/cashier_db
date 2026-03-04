@@ -1,5 +1,5 @@
 // Preload script to bridge secure APIs to renderer
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 // Inject global header language selector + auto dir/lang switch for all screens
 (function () {
@@ -545,6 +545,15 @@ const { contextBridge, ipcRenderer } = require('electron');
   } catch (_) { }
 })();
 
+// Auto-apply saved zoom factor on every window load
+(function () {
+  try {
+    const apply = (f) => { try { if (f >= 0.5 && f <= 2.0) webFrame.setZoomFactor(f); } catch (_) {} };
+    ipcRenderer.invoke('zoom:get').then(f => apply(f)).catch(() => {});
+    ipcRenderer.on('zoom:apply', (_, f) => apply(f));
+  } catch (_) {}
+})();
+
 contextBridge.exposeInMainWorld('api', {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username, password }),
 
@@ -578,6 +587,12 @@ contextBridge.exposeInMainWorld('api', {
   app_set_locale: (lang) => ipcRenderer.invoke('app:set_locale', { lang }),
   app_on_locale_changed: (cb) => { try { ipcRenderer.removeAllListeners('app:locale_changed'); } catch (_) { } ipcRenderer.on('app:locale_changed', (_ev, lang) => { try { cb && cb(lang); } catch (_) { } }); },
   show_context_menu: (payload) => ipcRenderer.invoke('context:show', payload),
+
+  zoom_get: () => ipcRenderer.invoke('zoom:get'),
+  zoom_set: (factor) => {
+    try { webFrame.setZoomFactor(factor); } catch (_) {}
+    return ipcRenderer.invoke('zoom:set', factor);
+  },
 
   // License
   license_check: () => ipcRenderer.invoke('license:check'),
