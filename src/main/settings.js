@@ -1,6 +1,7 @@
 // App Settings IPC: read/save settings like company info, VAT, pricing mode, location, payment methods, currency
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerSettingsIPC(){
   async function ensureTable(conn){
@@ -418,6 +419,12 @@ function registerSettingsIPC(){
 
   // Fetch settings (without binary logo blob to keep payload light)
   ipcMain.handle('settings:get', async () => {
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/settings');
+        return { ok:true, item: result.settings || {} };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

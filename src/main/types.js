@@ -1,6 +1,7 @@
 // Main Types IPC (main categories)
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerTypesIPC(){
   async function ensureTable(conn){
@@ -51,6 +52,12 @@ function registerTypesIPC(){
 
   // list active (for dropdowns and validation - includes hidden types)
   ipcMain.handle('types:list', async () => {
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/types');
+        return { ok:true, items: result.items || [] };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -63,6 +70,12 @@ function registerTypesIPC(){
 
   // list active and visible (for display in sales screen tabs only)
   ipcMain.handle('types:list_for_display', async () => {
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/types/for-display');
+        return { ok:true, items: result.items || [] };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

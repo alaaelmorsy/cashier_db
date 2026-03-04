@@ -1,5 +1,5 @@
 // Electron main process
-const { app, BrowserWindow, ipcMain, session, Menu, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, session, Menu, clipboard, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dns = require('dns');
@@ -67,7 +67,102 @@ const { updateConfig, getConfig, testConnection } = require('../db/connection');
 const { registerBackupIPC } = require('./backup');
 const { setupAutoUpdater, registerUpdateIPC } = require('./updater');
 const { startAPIServer } = require('./api-server');
-const { isPrimaryDevice } = require('./api-client');
+const { isPrimaryDevice, isSecondaryDevice, fetchFromAPI } = require('./api-client');
+
+// ===== Pre-warm print window pool (1 window kept ready to eliminate BrowserWindow creation overhead) =====
+let _prewarmPrintWin = null;
+let _prewarmPrintWinBusy = false;
+
+function _spawnPrewarmPrintWin() {
+  if (_prewarmPrintWin && !_prewarmPrintWin.isDestroyed()) return;
+  try {
+    const _path = require('path');
+    _prewarmPrintWin = new BrowserWindow({
+      show: false,
+      frame: false,
+      webPreferences: {
+        preload: _path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        backgroundThrottling: false,
+      }
+    });
+    const warmFile = _path.join(__dirname, '..', 'renderer', 'sales', 'print.html');
+    _prewarmPrintWin.loadFile(warmFile, { query: { _warm: '1' } }).catch(() => {});
+    _prewarmPrintWin.on('closed', () => {
+      _prewarmPrintWin = null;
+      _prewarmPrintWinBusy = false;
+    });
+  } catch(_) { _prewarmPrintWin = null; }
+}
+
+function _acquirePrewarmWin() {
+  if (_prewarmPrintWin && !_prewarmPrintWin.isDestroyed() && !_prewarmPrintWinBusy) {
+    _prewarmPrintWinBusy = true;
+    return _prewarmPrintWin;
+  }
+  return null;
+}
+
+function _releasePrewarmWin(win, destroy) {
+  if (!win || win.isDestroyed()) { _prewarmPrintWinBusy = false; _spawnPrewarmPrintWin(); return; }
+  if (destroy) {
+    try { win.destroy(); } catch(_) {}
+    _prewarmPrintWinBusy = false;
+    _prewarmPrintWin = null;
+    setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 1000);
+  } else {
+    _prewarmPrintWinBusy = false;
+  }
+}
+
+// ===== Custom Protocol: product-img://id → image from DB (no IPC overhead) =====
+try {
+  protocol.handle('product-img', async (request) => {
+    try {
+      const url = new URL(request.url);
+      const id = url.hostname || url.pathname.replace(/^\//, '');
+      if (!id) return new Response('', { status: 400 });
+      if (isSecondaryDevice()) {
+        try {
+          const { getApiBaseUrl } = require('./api-client');
+          const axios = require('axios');
+          const apiUrl = `${getApiBaseUrl()}/products/${id}/image`;
+          const resp = await axios.get(apiUrl, { responseType: 'arraybuffer', timeout: 8000 });
+          const ct = (resp.headers && resp.headers['content-type']) || 'image/png';
+          return new Response(resp.data, { headers: { 'Content-Type': ct } });
+        } catch(_) { return new Response('', { status: 404 }); }
+      }
+      const { dbAdapter } = require('../db/db-adapter');
+      const conn = await dbAdapter.getConnection();
+      try {
+        const [rows] = await conn.query(
+          'SELECT image_blob, image_mime, image_path FROM products WHERE id=? LIMIT 1',
+          [id]
+        );
+        if (!rows || !rows.length) return new Response('', { status: 404 });
+        const row = rows[0];
+        if (row.image_blob) {
+          const mime = row.image_mime || 'image/png';
+          return new Response(Buffer.from(row.image_blob), { headers: { 'Content-Type': mime } });
+        }
+        if (row.image_path) {
+          try {
+            const absPath = require('path').isAbsolute(row.image_path)
+              ? row.image_path
+              : require('path').join(__dirname, '..', '..', row.image_path);
+            const buf = require('fs').readFileSync(absPath);
+            const ext = require('path').extname(row.image_path).toLowerCase().replace('.','');
+            const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext || 'png'}`;
+            return new Response(buf, { headers: { 'Content-Type': mime } });
+          } catch(_) { return new Response('', { status: 404 }); }
+        }
+        return new Response('', { status: 404 });
+      } finally { conn.release(); }
+    } catch(e) { return new Response('', { status: 500 }); }
+  });
+} catch(_) { /* ignore if protocol already registered */ }
+
 // --- Simple offline license (device-lock) helpers ---
 const si = require('systeminformation');
 const crypto = require('crypto');
@@ -439,6 +534,25 @@ async function createMainWindow() {
       }catch(_){ }
     })
     .catch(() => { });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes('quotation.html')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          frame: false,
+          width: 800,
+          height: 900,
+          webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+          }
+        }
+      };
+    }
+    return { action: 'allow' };
+  });
 
   // Alt key toggles menu (File/Edit/View) visibility explicitly on Windows/Linux
   try{
@@ -887,7 +1001,8 @@ async function createMainWindow() {
       const q = new URLSearchParams({ id: String(id||''), pay: String(pay||''), cash: String(cash||'') });
       if(room){ q.set('room', String(room)); }
       if(cashier){ q.set('cashier', String(cashier)); }
-      const tmpWin = new BrowserWindow({ show: false, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, partition: `print-${Date.now()}-${Math.random()}` } });
+      const prewarmed = !isA4 ? _acquirePrewarmWin() : null;
+      const tmpWin = prewarmed || new BrowserWindow({ show: false, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
       await tmpWin.loadFile(filePath, { query: Object.fromEntries(q) });
       try{
         const contentReady = await tmpWin.webContents.executeJavaScript(`new Promise((resolve)=>{ 
@@ -915,12 +1030,12 @@ async function createMainWindow() {
         tmpWin.webContents.print(printOpts, async (ok, err) => {
           false && console.log('print:invoice_silent print_result', { id, ok, err });
           if(!ok && err){ 
+            if(prewarmed) _releasePrewarmWin(tmpWin, true);
             reject(new Error(err)); 
           } else { 
             // Destroy window after a delay to allow renderer to finish its tasks (like WhatsApp sending)
-            // Increased to 45s to ensure PDF generation and WhatsApp upload completes
             setTimeout(() => {
-              try { tmpWin.destroy(); } catch(_) {}
+              _releasePrewarmWin(tmpWin, true);
             }, 45000);
             resolve(); 
           }
@@ -949,6 +1064,7 @@ async function createMainWindow() {
         height: initH,
         show: false,
         title: 'طباعة الفاتورة',
+        frame: false,
         webPreferences: {
           preload: path.join(__dirname, 'preload.js'),
           contextIsolation: true,
@@ -1022,7 +1138,7 @@ async function createMainWindow() {
             const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
             previewWin.setSize(
               Math.min(Math.max(360, dims.w + frameW), screenW),
-              Math.min(Math.max(320, dims.h + 16 + frameH), screenH)
+              Math.min(Math.max(320, dims.h + 16 + frameH), Math.floor(screenH * 0.85))
             );
             previewWin.center();
           }
@@ -1262,6 +1378,49 @@ app.whenReady().then(async () => {
           console.error('Failed to start API Server:', err);
         }
       }
+
+      // ─── sales:init — batch IPC: settings + types + products + global_offer in ONE call ───
+      ipcMain.handle('sales:init', async (_e, params) => {
+        try {
+          if (isSecondaryDevice()) {
+            const result = await fetchFromAPI('/sales-init', params || {});
+            return { ok: true, ...result };
+          }
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const { sort = 'custom', limit = 48, category } = params || {};
+            const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+            const prodWhere = ['is_active=1', 'hide_from_sales=0'];
+            const prodParams = [];
+            if (category) { prodWhere.push('category=?'); prodParams.push(category); }
+            const whereSql = 'WHERE ' + prodWhere.join(' AND ');
+            let order = 'ORDER BY sort_order ASC, is_active DESC, name ASC';
+            if (sort === 'name_asc') order = 'ORDER BY name ASC';
+            const lim = Math.min(parseInt(limit) || 48, 200);
+            const nowCond = '(start_date IS NULL OR NOW() >= start_date) AND (end_date IS NULL OR NOW() <= end_date)';
+            const [[settingsRow], [types], [typesDisplay], [products], [globalOfferRows]] = await Promise.all([
+              conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+              conn.query('SELECT id, name FROM main_types WHERE is_active=1 ORDER BY sort_order ASC, name ASC'),
+              conn.query('SELECT id, name FROM main_types WHERE is_active=1 AND hidden_from_sales=0 ORDER BY sort_order ASC, name ASC'),
+              conn.query(`SELECT ${SELECT_COLS} FROM products ${whereSql} ${order} LIMIT ?`, [...prodParams, lim]),
+              conn.query(`SELECT * FROM offers WHERE is_global=1 AND is_active=1 AND ${nowCond} ORDER BY id DESC LIMIT 1`),
+            ]);
+            return {
+              ok: true,
+              settings: (settingsRow && settingsRow[0]) || {},
+              types: types,
+              types_for_display: typesDisplay,
+              products: products,
+              products_total: null,
+              global_offer: (globalOfferRows && globalOfferRows[0]) || null,
+            };
+          } finally { conn.release(); }
+        } catch(e) { return { ok: false, error: e.message }; }
+      });
+
+      // Pre-warm print window after 4s to avoid slowing startup
+      setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 4000);
 
       try {
         const ZatcaSalesIntegration = require('./zatca-sales-integration');

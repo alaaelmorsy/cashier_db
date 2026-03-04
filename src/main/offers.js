@@ -1,6 +1,7 @@
 // Offers and Coupons IPC handlers
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 async function ensureTables(conn){
   await conn.query(`
@@ -245,6 +246,12 @@ function registerOffersIPC(){
     const product_id = Number(payload && payload.product_id);
     const operation_id = (payload && payload.operation_id != null) ? Number(payload.operation_id) : null;
     if(!product_id) return { ok:false, error:'product_id مفقود' };
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/offers/for-product', { product_id, operation_id });
+        return { ok:true, item: result.item || null };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -271,6 +278,12 @@ function registerOffersIPC(){
 
   // Find active global offer (no product binding)
   ipcMain.handle('offers:find_global_active', async () => {
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/offers/global-active');
+        return { ok:true, item: result.item || null };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

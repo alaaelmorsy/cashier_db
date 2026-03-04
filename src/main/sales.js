@@ -1,7 +1,7 @@
 // Sales IPC: persist invoices and items
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
-const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
+const { isSecondaryDevice, fetchFromAPI, postToAPI } = require('./api-client');
 const LocalZatcaBridge = require('./local-zatca');
 
 function registerSalesIPC(){
@@ -9,6 +9,7 @@ function registerSalesIPC(){
   let invoiceCounterChecked = false;
   // Cache flag: run ensureTables only once per session (avoids 30+ DB queries on every IPC call)
   let __tablesEnsured = false;
+  let __saleColumnsEnsured = false;
   
   async function autoSubmitZatcaIfEnabled(saleId){
     try{
@@ -548,6 +549,10 @@ function registerSalesIPC(){
     const p = payload || {};
     if(!Array.isArray(p.items) || p.items.length===0){ return { ok:false, error:'لا توجد عناصر' }; }
     if(!p.payment_method){ return { ok:false, error:'طريقة الدفع مطلوبة' }; }
+    if(isSecondaryDevice()){
+      try{ return await postToAPI('/invoices', p); }
+      catch(err){ return { ok:false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -597,27 +602,27 @@ function registerSalesIPC(){
           await conn.query('UPDATE products SET stock = stock - ? WHERE id=?', [qtyBase, pid]);
         }
 
-        // تأكد من وجود عمود extra_value
-        const [colExtra] = await conn.query("SHOW COLUMNS FROM sales LIKE 'extra_value'");
-        if(!colExtra.length){
-          await conn.query("ALTER TABLE sales ADD COLUMN extra_value DECIMAL(12,2) NULL AFTER sub_total");
+        if(!__saleColumnsEnsured){
+          const _sc = [
+            ["SHOW COLUMNS FROM sales LIKE 'extra_value'", "ALTER TABLE sales ADD COLUMN extra_value DECIMAL(12,2) NULL AFTER sub_total"],
+            ["SHOW COLUMNS FROM sales LIKE 'coupon_code'", "ALTER TABLE sales ADD COLUMN coupon_code VARCHAR(64) NULL AFTER discount_amount"],
+            ["SHOW COLUMNS FROM sales LIKE 'coupon_mode'", "ALTER TABLE sales ADD COLUMN coupon_mode VARCHAR(16) NULL AFTER coupon_code"],
+            ["SHOW COLUMNS FROM sales LIKE 'coupon_value'", "ALTER TABLE sales ADD COLUMN coupon_value DECIMAL(12,2) NULL AFTER coupon_mode"],
+            ["SHOW COLUMNS FROM sales LIKE 'global_offer_mode'", "ALTER TABLE sales ADD COLUMN global_offer_mode VARCHAR(16) NULL AFTER coupon_value"],
+            ["SHOW COLUMNS FROM sales LIKE 'global_offer_value'", "ALTER TABLE sales ADD COLUMN global_offer_value DECIMAL(12,2) NULL AFTER global_offer_mode"],
+            ["SHOW COLUMNS FROM sales LIKE 'tobacco_fee'", "ALTER TABLE sales ADD COLUMN tobacco_fee DECIMAL(12,2) NULL AFTER extra_value"],
+            ["SHOW COLUMNS FROM sales LIKE 'driver_id'", "ALTER TABLE sales ADD COLUMN driver_id INT NULL AFTER customer_vat"],
+            ["SHOW COLUMNS FROM sales LIKE 'driver_name'", "ALTER TABLE sales ADD COLUMN driver_name VARCHAR(255) NULL AFTER driver_id"],
+            ["SHOW COLUMNS FROM sales LIKE 'driver_phone'", "ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"],
+            ["SHOW COLUMNS FROM sales_items LIKE 'operation_id'", "ALTER TABLE sales_items ADD COLUMN operation_id INT NULL AFTER line_total"],
+            ["SHOW COLUMNS FROM sales_items LIKE 'operation_name'", "ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"],
+          ];
+          for(const [sh,al] of _sc){ const [c]=await conn.query(sh); if(!c.length) await conn.query(al); }
+          __saleColumnsEnsured = true;
         }
         const seq = await getNextSequentialNo(conn);
         const invoiceNo = genInvoiceNoFromSeq(seq);
         const orderNo = await getNextOrderNo(conn);
-        // Ensure coupon columns exist
-        const [colCCode] = await conn.query("SHOW COLUMNS FROM sales LIKE 'coupon_code'");
-        if(!colCCode.length){ await conn.query("ALTER TABLE sales ADD COLUMN coupon_code VARCHAR(64) NULL AFTER discount_amount"); }
-        const [colCMode] = await conn.query("SHOW COLUMNS FROM sales LIKE 'coupon_mode'");
-        if(!colCMode.length){ await conn.query("ALTER TABLE sales ADD COLUMN coupon_mode VARCHAR(16) NULL AFTER coupon_code"); }
-        const [colCVal] = await conn.query("SHOW COLUMNS FROM sales LIKE 'coupon_value'");
-        if(!colCVal.length){ await conn.query("ALTER TABLE sales ADD COLUMN coupon_value DECIMAL(12,2) NULL AFTER coupon_mode"); }
-        
-        // Ensure global offer columns exist
-        const [colGOMode] = await conn.query("SHOW COLUMNS FROM sales LIKE 'global_offer_mode'");
-        if(!colGOMode.length){ await conn.query("ALTER TABLE sales ADD COLUMN global_offer_mode VARCHAR(16) NULL AFTER coupon_value"); }
-        const [colGOVal] = await conn.query("SHOW COLUMNS FROM sales LIKE 'global_offer_value'");
-        if(!colGOVal.length){ await conn.query("ALTER TABLE sales ADD COLUMN global_offer_value DECIMAL(12,2) NULL AFTER global_offer_mode"); }
 
         // Snapshot customer fields inside invoice for reliable search
         let snapName = (p.customer_name || null);
@@ -652,18 +657,6 @@ function registerSalesIPC(){
 
         // derive payment_status based on method (credit -> unpaid, otherwise paid)
         const payStatus = (String(p.payment_method).toLowerCase()==='credit') ? 'unpaid' : 'paid';
-
-        // Ensure tobacco fee column exists
-        const [colTobacco] = await conn.query("SHOW COLUMNS FROM sales LIKE 'tobacco_fee'");
-        if(!colTobacco.length){ await conn.query("ALTER TABLE sales ADD COLUMN tobacco_fee DECIMAL(12,2) NULL AFTER extra_value"); }
-
-        // Ensure driver columns exist
-        const [colDrvIdIns] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_id'");
-        if(!colDrvIdIns.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_id INT NULL AFTER customer_vat"); }
-        const [colDrvNameIns] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_name'");
-        if(!colDrvNameIns.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_name VARCHAR(255) NULL AFTER driver_id"); }
-        const [colDrvPhoneIns] = await conn.query("SHOW COLUMNS FROM sales LIKE 'driver_phone'");
-        if(!colDrvPhoneIns.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"); }
 
         // snapshot driver
         let drvName = null, drvPhone = null; let drvId = (p.driver_id || null);
@@ -740,11 +733,6 @@ function registerSalesIPC(){
           (p.pay_card_amount != null ? Number(p.pay_card_amount) : null)
         ]);
         const saleId = res.insertId;
-        // تأكد من أعمدة العملية في جدول البنود
-        const [colOpId] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_id'");
-        if(!colOpId.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_id INT NULL AFTER description"); }
-        const [colOpName] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_name'");
-        if(!colOpName.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"); }
         const items = p.items.map(it => [
           saleId,
           it.product_id,

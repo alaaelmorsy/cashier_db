@@ -1,4 +1,7 @@
 // Sales screen: scan by barcode or pick from catalog, compute totals w/ VAT and currency settings
+// Suppress console.log in production to reduce overhead on slow devices
+try{ if(!location.search.includes('debug')){ const __noop=()=>{}; console.log=__noop; console.debug=__noop; } }catch(_){}
+
 // Language support: apply locale to html element
 function getPaymentMethodLabel(method, isAr){
   const labels = {
@@ -2064,25 +2067,41 @@ function computeTotals(){
   };
 }
 
+const __rcEls = {
+  couponCode: document.getElementById('couponCode'),
+  extraValue: document.getElementById('extraValue'),
+  discountType: document.getElementById('discountType'),
+  discountValue: document.getElementById('discountValue'),
+  paymentMethod: document.getElementById('paymentMethod'),
+  cashReceived: document.getElementById('cashReceived'),
+  customerSearch: document.getElementById('customerSearch'),
+  driverSelect: document.getElementById('driverSelect'),
+  notes: document.getElementById('notes'),
+  btnPay: document.getElementById('btnPay'),
+  btnClear: document.getElementById('btnClear'),
+  btnKitchen: document.getElementById('btnKitchen'),
+};
+
 function renderCart(){
   tbody.innerHTML = '';
   // أخفِ عناصر التحكم اليمنى أثناء وضع المعالجة
   try{
     if(__isProcessingOld){
-      if(document.getElementById('couponCode')) document.getElementById('couponCode').disabled = true;
-      if(document.getElementById('extraValue')) document.getElementById('extraValue').disabled = true;
-      if(document.getElementById('discountType')) document.getElementById('discountType').disabled = true;
-      if(document.getElementById('discountValue')) document.getElementById('discountValue').disabled = true;
-      if(document.getElementById('paymentMethod')) document.getElementById('paymentMethod').disabled = true;
-      if(document.getElementById('cashReceived')) document.getElementById('cashReceived').disabled = true;
-      if(document.getElementById('customerSearch')) document.getElementById('customerSearch').disabled = true;
-      if(document.getElementById('driverSelect')) document.getElementById('driverSelect').disabled = true;
-      if(document.getElementById('notes')) document.getElementById('notes').disabled = true;
-      const btnPay = document.getElementById('btnPay'); if(btnPay) btnPay.disabled = true;
-      const btnClear = document.getElementById('btnClear'); if(btnClear) btnClear.disabled = true;
-      const btnKitchen = document.getElementById('btnKitchen'); if(btnKitchen) btnKitchen.disabled = true;
+      if(__rcEls.couponCode) __rcEls.couponCode.disabled = true;
+      if(__rcEls.extraValue) __rcEls.extraValue.disabled = true;
+      if(__rcEls.discountType) __rcEls.discountType.disabled = true;
+      if(__rcEls.discountValue) __rcEls.discountValue.disabled = true;
+      if(__rcEls.paymentMethod) __rcEls.paymentMethod.disabled = true;
+      if(__rcEls.cashReceived) __rcEls.cashReceived.disabled = true;
+      if(__rcEls.customerSearch) __rcEls.customerSearch.disabled = true;
+      if(__rcEls.driverSelect) __rcEls.driverSelect.disabled = true;
+      if(__rcEls.notes) __rcEls.notes.disabled = true;
+      if(__rcEls.btnPay) __rcEls.btnPay.disabled = true;
+      if(__rcEls.btnClear) __rcEls.btnClear.disabled = true;
+      if(__rcEls.btnKitchen) __rcEls.btnKitchen.disabled = true;
     }
   }catch(_){ }
+  const __cartFrag = document.createDocumentFragment();
   cart.forEach((it, idx) => {
     // افحص مخزون هذا الصنف مقابل العتبة دون تكرار مكالمات كثيرة
     try{ checkLowStockForItems([it]); }catch(_){ }
@@ -2157,7 +2176,7 @@ function renderCart(){
         ${__perms.includes('sales.remove_item') ? `<button class="btn danger" data-act="remove" data-idx="${idx}" style="min-width:44px; height:28px; padding:2px 4px; font-size:12px;" ${__isProcessingOld?'disabled':''}>حذف</button>` : ''}
       </td>
     `;
-    tbody.appendChild(tr);
+    __cartFrag.appendChild(tr);
 
     // صف ثانٍ للوصف فقط
     const trDesc = document.createElement('tr');
@@ -2170,7 +2189,7 @@ function renderCart(){
     `;
     trDesc.appendChild(td);
     // أظهر صف ملاحظات الصنف دائمًا
-    tbody.appendChild(trDesc);
+    __cartFrag.appendChild(trDesc);
 
     // تعبئة العمليات للعنصر ووضع الاختيار في الصف الرئيسي
     (async () => {
@@ -2226,6 +2245,8 @@ function renderCart(){
     })();
   });
 
+  tbody.appendChild(__cartFrag);
+
   // بعد كل إعادة رسم للسلة، افحص المخزون للأصناف المضافة/المعدّلة مؤخرًا إذا لزم
   try{ if(cart && cart.length){ /* optional: could batch check recent item only */ } }catch(_){ }
   
@@ -2254,8 +2275,8 @@ function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, ch => ({'&':'&amp;'
 
 
 
-async function loadSettings(){
-  const r = await window.api.settings_get();
+async function loadSettings(prefetchedSettings){
+  const r = prefetchedSettings ? { ok: true, item: prefetchedSettings } : await window.api.settings_get();
   if(r.ok){ 
     settings = { ...settings, ...(r.item||{}) };
     customerDisplayEnabled = !!settings.customer_display_enabled;
@@ -2339,14 +2360,12 @@ async function loadSettings(){
     couponCodeEl.addEventListener('blur', applyOrClearCoupon);
   }
 
-  // 🚀 load customers, drivers, and employees in parallel
-  try{
-    const [lc, ld, le] = await Promise.all([
-      window.api.customers_list({ active: '1', sort: 'name_asc' }),
-      window.api.drivers_list({ only_active: 1 }),
-      window.api.employees_list({})
-    ]);
-    
+  // 🚀 load customers, drivers, and employees in background (non-blocking)
+  Promise.all([
+    window.api.customers_list({ active: '1', sort: 'name_asc' }),
+    window.api.drivers_list({ only_active: 1 }),
+    window.api.employees_list({})
+  ]).then(([lc, ld, le]) => {
     // process customers
     __allCustomers = lc.ok ? (lc.items||[]) : [];
     customerList.innerHTML = '';
@@ -2371,7 +2390,7 @@ async function loadSettings(){
     
     // process employees
     __allEmployees = le.ok ? (le.items||[]) : [];
-  }catch(_){ /* ignore */ }
+  }).catch(() => { /* ignore */ });
   
   // إضافة/إزالة class لإخفاء صور المنتجات
   try{
@@ -2490,6 +2509,9 @@ async function loadCatalog(){
     catalog.innerHTML='<div style="text-align:center;padding:40px;color:#64748b;font-size:14px;">⏳ جاري التحميل...</div>';
     catalog.style.opacity = '1';
     if(loadCatalog.__productsCache){ loadCatalog.__productsCache.clear(); }
+    if(loadCatalog.__imgCache){ loadCatalog.__imgCache.clear(); }
+    if(loadCatalog.__imgBatchQueue){ loadCatalog.__imgBatchQueue.clear(); }
+    if(loadCatalog.__imgBatchTimer){ clearTimeout(loadCatalog.__imgBatchTimer); loadCatalog.__imgBatchTimer = null; }
   }
   if(st.busy || st.done) {
     console.log('[loadCatalog] Skipped - busy:', st.busy, 'done:', st.done);
@@ -2502,12 +2524,20 @@ async function loadCatalog(){
   if(qNow) query.q = qNow;
 
   console.log('[loadCatalog] Loading batch - offset:', st.offset, 'pageSize:', pageSize, 'category:', cat);
-  
-  const r = await window.api.products_list(query);
-  if(!r.ok){ setError(r.error || 'تعذر تحميل الكتالوج'); st.busy=false; return; }
-  
-  const receivedItems = (r.items||[]);
-  const totalCount = r.total || 0;
+
+  // استخدام المنتجات المجلوبة مسبقاً (من sales_init) في الدفعة الأولى فقط
+  const prefetchedProducts = (arguments[0] && st.offset === 0 && !cat) ? arguments[0] : null;
+  let receivedItems, totalCount;
+  if(prefetchedProducts){
+    console.log('[loadCatalog] Using prefetched products:', prefetchedProducts.length);
+    receivedItems = prefetchedProducts;
+    totalCount = 0;
+  } else {
+    const r = await window.api.products_list(query);
+    if(!r.ok){ setError(r.error || 'تعذر تحميل الكتالوج'); st.busy=false; return; }
+    receivedItems = (r.items||[]);
+    totalCount = r.total || 0;
+  }
   
   console.log('[loadCatalog] Received:', receivedItems.length, 'items. Total:', totalCount);
   
@@ -2529,6 +2559,39 @@ async function loadCatalog(){
   // إنشاء IntersectionObserver للـ lazy loading وcache للمنتجات المحملة
   if(!loadCatalog.__observer){
     loadCatalog.__productsCache = new Map();
+    loadCatalog.__imgCache = new Map();
+    loadCatalog.__imgBatchQueue = new Map();
+    loadCatalog.__imgBatchTimer = null;
+
+    async function _flushImgBatch() {
+      loadCatalog.__imgBatchTimer = null;
+      if (!loadCatalog.__imgBatchQueue.size) return;
+      const batch = new Map(loadCatalog.__imgBatchQueue);
+      loadCatalog.__imgBatchQueue.clear();
+
+      const needIds = [];
+      batch.forEach(({p}) => {
+        if (p.has_image && !loadCatalog.__imgCache.has(p.id)) needIds.push(p.id);
+      });
+
+      if (needIds.length > 0) {
+        try {
+          const result = await window.api.products_images_batch(needIds);
+          if (result && result.ok && Array.isArray(result.images)) {
+            result.images.forEach(img => {
+              if (img.image_data) {
+                loadCatalog.__imgCache.set(img.id, `data:${img.image_mime || 'image/png'};base64,${img.image_data}`);
+              }
+            });
+          }
+        } catch(_) {}
+      }
+
+      batch.forEach(({card, p}) => {
+        loadCardData(card, p, loadCatalog.__imgCache.get(p.id)).catch(() => {});
+      });
+    }
+
     loadCatalog.__observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if(entry.isIntersecting){
@@ -2540,7 +2603,9 @@ async function loadCatalog(){
           const pid = Number(card.dataset.pid);
           const p = loadCatalog.__productsCache.get(pid);
           if(p){
-            loadCardData(card, p).catch(() => {});
+            loadCatalog.__imgBatchQueue.set(pid, {card, p});
+            if (loadCatalog.__imgBatchTimer) clearTimeout(loadCatalog.__imgBatchTimer);
+            loadCatalog.__imgBatchTimer = setTimeout(_flushImgBatch, 40);
           }
         }
       });
@@ -2593,39 +2658,45 @@ async function loadCatalog(){
   st.busy = false;
   console.log('[loadCatalog] Batch complete - added', list.length, 'cards. Ready for next batch.');
 
-  async function loadCardData(card, p){
+  async function loadCardData(card, p, prefetchedImgSrc){
     try{
-      // تأجيل حتى بعد الـ paint frame الحالي ثم تحميل البيانات بشكل async سليم
       await new Promise(r => requestAnimationFrame(r));
       try {
         const img = card.querySelector('img');
         
         if(!settings.hide_product_images && img){
-          try {
-            const ir = await batchLoader.add('images', `img_${p.id}`, p.id);
-            if(ir && ir.ok){
-              img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+          if(p.has_image){
+            if(prefetchedImgSrc){
+              img.src = prefetchedImgSrc;
               img.style.opacity = '1';
             } else {
-              if(!loadCatalog.__defaultImg){
+              img.src = `product-img://${p.id}`;
+              img.style.opacity = '1';
+              img.onerror = async () => {
+                img.onerror = null;
+                try {
+                  const ir = await window.api.products_image_get(p.id);
+                  if(ir && ir.ok){
+                    img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+                    img.style.opacity = '1';
+                  }
+                } catch(_) {}
+              };
+            }
+          } else {
+            if(!loadCatalog.__defaultImg){
+              try{
                 const dr = await window.api.settings_default_product_image_get();
                 loadCatalog.__defaultImg = (dr && dr.ok) ? { data:`data:${dr.mime||'image/png'};base64,${dr.base64}` } : { data:null };
-              }
-              if(loadCatalog.__defaultImg.data){ 
-                img.src = loadCatalog.__defaultImg.data;
-                img.style.opacity = '1';
-              }
+              }catch(_){ loadCatalog.__defaultImg = { data: null }; }
             }
-          } catch(error) {
-            const ir = await cachedRequest(`img_${p.id}`, () => window.api.products_image_get(p.id), 30000);
-            if(ir && ir.ok){
-              img.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
+            if(loadCatalog.__defaultImg && loadCatalog.__defaultImg.data){
+              img.src = loadCatalog.__defaultImg.data;
               img.style.opacity = '1';
             }
           }
         }
         
-        // تحميل التفاصيل الإضافية
         await updateCardDetails(card, p);
       } catch(_) {}
     }catch(_){ }
@@ -3168,9 +3239,16 @@ async function addToCart(p){
     return true;
   };
 
-  // اجلب عمليات المنتج لتحديد السعر الصحيح
-  let ops = [];
-  try{ ops = await fetchProductOps(p.id); }catch(_){ ops = []; }
+  // اجلب عمليات المنتج وبيانات المنتج بشكل متوازي لتسريع الإضافة
+  let ops = [], __addToCartMeta = null;
+  try{
+    const [opsRes, metaRes] = await Promise.all([
+      fetchProductOps(p.id).catch(() => []),
+      window.api.products_get(p.id).catch(() => null)
+    ]);
+    ops = Array.isArray(opsRes) ? opsRes : [];
+    __addToCartMeta = (metaRes && metaRes.ok) ? metaRes.item : null;
+  }catch(_){ ops = []; }
   
   let it;
   
@@ -3219,8 +3297,8 @@ async function addToCart(p){
   // 1. Apply customer pricing first (sets base for customer)
   await applyCustomerPricingForItem(it);
 
-  // 2. Apply Unit selection (may change price via multiplier or manual override)
-  try{ const pr = await window.api.products_get(p.id); const meta = (pr && pr.ok) ? pr.item : null; await pickUnitAndApply(it, meta||{}); }catch(_){ }
+  // 2. Apply Unit selection (uses pre-fetched meta from parallel load above)
+  try{ await pickUnitAndApply(it, __addToCartMeta||{}); }catch(_){ }
 
   // 3. Apply Offer (Specific Product Offer) - AFTER unit application to ensure it applies to manual unit prices too
   await applyOffer(it);
@@ -4583,10 +4661,12 @@ async function processPrint(){
 async function populateCategories(){
   try{
     // 🚀 نجلب الأنواع النشطة والمرئية بشكل متوازي
-    const [resAll, res] = await Promise.all([
-      window.api.types_list(),
-      window.api.types_list_for_display()
-    ]);
+    const [resAll, res] = arguments[0] && arguments[1]
+      ? [{ ok: true, items: arguments[0] }, { ok: true, items: arguments[1] }]
+      : await Promise.all([
+          window.api.types_list(),
+          window.api.types_list_for_display()
+        ]);
     
     activeTypes = new Set();
     const allItems = (resAll && resAll.ok) ? (resAll.items||[]) : [];
@@ -4634,23 +4714,31 @@ async function populateCategories(){
 }
 
 (async function init(){
-  // 🚀 تحميل الإعدادات والعروض العامة بشكل متوازي
-  let globalOfferRes;
+  // 🚀 طلب واحد يجلب: الإعدادات + الأنواع + المنتجات + العرض العام (بدل 5 طلبات منفصلة)
+  let __initData = null;
   try{
-    [, globalOfferRes] = await Promise.all([
-      loadSettings(),
-      window.api.offers_find_global_active()
-    ]);
-    
-    if(globalOfferRes && globalOfferRes.ok && globalOfferRes.item){
-      // ضبط العرض فوراً بـ Set فارغ لعدم تعطيل بقية التهيئة
+    const initRes = await window.api.sales_init({ sort: 'custom', limit: 50 });
+    if(initRes && initRes.ok) __initData = initRes;
+  }catch(_){ __initData = null; }
+
+  // تطبيق الإعدادات من البيانات المجلوبة مسبقاً
+  try{
+    await loadSettings(__initData ? __initData.settings : undefined);
+  }catch(e){
+    console.error('Error loading settings:', e);
+  }
+
+  // تطبيق العرض العام من البيانات المجلوبة مسبقاً
+  try{
+    const globalOfferItem = __initData ? __initData.global_offer : null;
+    const globalOfferFinal = globalOfferItem || (await window.api.offers_find_global_active().catch(()=>null))?.item;
+    if(globalOfferFinal){
       __globalOffer = {
-        mode: globalOfferRes.item.mode,
-        value: globalOfferRes.item.value,
+        mode: globalOfferFinal.mode,
+        value: globalOfferFinal.value,
         excluded: new Set()
       };
-      // تحميل المنتجات المستثناة في الخلفية بدون تعطيل مسار التهيئة الرئيسي
-      window.api.offers_get_excluded_products(globalOfferRes.item.id)
+      window.api.offers_get_excluded_products(globalOfferFinal.id)
         .then(exclRes => {
           if(exclRes && exclRes.ok && Array.isArray(exclRes.items)){
             const excludedSet = new Set();
@@ -4664,7 +4752,7 @@ async function populateCategories(){
         .catch(exErr => console.warn('Error loading excluded products:', exErr));
     }
   }catch(e){
-    console.error('Error loading settings or global offer:', e);
+    console.error('Error applying global offer:', e);
   }
   
   // استعادة عرض السعر من sessionStorage إذا كان موجوداً
@@ -4754,12 +4842,15 @@ async function populateCategories(){
     console.error('Error restoring quotation:', e);
   }
   
-  // تحميل التبويبات والمنتجات بالتوازي لتسريع البداية
-  try{ 
-    populateCategories().then(() => {
-      // بعد تحميل التبويبات، ابدأ تحميل المنتجات فوراً بعد إعطاء الـ event loop فرصة للرسم
+  // تحميل التبويبات والمنتجات — استخدام البيانات المجلوبة مسبقاً إن وُجدت
+  try{
+    const preTypes = __initData ? __initData.types : null;
+    const preTypesDisplay = __initData ? __initData.types_for_display : null;
+    const preProducts = __initData ? __initData.products : null;
+    populateCategories(preTypes, preTypesDisplay).then(() => {
       setTimeout(() => {
-        loadCatalog().catch(() => {});
+        // مرر المنتجات المجلوبة مسبقاً للدفعة الأولى لتجنب طلب HTTP إضافي
+        loadCatalog(preProducts).catch(() => {});
       }, 0);
     }).catch(() => {});
   }catch(_){ }

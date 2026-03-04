@@ -6,7 +6,7 @@ const axios = require('axios');
 const API_TIMEOUT = 8000;
 const API_RETRIES = 2;
 
-const _keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 10, timeout: 60000 });
+const _keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 5, timeout: 60000 });
 
 function _isNetworkError(err) {
   if (err && err.response) return false;
@@ -22,7 +22,7 @@ async function _withRetry(fn) {
     } catch (err) {
       lastErr = err;
       if (!_isNetworkError(err) || attempt >= API_RETRIES) break;
-      await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
     }
   }
   throw lastErr;
@@ -107,12 +107,14 @@ async function fetchFromAPI(endpoint, params = {}) {
 
 async function postToAPI(endpoint, body = {}) {
   const url = `${getApiBaseUrl()}${endpoint}`;
-  try {
-    const response = await axios.post(url, body, { timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
-    return response.data;
-  } catch (err) {
-    throw new Error(`API post failed: ${err.message}`);
-  }
+  return _withRetry(async () => {
+    try {
+      const response = await axios.post(url, body, { timeout: API_TIMEOUT, httpAgent: _keepAliveAgent });
+      return response.data;
+    } catch (err) {
+      throw new Error(`API post failed: ${err.message}`);
+    }
+  });
 }
 
 async function putToAPI(endpoint, body = {}) {

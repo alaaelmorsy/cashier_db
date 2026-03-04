@@ -228,6 +228,7 @@
       .reprint-btn{ position:fixed; top:12px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#0b3daa; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;}
       .export-btn{ position:fixed; top:52px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#16a34a; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;} 
       .whats-btn{ position:fixed; top:92px; left:12px; padding:8px 12px; border:0; border-radius:8px; background:#25D366; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.15); z-index:2147483647;} 
+      .close-btn{ position:fixed; top:0; right:0; width:72px; height:40px; background:#dc2626; color:#fff; border:0; font-size:15px; font-weight:bold; cursor:pointer; z-index:2147483647; border-bottom-left-radius:8px; }
       .continuation-banner{ display:none; }
       @media print{
         .continuation-banner{ display:block; font-weight:900; font-size:10px; text-align:center; padding:4px 6px; margin-bottom:4px; }
@@ -237,7 +238,7 @@
       .muted, .section-title, .section-badge, h1, h2, th, td, #companyInfoAr, #companyInfoEn, .desc-print, #invType, .brand h1, .company-box h1, .totals td{
         color:#000 !important; font-weight:900 !important;
       }
-      @media print { .reprint-btn, .export-btn, .whats-btn{ display:none } }
+      @media print { .reprint-btn, .export-btn, .whats-btn, .close-btn{ display:none } }
       
       /* WhatsApp Notification Toast */
       #whatsappToast {
@@ -306,6 +307,7 @@
       </div>
     </div>
 
+    <button class="close-btn" onclick="window.close()">إغلاق</button>
     <button class="reprint-btn" id="reprintBtn" onclick="window.print()">طباعة</button>
     <button class="export-btn" id="exportBtn">تصدير PDF</button>
     <button class="whats-btn" id="whatsBtn">إرسال واتساب</button>

@@ -370,7 +370,7 @@ function registerProductsIPC(){
     if (isSecondaryDevice()) {
       try {
         const result = await fetchFromAPI('/products', q || {});
-        return { ok: true, products: result.products || [] };
+        return { ok: true, items: result.items || result.products || [], total: result.total || 0 };
       } catch (err) {
         return { ok: false, error: err.message };
       }
@@ -428,7 +428,7 @@ function registerProductsIPC(){
         }
         
         const params = [...whereParams, ...orderParams];
-        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order FROM products ${whereSql} ${order}`;
+        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSql} ${order}`;
         if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; params.push(limit, Math.max(0, offset)); }
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows, total };
@@ -465,7 +465,7 @@ function registerProductsIPC(){
           
           let orderFallback = 'ORDER BY id DESC';
           if(query.sort === 'custom') orderFallback = 'ORDER BY sort_order ASC, is_active DESC, name ASC';
-          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order FROM products ${whereSqlFallback} ${orderFallback}`;
+          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSqlFallback} ${orderFallback}`;
           if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; paramsFallback.push(limit, Math.max(0, offset)); }
           const [rows] = await conn.query(sql, paramsFallback);
           return { ok:true, items: rows, total };
@@ -628,6 +628,32 @@ function registerProductsIPC(){
         return { ok:true, products: rows };
       } finally { conn.release(); }
     }catch(e){ console.error('Error in products:get_by_expiry:', e); return { ok:false, error:'خطأ في جلب المنتجات' }; }
+  });
+
+  // batch fetch product images as base64
+  ipcMain.handle('products:images_batch', async (_e, ids) => {
+    if (!Array.isArray(ids) || !ids.length) return { ok: true, images: [] };
+    try {
+      if (isSecondaryDevice()) {
+        return await fetchFromAPI('/products-images-batch', { ids: ids.join(',') });
+      }
+      const conn = await dbAdapter.getConnection();
+      try {
+        const placeholders = ids.map(() => '?').join(',');
+        const [rows] = await conn.query(
+          `SELECT id, image_blob AS image_data, image_mime FROM products WHERE id IN (${placeholders})`,
+          ids
+        );
+        return {
+          ok: true,
+          images: rows.map(r => ({
+            id: r.id,
+            image_data: r.image_data ? Buffer.from(r.image_data).toString('base64') : null,
+            image_mime: r.image_mime || 'image/png',
+          })),
+        };
+      } finally { conn.release(); }
+    } catch(e) { return { ok: false, error: e.message, images: [] }; }
   });
 
   // fetch product image (BLOB or legacy path) as base64 for on-demand rendering

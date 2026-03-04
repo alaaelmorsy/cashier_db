@@ -1,6 +1,7 @@
 // Operations IPC handlers: manage operations and product-specific operation prices
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 async function ensureTables(conn){
   await conn.query(`CREATE TABLE IF NOT EXISTS operations (
@@ -122,6 +123,12 @@ function registerOperationsIPC(){
   ipcMain.handle('prod_ops:list', async (_e, product_id) => {
     const pid = (product_id && product_id.id) ? product_id.id : product_id;
     if(!pid) return { ok:false, error:'معرّف المنتج مفقود' };
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/prod-ops', { product_id: pid });
+        return { ok:true, items: result.items || [] };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -142,6 +149,17 @@ function registerOperationsIPC(){
   ipcMain.handle('prod_ops:list_batch', async (_e, product_ids) => {
     const ids = Array.isArray(product_ids) ? product_ids.filter(id => id) : [];
     if(!ids.length) return { ok:true, items: {} };
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/products-ops-batch', { ids: ids.join(',') });
+        const grouped = {};
+        (result.operations || []).forEach(row => {
+          if(!grouped[row.product_id]) grouped[row.product_id] = [];
+          grouped[row.product_id].push(row);
+        });
+        return { ok:true, items: grouped };
+      }catch(e){ return { ok:false, error:e.message, items:{} }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

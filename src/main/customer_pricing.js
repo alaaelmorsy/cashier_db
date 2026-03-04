@@ -1,6 +1,7 @@
 // Customer-specific pricing IPC handlers
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 async function ensureTable(conn){
   // Create table without hard FK dependencies to avoid init order issues
@@ -148,6 +149,12 @@ function registerCustomerPricingIPC(){
     const product_id = Number(payload && payload.product_id);
     const operation_id = payload && payload.operation_id ? Number(payload.operation_id) : null;
     if (!customer_id || !product_id) return { ok:false, error:'بيانات ناقصة' };
+    if(isSecondaryDevice()){
+      try{
+        const result = await fetchFromAPI('/cust-price/find', { customer_id, product_id, operation_id });
+        return { ok:true, price: result.price, base_price: result.base_price };
+      }catch(e){ return { ok:false, error:e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

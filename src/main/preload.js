@@ -605,6 +605,7 @@ contextBridge.exposeInMainWorld('api', {
   products_delete: (id) => ipcRenderer.invoke('products:delete', { id }),
   products_reset_all: () => ipcRenderer.invoke('products:reset_all'),
   products_image_get: (id) => ipcRenderer.invoke('products:image_get', { id }),
+  products_images_batch: (ids) => ipcRenderer.invoke('products:images_batch', ids),
   products_read_excel_file: (filePath) => ipcRenderer.invoke('products:read_excel_file', filePath),
   products_import_excel: (excelData) => ipcRenderer.invoke('products:import_excel', excelData),
   products_download_template: () => ipcRenderer.invoke('products:download_template'),
@@ -778,6 +779,9 @@ contextBridge.exposeInMainWorld('api', {
   types_toggle_hide: (id) => ipcRenderer.invoke('types:toggle_hide', { id }),
   types_delete: (id) => ipcRenderer.invoke('types:delete', { id }),
   types_reorder: (items) => ipcRenderer.invoke('types:reorder', items),
+
+  // Batch init for sales screen (settings + types + products + global_offer in ONE call)
+  sales_init: (params) => ipcRenderer.invoke('sales:init', params),
 
   // Settings
   settings_get: () => ipcRenderer.invoke('settings:get'),
