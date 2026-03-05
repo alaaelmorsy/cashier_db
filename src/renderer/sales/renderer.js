@@ -1273,9 +1273,17 @@ allowOnlyNumbersSales(acmCr);
 
 let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: ['cash','card','mixed'], op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false };
 let cart = []; // {id, name, price, qty, image_path}
+let customerDisplayEnabled = false;
+let currencyCodeForDisplay = 'SAR';
 let activeTypes = new Set(); // أسماء الأنواع الرئيسية النشطة فقط
 let __noMainTypes = false; // عند عدم وجود أي نوع رئيسي فعّال، أخفِ بطاقات الكتالوج تماماً
 let __isProcessingOld = false; // قفل الشاشة أثناء معالجة فاتورة سابقة
+
+function cdWelcome()          { if(!customerDisplayEnabled) return; try{ window.api.customer_display_welcome(); }catch(_){} }
+function cdItem(name, price)  { if(!customerDisplayEnabled) return; try{ window.api.customer_display_show_item(name, price, currencyCodeForDisplay); }catch(_){} }
+function cdTotal(total)       { if(!customerDisplayEnabled) return; try{ window.api.customer_display_show_total({ total, currency: currencyCodeForDisplay }); }catch(_){} }
+function cdThankYou()         { if(!customerDisplayEnabled) return; try{ window.api.customer_display_thankyou(); }catch(_){} }
+function cdClear()            { if(!customerDisplayEnabled) return; try{ window.api.customer_display_clear(); }catch(_){} }
 
 function setError(msg){ errorDiv.textContent = msg || ''; }
 
@@ -3308,6 +3316,7 @@ async function addToCart(p){
 
   // Add to cart
   cart.unshift(it);
+  cdItem(it.name, it.price);
 
   // Cache Qty Rules
   try{
@@ -3898,6 +3907,7 @@ btnClear.addEventListener('click', async () => {
       try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ }
     }
     renderCart();
+    cdWelcome();
     // إعادة طريقة الدفع إلى الافتراضية عند مسح السلة
     try{
       const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
@@ -4114,6 +4124,9 @@ btnPay.addEventListener('click', async () => {
   
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
+
+  cdTotal(payload.grand_total);
+  setTimeout(() => { cdThankYou(); }, 1500);
 
   // 🚀 فتح نافذة الطباعة فوراً
   const query = '&pay=' + encodeURIComponent(paymentMethod.value) + '&cash=' + encodeURIComponent(String(cash));
@@ -4508,6 +4521,9 @@ async function processPrint(){
   
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
+
+  cdTotal(payload.grand_total);
+  setTimeout(() => { cdThankYou(); }, 1500);
 
   // 🚀 فتح نافذة الطباعة فوراً
   const query = '&pay=' + encodeURIComponent(paymentMethod.value) + '&cash=' + encodeURIComponent(String(cash));

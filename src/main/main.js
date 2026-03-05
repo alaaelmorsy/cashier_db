@@ -68,6 +68,7 @@ const { registerBackupIPC } = require('./backup');
 const { setupAutoUpdater, registerUpdateIPC } = require('./updater');
 const { startAPIServer } = require('./api-server');
 const { isPrimaryDevice, isSecondaryDevice, fetchFromAPI } = require('./api-client');
+const customerDisplay = require('./customer-display/index');
 
 // ===== Pre-warm print window pool (1 window kept ready to eliminate BrowserWindow creation overhead) =====
 let _prewarmPrintWin = null;
@@ -1350,6 +1351,8 @@ app.whenReady().then(async () => {
   // Register auth handler immediately to avoid race condition
   registerAuthIPC();
   registerSettingsIPC();
+  try { customerDisplay.setupIPCHandlers(); } catch (_) {}
+  try { require('./customer-display').setupLegacyIPCHandlers(); } catch (_) {}
 
   try{
     createMainWindow();
@@ -1360,6 +1363,7 @@ app.whenReady().then(async () => {
   (async () => {
     try{
       await ensureAdminUser();
+      try { await customerDisplay.initialize(); } catch (_) {}
       registerUsersIPC();
       registerProductsIPC();
       registerCustomersIPC();
@@ -1465,6 +1469,10 @@ app.whenReady().then(async () => {
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) await createMainWindow();
   });
+});
+
+app.on('before-quit', async () => {
+  try { await customerDisplay.cleanup(); } catch (_) {}
 });
 
 app.on('window-all-closed', () => {

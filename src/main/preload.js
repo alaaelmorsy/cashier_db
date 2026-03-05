@@ -923,6 +923,22 @@ contextBridge.exposeInMainWorld('api', {
   whatsapp_update_messages_limit: (limit) => ipcRenderer.invoke('whatsapp:update_messages_limit', limit),
   whatsapp_reset_messages_count: () => ipcRenderer.invoke('whatsapp:reset_messages_count'),
 
+  // Customer Display APIs
+  customer_display_list_ports:  ()             => ipcRenderer.invoke('customer-display:list-ports'),
+  customer_display_status:      ()             => ipcRenderer.invoke('customer-display:status'),
+  customer_display_reinit:      ()             => ipcRenderer.invoke('customer-display:reinit'),
+  customer_display_welcome:     (msg)          => ipcRenderer.invoke('customer-display:welcome', msg),
+  customer_display_show_welcome: (msg)         => ipcRenderer.invoke('customer-display:welcome', msg),
+  customer_display_show_item:   (name, price, currency) => ipcRenderer.invoke('customer-display:item', name, price, currency),
+  customer_display_show_total:  (data)         => ipcRenderer.invoke('customer-display:total', data && data.total != null ? data.total : data, data && data.currency ? data.currency : undefined),
+  customer_display_thankyou:    (msg)          => ipcRenderer.invoke('customer-display:thankyou', msg),
+  customer_display_show_thank:  (msg)          => ipcRenderer.invoke('customer-display:thankyou', msg),
+  customer_display_clear:       ()             => ipcRenderer.invoke('customer-display:clear'),
+  customer_display_test:        ()             => ipcRenderer.invoke('customer-display:test'),
+  customer_display_connect:     ()             => ipcRenderer.invoke('customer_display:connect'),
+  customer_display_disconnect:  ()             => ipcRenderer.invoke('customer_display:disconnect'),
+  customer_display_send_text:   (text)         => ipcRenderer.invoke('customer_display:send_text', text),
+
   // Generic invoke method for any IPC handler
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   

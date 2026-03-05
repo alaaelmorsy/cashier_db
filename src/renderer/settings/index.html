@@ -1811,6 +1811,36 @@
                 </div>
               </div>
 
+              <!-- شاشة العرض للعميل -->
+              <div class="section">
+                <div class="section-header">
+                  <div class="section-icon" style="background:linear-gradient(135deg, #8b5cf6, #a78bfa)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="3" width="20" height="14" rx="2" stroke="white" stroke-width="2"/>
+                      <path d="M8 21H16M12 17V21" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div id="sTitle-customer-display" class="section-title">شاشة العرض للعميل</div>
+                    <div id="sDesc-customer-display" class="section-desc">إعداد شاشة العرض المتصلة عبر منفذ COM</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                  <div class="switch">
+                    <input id="f_customer_display_enabled" type="checkbox" style="width:15px; height:15px; accent-color:#8b5cf6;" />
+                    <label for="f_customer_display_enabled">تفعيل شاشة العرض</label>
+                  </div>
+                  <div>
+                    <label for="f_customer_display_port">منفذ COM</label>
+                    <select id="f_customer_display_port">
+                      <option value="">-- جاري التحميل... --</option>
+                    </select>
+                    <div class="section-desc">المنافذ المتاحة على الكمبيوتر</div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Tab Panel 5: Operations -->

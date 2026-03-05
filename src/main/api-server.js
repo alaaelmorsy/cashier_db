@@ -832,6 +832,40 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // POST /api/customer-display/show
+  // ═══════════════════════════════════════════════════════════════
+  app.post('/api/customer-display/show', async (req, res) => {
+    try {
+      const { action, text } = req.body || {};
+      const cd = require('./customer-display/index');
+      const manager = cd.getManager ? cd.getManager() : null;
+      if (!manager || !manager.isConnected) {
+        return res.json({ ok: false, error: 'Customer display not connected' });
+      }
+      switch (String(action || '').toLowerCase()) {
+        case 'welcome':
+          await manager.displayWelcome(text || null);
+          break;
+        case 'thankyou':
+          await manager.displayThankYou(text || null);
+          break;
+        case 'total':
+          await manager.displayTotal(parseFloat(text) || 0);
+          break;
+        case 'clear':
+          await manager.clear();
+          break;
+        default:
+          await manager.displayItem(text || '', 0);
+          break;
+      }
+      res.json({ ok: true, success: true });
+    } catch (e) {
+      res.json({ ok: false, error: 'failed to update customer display' });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // Start Server
   // ═══════════════════════════════════════════════════════════════
   server = app.listen(port, host, () => {

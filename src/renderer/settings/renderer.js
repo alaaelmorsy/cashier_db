@@ -648,6 +648,16 @@ async function loadSettings(){
   if(lbTime) lbTime.value = s.db_backup_local_time || '';
   if(lbFolder) lbFolder.value = s.db_backup_local_path || '';
 
+  // Customer Display settings
+  try {
+    const fCdEnabled = document.getElementById('f_customer_display_enabled');
+    const fCdPort    = document.getElementById('f_customer_display_port');
+    if (fCdEnabled) fCdEnabled.checked = !!s.customer_display_enabled;
+    if (fCdPort) {
+      await loadCustomerDisplayPorts(s.customer_display_port || '');
+    }
+  } catch (_) {}
+
   // Show recovery section if enabled in DB
   if(recoverySection){ recoverySection.style.display = (s.recovery_unlocked ? 'block' : 'none'); }
   if(isSuperAdminUser() && recoverySection){ recoverySection.style.display = 'block'; }
@@ -670,6 +680,32 @@ async function loadSettings(){
     el.style.cursor = trialLocked ? 'not-allowed' : '';
     el.title = trialLocked ? 'هذا الحقل محمي في النسخة التجريبية' : '';
   });
+}
+
+async function loadCustomerDisplayPorts(selectedPort) {
+  const sel = document.getElementById('f_customer_display_port');
+  if (!sel) return;
+  try {
+    const result = await window.api.customer_display_list_ports();
+    const ports = (result && result.ports) ? result.ports : [];
+    sel.innerHTML = '<option value="">-- اختر المنفذ --</option>';
+    ports.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.path;
+      opt.textContent = p.path + (p.manufacturer ? ' (' + p.manufacturer + ')' : '');
+      if (p.path === selectedPort) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (selectedPort && !ports.find(p => p.path === selectedPort)) {
+      const opt = document.createElement('option');
+      opt.value = selectedPort;
+      opt.textContent = selectedPort;
+      opt.selected = true;
+      sel.appendChild(opt);
+    }
+  } catch (_) {
+    sel.innerHTML = '<option value="">-- تعذر تحميل المنافذ --</option>';
+  }
 }
 
 async function loadBarcodePrintersIntoSelect(){
@@ -1042,7 +1078,16 @@ saveBtn.addEventListener('click', async () => {
     barcode_label_offset_right_mm: fBarcodeLabelOffsetRightMm ? Number(fBarcodeLabelOffsetRightMm.value || 0) : 0,
     barcode_label_offset_left_mm: fBarcodeLabelOffsetLeftMm ? Number(fBarcodeLabelOffsetLeftMm.value || 0) : 0,
     barcode_label_offset_top_mm: fBarcodeLabelOffsetTopMm ? Number(fBarcodeLabelOffsetTopMm.value || 0) : 0,
-    barcode_label_offset_bottom_mm: fBarcodeLabelOffsetBottomMm ? Number(fBarcodeLabelOffsetBottomMm.value || 0) : 0
+    barcode_label_offset_bottom_mm: fBarcodeLabelOffsetBottomMm ? Number(fBarcodeLabelOffsetBottomMm.value || 0) : 0,
+    // Customer Display
+    customer_display_enabled:   !!(document.getElementById('f_customer_display_enabled')?.checked),
+    customer_display_port:      (document.getElementById('f_customer_display_port')?.value || null),
+    customer_display_baud_rate: 2400,
+    customer_display_columns:   8,
+    customer_display_rows:      1,
+    customer_display_protocol:  'ecopos',
+    customer_display_encoding:  'ascii',
+    customer_display_brightness: 100
   };
   // Clear logo ONLY if user explicitly removed it
   if(logoRemoved){ payload.logo_clear = true; }
@@ -1054,6 +1099,11 @@ saveBtn.addEventListener('click', async () => {
     // rearm schedulers to pick latest settings immediately
     await window.api.scheduler_trigger_daily_email();
     await window.api.scheduler_trigger_backup();
+  }catch(_){ }
+  try{
+    if (payload.customer_display_enabled) {
+      await window.api.customer_display_reinit();
+    }
   }catch(_){ }
   try{
     // بث إعدادات تنبيهات المخزون لالتقاطها في شاشة البيع دون إعادة تشغيل

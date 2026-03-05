@@ -341,11 +341,17 @@ function registerSettingsIPC(){
     if(await missing('customer_display_welcome_msg')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN customer_display_welcome_msg VARCHAR(128) NULL DEFAULT 'مرحباً بك' AFTER customer_display_brightness");
     }
+    if(await missing('customer_display_thank_msg')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN customer_display_thank_msg VARCHAR(255) NULL DEFAULT 'شكرا لزيارتكم' AFTER customer_display_welcome_msg");
+    }
     if(await missing('customer_display_thankyou_msg')){
-      await conn.query("ALTER TABLE app_settings ADD COLUMN customer_display_thankyou_msg VARCHAR(128) NULL DEFAULT 'شكراً لزيارتك' AFTER customer_display_welcome_msg");
+      await conn.query("ALTER TABLE app_settings ADD COLUMN customer_display_thankyou_msg VARCHAR(128) NULL DEFAULT 'شكراً لزيارتك' AFTER customer_display_thank_msg");
+    }
+    if(await missing('customer_display_data_format')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN customer_display_data_format VARCHAR(32) NULL DEFAULT 'smart_spaces_8' AFTER customer_display_thankyou_msg");
     }
     if(await missing('appointment_reminder_minutes')){
-      await conn.query("ALTER TABLE app_settings ADD COLUMN appointment_reminder_minutes INT NOT NULL DEFAULT 15 AFTER customer_display_thankyou_msg");
+      await conn.query("ALTER TABLE app_settings ADD COLUMN appointment_reminder_minutes INT NOT NULL DEFAULT 15 AFTER customer_display_data_format");
     }
     if(await missing('app_theme')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN app_theme ENUM('light','gray','dark','auto') NOT NULL DEFAULT 'light' AFTER appointment_reminder_minutes");
@@ -400,6 +406,10 @@ function registerSettingsIPC(){
     if(await missing('barcode_label_offset_bottom_mm')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN barcode_label_offset_bottom_mm DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER barcode_label_offset_top_mm");
     }
+    // Expand customer_display_protocol ENUM to include 'ecopos'
+    try {
+      await conn.query("ALTER TABLE app_settings MODIFY COLUMN customer_display_protocol ENUM('escpos','aedex','cd5220','generic','ecopos') NOT NULL DEFAULT 'escpos'");
+    } catch(_) {}
     // Expand app_theme ENUM to include 'gray' for existing installations
     try {
       await conn.query("ALTER TABLE app_settings MODIFY COLUMN app_theme ENUM('light','gray','dark','auto') NOT NULL DEFAULT 'light'");
