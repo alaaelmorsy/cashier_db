@@ -416,6 +416,10 @@ function registerSettingsIPC(){
     } catch(_) {
       // Column might not exist yet or already has correct values
     }
+    // One-time barcode feature: each barcode can only be used once per printed sale
+    if(await missing('one_time_barcode')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN one_time_barcode TINYINT NOT NULL DEFAULT 0 AFTER app_theme");
+    }
   }
 
   async function ensureSingleton(conn){

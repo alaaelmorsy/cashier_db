@@ -900,6 +900,7 @@ window.addEventListener('keydown', (e) => {
 
 // Rooms support: parse room from URL and set header badge, and persist cart per room
 const __urlParams = new URLSearchParams(location.search);
+let __oneTimeBarcodeMode = __urlParams.get('one_time_barcode') === '1';
 // Force default (non-room) sales screen regardless of URL
 const __currentRoomId = '';
 let __currentRoomName = '';
@@ -2287,6 +2288,7 @@ async function loadSettings(prefetchedSettings){
   const r = prefetchedSettings ? { ok: true, item: prefetchedSettings } : await window.api.settings_get();
   if(r.ok){ 
     settings = { ...settings, ...(r.item||{}) };
+    __oneTimeBarcodeMode = !!settings.one_time_barcode || __urlParams.get('one_time_barcode') === '1';
     customerDisplayEnabled = !!settings.customer_display_enabled;
     currencyCodeForDisplay = settings.currency_code || 'SAR';
     console.log('Customer display settings loaded:', {
@@ -3215,6 +3217,16 @@ async function addToCart(p){
     setError('هذا النوع الرئيسي موقوف، لا يمكن البيع من تحته');
     return;
   }
+  // التحقق من الباركود أحادي الاستخدام
+  if(__oneTimeBarcodeMode && p && p.barcode){
+    try{
+      const bcCheck = await window.api.products_get_by_barcode(p.barcode);
+      if(bcCheck && bcCheck.ok && bcCheck.item && Number(bcCheck.item.barcode_used||0) === 1){
+        __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 });
+        return;
+      }
+    }catch(_){ }
+  }
   const idx = cart.findIndex(x => x.id === p.id);
   // إذا كان خيار فصل تكرار نفس الصنف مفعلًا، لا تدمج: أنشئ سطرًا جديدًا دائمًا
   const forceSeparate = !!settings.cart_separate_duplicate_lines;
@@ -3392,6 +3404,7 @@ if(barcode){
         if(sr && sr.ok && sr.item){
           const p = sr.item;
           if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); barcode.select(); return; }
+          if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); barcode.select(); return; }
           // Add with quantity from barcode when type=weight; if type=price, derive qty = price / unit price
           const itBase = {
             id: p.id,
@@ -3439,6 +3452,7 @@ if(barcode){
       }
       const p = r.item;
       if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); barcode.select(); return; }
+      if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); barcode.select(); return; }
       
       // إذا كان هناك variant_id (صنف)، أضفه مع variant_name كـ operation_name
       if(p.variant_id){
@@ -4124,6 +4138,7 @@ btnPay.addEventListener('click', async () => {
   
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
+  if(__oneTimeBarcodeMode){ try{ await window.api.products_mark_barcode_used(itemsPayload.map(it => ({ product_id: it.product_id, variant_id: it.variant_id || null }))); }catch(_){ } }
 
   cdTotal(payload.grand_total);
   setTimeout(() => { cdThankYou(); }, 1500);
@@ -4521,6 +4536,7 @@ async function processPrint(){
   
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
+  if(__oneTimeBarcodeMode){ try{ await window.api.products_mark_barcode_used(itemsPayload.map(it => ({ product_id: it.product_id, variant_id: it.variant_id || null }))); }catch(_){ } }
 
   cdTotal(payload.grand_total);
   setTimeout(() => { cdThankYou(); }, 1500);

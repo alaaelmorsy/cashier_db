@@ -613,6 +613,7 @@ contextBridge.exposeInMainWorld('api', {
   products_list: (query) => ipcRenderer.invoke('products:list', query),
   products_get: (id) => ipcRenderer.invoke('products:get', { id }),
   products_get_by_barcode: (barcode) => ipcRenderer.invoke('products:get_by_barcode', { barcode }),
+  products_mark_barcode_used: (items) => ipcRenderer.invoke('products:mark_barcode_used', items),
   products_get_by_expiry: (params) => ipcRenderer.invoke('products:get_by_expiry', params),
   products_update: (id, payload) => ipcRenderer.invoke('products:update', { id }, payload),
   products_toggle: (id) => ipcRenderer.invoke('products:toggle', { id }),

@@ -123,6 +123,12 @@ function registerProductsIPC(){
     try{ await conn.query("DROP INDEX idx_products_active_cat_sort ON products"); }catch(_){ }
     try{ await conn.query("DROP INDEX idx_products_hide_from_sales ON products"); }catch(_){ }
 
+    // One-time barcode feature: track whether a barcode has been used in a printed sale
+    const [colBarcodeUsed] = await conn.query("SHOW COLUMNS FROM products LIKE 'barcode_used'");
+    if(!colBarcodeUsed.length){
+      await conn.query("ALTER TABLE products ADD COLUMN barcode_used TINYINT NOT NULL DEFAULT 0 AFTER barcode");
+    }
+
     // Multi-unit support: ensure product_units table exists
     await conn.query(`
       CREATE TABLE IF NOT EXISTS product_units (
@@ -158,6 +164,12 @@ function registerProductsIPC(){
       const [colSDM] = await conn.query("SHOW COLUMNS FROM product_variants LIKE 'stock_deduct_multiplier'");
       if(!colSDM.length){
         await conn.query("ALTER TABLE product_variants ADD COLUMN stock_deduct_multiplier DECIMAL(12,3) NOT NULL DEFAULT 1 AFTER cost");
+      }
+    }catch(_){ }
+    try{
+      const [colVarBarcodeUsed] = await conn.query("SHOW COLUMNS FROM product_variants LIKE 'barcode_used'");
+      if(!colVarBarcodeUsed.length){
+        await conn.query("ALTER TABLE product_variants ADD COLUMN barcode_used TINYINT NOT NULL DEFAULT 0 AFTER barcode");
       }
     }catch(_){ }
     // Backfill/upgrade columns for legacy DBs where table exists without new columns
@@ -537,7 +549,7 @@ function registerProductsIPC(){
         
         // First, search in product_variants (optimized with 2 conditions only)
         // Index on barcode makes this very fast
-        const variantSql = `SELECT pv.id, pv.variant_name, pv.barcode, pv.price, pv.cost, 
+        const variantSql = `SELECT pv.id, pv.variant_name, pv.barcode, pv.price, pv.cost, pv.barcode_used,
                                    p.id AS product_id, p.name, p.name_en, p.stock, p.category, 
                                    p.description, p.image_path, p.image_mime, p.is_tobacco, 
                                    p.is_active, p.expiry_date, p.sort_order, p.created_at, pv.id AS variant_id
@@ -554,6 +566,7 @@ function registerProductsIPC(){
             name: v.name,
             name_en: v.name_en,
             barcode: v.barcode,
+            barcode_used: v.barcode_used,
             price: v.price,
             cost: v.cost || v.price,
             stock: v.stock,
@@ -572,7 +585,7 @@ function registerProductsIPC(){
         
         // If not found in variants, search in products (optimized with 2 conditions)
         // Index on barcode makes this extremely fast (no full table scan)
-        const sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_active,hide_from_sales,expiry_date,sort_order,created_at
+        const sql = `SELECT id,name,name_en,barcode,barcode_used,price,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_active,hide_from_sales,expiry_date,sort_order,created_at
                      FROM products
                      WHERE barcode = ? OR barcode = ?
                      LIMIT 1`;
@@ -581,6 +594,28 @@ function registerProductsIPC(){
         return { ok:true, item: rows[0] };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'خطأ في الجلب' }; }
+  });
+
+  // mark barcodes as used after a printed sale (one-time barcode feature)
+  ipcMain.handle('products:mark_barcode_used', async (_e, items) => {
+    if(!Array.isArray(items) || !items.length) return { ok:true };
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTable(conn);
+        for(const item of items){
+          const pid = Number(item.product_id || 0);
+          const vid = Number(item.variant_id || 0);
+          if(!pid) continue;
+          if(vid){
+            await conn.query('UPDATE product_variants SET barcode_used=1 WHERE id=?', [vid]);
+          } else {
+            await conn.query('UPDATE products SET barcode_used=1 WHERE id=?', [pid]);
+          }
+        }
+        return { ok:true };
+      } finally { conn.release(); }
+    }catch(e){ console.error('mark_barcode_used error:', e); return { ok:false, error:'خطأ في تحديث الباركود' }; }
   });
 
   // get products by expiry date range and status
@@ -702,6 +737,10 @@ function registerProductsIPC(){
       try{
         await ensureTable(conn);
 
+        // Fetch old barcode to detect change (for one-time barcode reset)
+        const [[oldRow]] = await conn.query('SELECT barcode FROM products WHERE id=?', [pid]);
+        const barcodeChanged = oldRow && (oldRow.barcode || null) !== (barcode || null);
+
         // Image update strategy:
         // - if remove_image: clear image fields
         // - else if image_blob_base64: replace with new BLOB
@@ -716,6 +755,11 @@ function registerProductsIPC(){
           await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, min_price=?, cost=?, stock=?, category=?, description=?, image_path=NULL, image_blob=?, image_mime=?, is_tobacco=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, imgBuffer, imgMime, (payload.is_tobacco ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), pid]);
         } else {
           await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, min_price=?, cost=?, stock=?, category=?, description=?, is_tobacco=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, (payload.is_tobacco ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), pid]);
+        }
+
+        // Reset barcode_used when barcode changes (one-time barcode feature)
+        if(barcodeChanged){
+          try{ await conn.query('UPDATE products SET barcode_used=0 WHERE id=?', [pid]); }catch(_){ }
         }
 
         // After update, optionally trigger low stock email if enabled and stock is at/below threshold
