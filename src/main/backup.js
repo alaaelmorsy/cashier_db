@@ -4,10 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const zlib = require('zlib');
-const { spawn } = require('child_process');
 const nodemailer = require('nodemailer');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
-const { getConfig } = require('../db/connection');
+const { getPool } = require('../db/connection');
 require('dotenv').config();
 
 async function readSettings(conn){
@@ -46,10 +45,8 @@ function stampDMY_HHMM(){
 }
 
 async function createDbDumpSql(){
-  // Create plain SQL dump (not gzipped)
-  const cfg = getConfig();
-  const sql = await dumpWithMysqldump(cfg);
-  return sql; // Buffer
+  const sql = await dumpWithMysqldump();
+  return sql;
 }
 
 function zipBufferWithFilename(innerFilename, contentBuffer){
@@ -129,95 +126,63 @@ function zipBufferWithFilename(innerFilename, contentBuffer){
   return Buffer.concat([LFH, Buffer.from(nameBytes), fileData, CDH, Buffer.from(nameBytes), EOCD]);
 }
 
-function dumpWithMysqldump(cfg){
-  // Robust dump that works with MySQL 5.7 servers using 8.0 client (handles COLUMN_STATISTICS issue)
-  return new Promise((resolve, reject) => {
-    const baseArgs = [
-      '-h', cfg.host,
-      '-P', String(cfg.port||3306),
-      '-u', cfg.user,
-      `-p${cfg.password||''}`,
-      '--single-transaction', '--quick', '--skip-lock-tables', '--routines', '--events',
-    ];
+async function dumpWithMysqldump(_cfg){
+  const pool = await getPool();
+  const conn = await pool.getConnection();
+  try {
+    await conn.query(`USE \`${DB_NAME}\``);
+    const lines = [];
 
-    // Resolve mysqldump path in this priority:
-    // 1) MYSQLDUMP_PATH from .env (trimmed, quotes removed)
-    // 2) Bundled binary in production: <resources>/assets/bin/win/mysqldump.exe
-    // 3) Bundled binary in development: <repo>/assets/bin/win/mysqldump.exe
-    // 4) Fallback to system PATH: 'mysqldump'
-    const stripQuotes = (s) => (s || '').replace(/^\s*["']|["']\s*$/g, '').trim();
-    const envDumpPath = stripQuotes(process.env.MYSQLDUMP_PATH);
-    
-    // Check multiple potential locations for the bundled binary
-    const potentialPaths = [];
-    if(envDumpPath) potentialPaths.push(envDumpPath);
+    lines.push(`-- MySQL dump (Node.js native) -- ${new Date().toISOString()}`);
+    lines.push(`-- Database: ${DB_NAME}`);
+    lines.push('');
+    lines.push('SET NAMES utf8mb4;');
+    lines.push('SET FOREIGN_KEY_CHECKS=0;');
+    lines.push('');
 
-    if(app.isPackaged){
-      // Production: look in resources folder relative to app.asar or exe
-      const resPath = process.resourcesPath || path.dirname(app.getAppPath());
-      const exeDir = path.dirname(app.getPath('exe'));
-      
-      potentialPaths.push(path.join(resPath, 'assets', 'bin', 'win', 'mysqldump.exe'));
-      potentialPaths.push(path.join(resPath, 'bin', 'win', 'mysqldump.exe'));
-      potentialPaths.push(path.join(exeDir, 'resources', 'assets', 'bin', 'win', 'mysqldump.exe'));
-      potentialPaths.push(path.join(exeDir, 'resources', 'bin', 'win', 'mysqldump.exe'));
-    } else {
-      // Development: look in project folder
-      potentialPaths.push(path.join(__dirname, '..', '..', 'assets', 'bin', 'win', 'mysqldump.exe'));
-    }
+    const [tables] = await conn.query('SHOW FULL TABLES WHERE Table_type = \'BASE TABLE\'');
+    const tableNames = tables.map(r => Object.values(r)[0]);
 
-    let mysqldumpCmd = 'mysqldump';
-    for(const p of potentialPaths){
-      // Ensure we don't try to spawn from inside ASAR
-      if(p && p !== 'mysqldump' && !p.includes('.asar') && fs.existsSync(p)) { 
-        mysqldumpCmd = p; 
-        break; 
+    for (const tbl of tableNames) {
+      const [[createRow]] = await conn.query(`SHOW CREATE TABLE \`${tbl}\``);
+      const createSql = createRow['Create Table'] || createRow[Object.keys(createRow)[1]];
+
+      lines.push(`DROP TABLE IF EXISTS \`${tbl}\`;`);
+      lines.push(createSql + ';');
+      lines.push('');
+
+      const [rows] = await conn.query(`SELECT * FROM \`${tbl}\``);
+      if (rows.length > 0) {
+        const cols = Object.keys(rows[0]).map(c => `\`${c}\``).join(', ');
+        const BATCH = 200;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const batch = rows.slice(i, i + BATCH);
+          const values = batch.map(row =>
+            '(' + Object.values(row).map(v => {
+              if (v === null || v === undefined) return 'NULL';
+              if (typeof v === 'number' || typeof v === 'bigint') return String(v);
+              if (v instanceof Date) return `'${v.toISOString().slice(0, 19).replace('T', ' ')}'`;
+              if (Buffer.isBuffer(v)) return `0x${v.toString('hex')}`;
+              return `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n')}'`;
+            }).join(', ') + ')'
+          ).join(',\n');
+          lines.push(`INSERT INTO \`${tbl}\` (${cols}) VALUES`);
+          lines.push(values + ';');
+        }
+        lines.push('');
       }
     }
 
-    const runOnce = (extraArgs = []) => new Promise((res, rej) => {
-      const args = [...baseArgs, ...extraArgs, DB_NAME];
-      const proc = spawn(mysqldumpCmd, args, { stdio: ['ignore','pipe','pipe'] });
-      const chunks = [];
-      const errChunks = [];
-      proc.stdout.on('data', d => chunks.push(Buffer.from(d)));
-      proc.stderr.on('data', d => errChunks.push(Buffer.from(d)));
-      proc.on('error', (e) => {
-        const hint = '\nتلميح: ثبّت MySQL Client وأضف مسار bin إلى PATH، أو عرّف MYSQLDUMP_PATH في ملف .env بالمسار الكامل للأداة.';
-        rej(new Error('تعذر تشغيل mysqldump: ' + (e && e.message || e) + hint));
-      });
-      proc.on('close', (code) => {
-        if(code === 0){ return res(Buffer.concat(chunks)); }
-        const err = Buffer.concat(errChunks).toString('utf8');
-        rej(new Error(err || 'فشل إنشاء النسخة الاحتياطية (mysqldump)'));
-      });
-    });
-
-    // Try without extras first, then retry with compatibility flags if COLUMN_STATISTICS issue arises
-    runOnce().then(resolve).catch((e1) => {
-      const msg = String(e1 && e1.message || e1 || '').toLowerCase();
-      const needsColumnStatsFix = /column_statistics|information_schema\.column_statistics/.test(msg);
-      const unknownOptionColumnStats = /unknown option '--column-statistics'/.test(msg);
-
-      if(needsColumnStatsFix){
-        // Retry with 8.0->5.7 compatibility flags
-        runOnce(['--column-statistics=0', '--set-gtid-purged=OFF', '--no-tablespaces'])
-          .then(resolve)
-          .catch(err => reject(new Error('فشل إنشاء النسخة الاحتياطية (mysqldump): ' + (err && err.message || err))));
-      } else if(unknownOptionColumnStats){
-        // Client is older and does not support --column-statistics; re-run without it (already did), so just surface original error
-        reject(new Error('فشل إنشاء النسخة الاحتياطية (mysqldump): ' + (e1 && e1.message || e1)));
-      } else {
-        // Surface the original error
-        reject(new Error('فشل إنشاء النسخة الاحتياطية (mysqldump): ' + (e1 && e1.message || e1)));
-      }
-    });
-  });
+    lines.push('SET FOREIGN_KEY_CHECKS=1;');
+    lines.push('');
+    return Buffer.from(lines.join('\n'), 'utf8');
+  } finally {
+    conn.release();
+  }
 }
 
 async function createDbDumpGz(){
-  const cfg = getConfig();
-  const sql = await dumpWithMysqldump(cfg);
+  const sql = await dumpWithMysqldump();
   const gz = zlib.gzipSync(sql, { level: 9 });
   return gz;
 }

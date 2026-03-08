@@ -2167,19 +2167,19 @@ function renderCart(){
       </td>
       <td class="td-price">
         ${settings.op_price_manual
-          ? `<input data-idx=\"${idx}\" class=\"op-price\" type=\"number\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"السعر\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}/>`
+          ? `<input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"السعر\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}/>`
           : `<span class=\"price-val\">${Number(it.price||0).toFixed(2)}</span>`}
       </td>
       <td class="td-qty">
         <div class="qty-wrap" style="display:flex; gap:3px; align-items:center;">
           <button class="btn qty-btn" data-act="dec" data-idx="${idx}" aria-label="نقصان" ${__isProcessingOld?'disabled':''}>−</button>
-          <input data-idx="${idx}" class="qty" type="number" ${__qtyAttrs} style="width:${String((__isWM || hasDecimalQty) ? Number(it.qty||0).toFixed(3) : String(it.qty)).length}ch; min-width:3ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:center; border:2px solid #cbd5e1; border-radius:4px; font-weight:700; font-size:12px; background:linear-gradient(to bottom,#f8fafc,#f1f5fb);" oninput="this.style.width = Math.max(3, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>
+          <input data-idx="${idx}" class="qty" type="text" inputmode="decimal" lang="en" ${__qtyAttrs} style="width:${String((__isWM || hasDecimalQty) ? Number(it.qty||0).toFixed(3) : String(it.qty)).length}ch; min-width:3ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:center; border:2px solid #cbd5e1; border-radius:4px; font-weight:700; font-size:12px; background:linear-gradient(to bottom,#f8fafc,#f1f5fb);" oninput="this.style.width = Math.max(3, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>
           <button class="btn qty-btn" data-act="inc" data-idx="${idx}" aria-label="زيادة" ${__isProcessingOld?'disabled':''}>+</button>
         </div>
       </td>
       <td class="td-total">
         ${__isWM
-          ? `<input data-idx="${idx}" class="amount-paid" type="number" min="0" step="0.01" style="width:${String((isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00')).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:left; border:2px solid #10b981; border-radius:4px; font-weight:700; font-size:12px; color:#059669; background:linear-gradient(to bottom,#ecfdf5,#e0fdf4);" placeholder="الإجمالي" value="${isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00'}" oninput="this.style.width = Math.max(4, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>`
+          ? `<input data-idx="${idx}" class="amount-paid" type="text" inputmode="decimal" lang="en" min="0" step="0.01" style="width:${String((isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00')).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:left; border:2px solid #10b981; border-radius:4px; font-weight:700; font-size:12px; color:#059669; background:linear-gradient(to bottom,#ecfdf5,#e0fdf4);" placeholder="الإجمالي" value="${isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00'}" oninput="this.style.width = Math.max(4, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>`
           : `<span class="total-val" style="display:inline-block; min-width:0; width:${String((Number(it.price||0) * Number(it.qty||0)).toFixed(2)).length}ch;">${(Number(it.price||0) * Number(it.qty||0)).toFixed(2)}</span>`}
       </td>
       <td style="text-align:center">
@@ -3731,6 +3731,13 @@ tbody.addEventListener('input', async (e) => {
     const idx = Number(opNameInp.dataset.idx);
     cart[idx].operation_name = opNameInp.value || '';
     if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); }
+    return;
+  }
+  const numInp = e.target.closest('input.qty, input.op-price, input.amount-paid');
+  if(numInp){
+    const cur = numInp.value;
+    const fixed = cur.replace(/[^0-9.]/g, '').replace(/^(\d*\.?\d*).*$/, '$1');
+    if(fixed !== cur){ const pos = numInp.selectionStart - (cur.length - fixed.length); numInp.value = fixed; try{ numInp.setSelectionRange(pos, pos); }catch(_){} }
     return;
   }
 });

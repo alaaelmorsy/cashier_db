@@ -95,7 +95,7 @@ async function getPool() {
       password: currentConfig.password,
       waitForConnections: true,
       connectionLimit: remote ? 5 : 10,
-      queueLimit: 50,
+      queueLimit: 0,
       multipleStatements: true,
       connectTimeout: remote ? 10000 : 30000,
       timezone: 'local',

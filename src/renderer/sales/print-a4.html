@@ -1610,13 +1610,9 @@
               }catch(_){ }
               if(__t >= __max){ return; }
               __t += 25;
-              setTimeout(() => {
-                try{ requestAnimationFrame(__step); }catch(_){ __step(); }
-              }, 25);
+              setTimeout(__step, 25);
             };
-            requestAnimationFrame(() => {
-              requestAnimationFrame(__step);
-            });
+            setTimeout(__step, 0);
           }catch(_){ }
           
           // 🚀 طباعة تلقائية فور اكتمال البيانات (حد أقصى 800ms)
@@ -1676,19 +1672,11 @@
           const checkInterval = setInterval(() => {
             if(checkDataReady()){
               clearInterval(checkInterval);
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  executePrint();
-                });
-              });
+              setTimeout(executePrint, 0);
             } else if(Date.now() - startTime >= MAX_WAIT){
               clearInterval(checkInterval);
               false && console.warn(`⚠️ [${Date.now()}] Max wait time reached (${MAX_WAIT}ms), printing anyway`);
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  executePrint();
-                });
-              });
+              setTimeout(executePrint, 0);
             }
           }, CHECK_INTERVAL);
 

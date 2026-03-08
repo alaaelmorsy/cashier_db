@@ -1795,13 +1795,9 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                   return;
                 }
               }catch(_){ }
-              setTimeout(() => {
-                try{ requestAnimationFrame(__step); }catch(_){ __step(); }
-              }, 25);
+              setTimeout(__step, 25);
             };
-            requestAnimationFrame(() => {
-              requestAnimationFrame(__step);
-            });
+            setTimeout(__step, 0);
           }catch(_){ }
           
           // 🚀 طباعة تلقائية فور جاهزية المحتوى (انتظار شرطي بدل polling)
@@ -1858,11 +1854,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             __step();
           });
 
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              executePrint();
-            });
-          });
+          setTimeout(executePrint, 0);
           
           // Notify opener after printing so kitchen can print next
           try{
