@@ -2074,6 +2074,7 @@ function computeTotals(){
     tobacco_fee: Number((tobaccoFee||0).toFixed(2)),
     coupon: __coupon || null,
   };
+  if(grand > 0) cdTotal(Number(grand.toFixed(2)));
 }
 
 const __rcEls = {
@@ -3328,7 +3329,6 @@ async function addToCart(p){
 
   // Add to cart
   cart.unshift(it);
-  cdItem(it.name, it.price);
 
   // Cache Qty Rules
   try{
