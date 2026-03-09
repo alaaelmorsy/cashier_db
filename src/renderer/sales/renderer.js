@@ -365,6 +365,7 @@ function translateUI(isAr){
       document.documentElement.lang = isAr ? 'ar' : 'en';
       document.documentElement.dir = isAr ? 'rtl' : 'ltr';
       translateUI(isAr);
+      try{ renderCart(); }catch(_){}
     });
   }catch(_){}
 })();
@@ -2149,15 +2150,16 @@ function renderCart(){
     const __qtyAttrs = (__isWM || hasDecimalQty)
       ? 'min="0" step="0.001" placeholder="الكمية" value="'+String(Number(it.qty||0).toFixed(3))+'"'
       : 'min="1" step="1" value="'+String(it.qty)+'"';
+    const __isAr = document.documentElement.lang === 'ar';
     const selectedEmp = it.employee_id ? __allEmployees.find(e => String(e.id) === String(it.employee_id)) : null;
-    const empTitle = selectedEmp ? escapeHtml(selectedEmp.name) : 'اختر الموظف';
+    const empTitle = selectedEmp ? escapeHtml(selectedEmp.name) : (__isAr ? 'اختر الموظف' : 'Select employee');
     tr.innerHTML = `
       <td>
         <div style="display:block; margin-bottom:3px;">
           <span class="p-name" title="${escapeHtml(it.name)}" style="display:block; white-space:normal; word-break:break-word; overflow-wrap:anywhere; color:#0b3daa; font-weight:700; font-size:12px; line-height:1.25;">${nameHtml}${it.name_en ? `<div style='font-size:11px; color:#64748b; font-weight:500; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;'>${escapeHtml(it.name_en)}</div>`:''}</span>
         </div>
         ${settings.show_employee_selector ? `<div style="display:block; margin-top:3px;"><select data-idx="${idx}" class="employee-select" title="${empTitle}" ${__isProcessingOld?'disabled':''}>
-          <option value="">اختر</option>
+          <option value="">${__isAr ? 'اختر' : 'Select'}</option>
           ${__allEmployees.map(emp => `<option value="${emp.id}" ${String(it.employee_id)===String(emp.id)?'selected':''}>${escapeHtml(emp.name)}</option>`).join('')}
         </select></div>` : ''}
       </td>
@@ -2167,23 +2169,23 @@ function renderCart(){
       </td>
       <td class="td-price">
         ${settings.op_price_manual
-          ? `<input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"السعر\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}/>`
+          ? `<input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"${__isAr ? 'السعر' : 'Price'}\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}/>`
           : `<span class=\"price-val\">${Number(it.price||0).toFixed(2)}</span>`}
       </td>
       <td class="td-qty">
         <div class="qty-wrap" style="display:flex; gap:3px; align-items:center;">
-          <button class="btn qty-btn" data-act="dec" data-idx="${idx}" aria-label="نقصان" ${__isProcessingOld?'disabled':''}>−</button>
-          <input data-idx="${idx}" class="qty" type="text" inputmode="decimal" lang="en" ${__qtyAttrs} style="width:${String((__isWM || hasDecimalQty) ? Number(it.qty||0).toFixed(3) : String(it.qty)).length}ch; min-width:3ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:center; border:2px solid #cbd5e1; border-radius:4px; font-weight:700; font-size:12px; background:linear-gradient(to bottom,#f8fafc,#f1f5fb);" oninput="this.style.width = Math.max(3, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>
-          <button class="btn qty-btn" data-act="inc" data-idx="${idx}" aria-label="زيادة" ${__isProcessingOld?'disabled':''}>+</button>
+          <button class="btn qty-btn" data-act="dec" data-idx="${idx}" aria-label="${__isAr ? 'نقصان' : 'Decrease'}" ${__isProcessingOld?'disabled':''}>−</button>
+          <input data-idx="${idx}" class="qty" type="text" inputmode="decimal" lang="en" ${__qtyAttrs.replace('placeholder="الكمية"', `placeholder="${__isAr ? 'الكمية' : 'Qty'}"`) } style="width:${String((__isWM || hasDecimalQty) ? Number(it.qty||0).toFixed(3) : String(it.qty)).length}ch; min-width:3ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:center; border:2px solid #cbd5e1; border-radius:4px; font-weight:700; font-size:12px; background:linear-gradient(to bottom,#f8fafc,#f1f5fb);" oninput="this.style.width = Math.max(3, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>
+          <button class="btn qty-btn" data-act="inc" data-idx="${idx}" aria-label="${__isAr ? 'زيادة' : 'Increase'}" ${__isProcessingOld?'disabled':''}>+</button>
         </div>
       </td>
       <td class="td-total">
         ${__isWM
-          ? `<input data-idx="${idx}" class="amount-paid" type="text" inputmode="decimal" lang="en" min="0" step="0.01" style="width:${String((isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00')).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:left; border:2px solid #10b981; border-radius:4px; font-weight:700; font-size:12px; color:#059669; background:linear-gradient(to bottom,#ecfdf5,#e0fdf4);" placeholder="الإجمالي" value="${isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00'}" oninput="this.style.width = Math.max(4, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>`
+          ? `<input data-idx="${idx}" class="amount-paid" type="text" inputmode="decimal" lang="en" min="0" step="0.01" style="width:${String((isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00')).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; height:28px; padding:4px 4px; direction:ltr; text-align:left; border:2px solid #10b981; border-radius:4px; font-weight:700; font-size:12px; color:#059669; background:linear-gradient(to bottom,#ecfdf5,#e0fdf4);" placeholder="${__isAr ? 'الإجمالي' : 'Total'}" value="${isFinite(__amountVal) ? __amountVal.toFixed(2) : '0.00'}" oninput="this.style.width = Math.max(4, this.value.length) + 'ch';" ${__isProcessingOld?'disabled':''}/>`
           : `<span class="total-val" style="display:inline-block; min-width:0; width:${String((Number(it.price||0) * Number(it.qty||0)).toFixed(2)).length}ch;">${(Number(it.price||0) * Number(it.qty||0)).toFixed(2)}</span>`}
       </td>
       <td style="text-align:center">
-        ${__perms.includes('sales.remove_item') ? `<button class="btn danger" data-act="remove" data-idx="${idx}" style="min-width:44px; height:28px; padding:2px 4px; font-size:12px;" ${__isProcessingOld?'disabled':''}>حذف</button>` : ''}
+        ${__perms.includes('sales.remove_item') ? `<button class="btn danger" data-act="remove" data-idx="${idx}" style="min-width:44px; height:28px; padding:2px 4px; font-size:12px;" ${__isProcessingOld?'disabled':''}>${__isAr ? 'حذف' : 'Del'}</button>` : ''}
       </td>
     `;
     __cartFrag.appendChild(tr);
@@ -2194,7 +2196,7 @@ function renderCart(){
     td.colSpan = 6; // امتداد بعد إضافة عمود العملية
     const descVal = escapeHtml(it.description||'');
     td.innerHTML = `
-      <textarea data-idx="${idx}" class="desc" placeholder="وصف الصنف (اختياري)" rows="1"
+      <textarea data-idx="${idx}" class="desc" placeholder="${__isAr ? 'وصف الصنف (اختياري)' : 'Item description (optional)'}" rows="1"
         style="width:100%; font-size:12px; line-height:1.3; padding:4px 6px; min-height:32px; resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere;" ${__isProcessingOld?'disabled':''}>${descVal}</textarea>
     `;
     trDesc.appendChild(td);
@@ -5375,9 +5377,28 @@ async function openAddProductModal(barcode){
   const pickImageBtn = document.getElementById('apmPickImage');
   const removeImageBtn = document.getElementById('apmRemoveImage');
   const hideFromSalesCheckbox = document.getElementById('apmHideFromSales');
-  
+  const apmOpSelect = document.getElementById('apmOpSelect');
+  const apmOpPrice = document.getElementById('apmOpPrice');
+  const apmOpAdd = document.getElementById('apmOpAdd');
+  const apmOpList = document.getElementById('apmOpList');
+  const apmOpQuickAddBtn = document.getElementById('apmOpQuickAddBtn');
+
   let pickedImagePath = null;
-  
+  let apmProdOps = [];
+
+  function renderApmOpList(){
+    if(!apmOpList) return;
+    apmOpList.innerHTML = '';
+    apmProdOps.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:8px; align-items:center; padding:4px 0; border-bottom:1px solid #e2e8f0;';
+      row.innerHTML = `<div style="flex:1; font-weight:500;">${it.name}</div>
+        <div style="width:100px; text-align:left; color:#0f172a;">${Number(it.price).toFixed(2)}</div>
+        <button type="button" style="padding:4px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;" data-rmidx="${idx}">🗑️ حذف</button>`;
+      apmOpList.appendChild(row);
+    });
+  }
+
   if(!modal) return;
   
   // Reset form
@@ -5394,7 +5415,9 @@ async function openAddProductModal(barcode){
   if(thumbImg) thumbImg.src = '';
   if(hideFromSalesCheckbox) hideFromSalesCheckbox.checked = false;
   pickedImagePath = null;
-  
+  apmProdOps = [];
+  renderApmOpList();
+
   // Load categories
   try{
     const categoriesResult = await window.api.types_list();
@@ -5408,6 +5431,10 @@ async function openAddProductModal(barcode){
       });
     }
   }catch(_){}
+
+  // Populate operations from global cache (refreshed on page load and after adding a new op)
+  await __apmLoadGlobalOps();
+  __apmPopulateOpSelect(apmOpSelect, null);
   
   // Show modal
   modal.style.display = 'flex';
@@ -5443,7 +5470,48 @@ async function openAddProductModal(barcode){
       if(thumbImg) thumbImg.src = '';
     };
   }
-  
+
+  // Handle operation add
+  if(apmOpAdd){
+    apmOpAdd.onclick = () => {
+      const opId = Number(apmOpSelect ? apmOpSelect.value : 0);
+      const op = __apmGlobalAllOps.find(o => o.id === opId);
+      const price = Number(apmOpPrice ? apmOpPrice.value || 0 : 0);
+      if(!opId || !op || isNaN(price) || price < 0) return;
+      const existing = apmProdOps.find(x => x.operation_id === opId);
+      if(existing){ existing.price = price; }
+      else { apmProdOps.push({ operation_id: opId, name: op.name, price }); }
+      if(apmOpPrice) apmOpPrice.value = '';
+      if(apmOpSelect) apmOpSelect.value = '';
+      renderApmOpList();
+    };
+  }
+
+  // Handle operation list actions (delete)
+  if(apmOpList){
+    apmOpList.onclick = (e) => {
+      const btn = e.target.closest('button[data-rmidx]');
+      if(!btn) return;
+      const idx = Number(btn.dataset.rmidx);
+      apmProdOps.splice(idx, 1);
+      renderApmOpList();
+    };
+  }
+
+  // Handle quick add operation (➕ button) - open same styled dialog as products page
+  if(apmOpQuickAddBtn){
+    apmOpQuickAddBtn.onclick = () => {
+      if(!apmOperationDlg) return;
+      if(apmOperationNameInput) apmOperationNameInput.value = '';
+      __apmShowOperationError('');
+      __apmOpDialogCallback = (newId) => {
+        __apmPopulateOpSelect(apmOpSelect, newId);
+      };
+      apmOperationDlg.showModal();
+      setTimeout(() => { if(apmOperationNameInput) apmOperationNameInput.focus(); }, 100);
+    };
+  }
+
   // Handle close
   const handleClose = () => {
     modal.style.display = 'none';
@@ -5507,13 +5575,23 @@ async function openAddProductModal(barcode){
         showErrorNotification('❌ فشل حفظ المنتج: ' + (result?.error || 'خطأ غير معروف'));
         return;
       }
+
+      // Save product operations
+      try{
+        if(result.id && apmProdOps.length){
+          const opItems = apmProdOps.map(x => ({ operation_id: x.operation_id, price: Number(x.price || 0) }));
+          await window.api.prod_ops_set(result.id, opItems);
+        }
+      }catch(_){}
       
       // Success
       showSuccessNotification('✓ تم إضافة المنتج بنجاح');
       modal.style.display = 'none';
       
-      // Reload catalog to show new product
+      // Reload catalog to show new product (reset state to force full reload)
       try{
+        loadCatalog.__state = null;
+        if(loadCatalog.__productsCache) loadCatalog.__productsCache.clear();
         await loadCatalog();
       }catch(_){}
       
@@ -5542,6 +5620,97 @@ const btnQuickAddProduct = document.getElementById('btnQuickAddProduct');
 if(btnQuickAddProduct){
   btnQuickAddProduct.addEventListener('click', async () => {
     await openAddProductModal('');
+  });
+}
+
+// ============================================================
+// Global operations cache + Dialog (للعمليات في مودال إضافة المنتج)
+// ============================================================
+let __apmGlobalAllOps = [];
+
+async function __apmLoadGlobalOps(){
+  try{
+    const r = await window.api.ops_list();
+    __apmGlobalAllOps = (r && r.ok) ? (r.items || []).filter(o => Number(o.is_active) !== 0) : [];
+  }catch(e){ __apmGlobalAllOps = []; }
+}
+
+function __apmPopulateOpSelect(selectEl, selectValueId){
+  if(!selectEl) return;
+  selectEl.innerHTML = '<option value="">اختر عملية</option>';
+  __apmGlobalAllOps.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = String(o.id);
+    opt.textContent = o.name;
+    selectEl.appendChild(opt);
+  });
+  if(selectValueId) selectEl.value = String(selectValueId);
+}
+
+// تحميل العمليات عند تحميل الصفحة
+__apmLoadGlobalOps();
+
+// ---- Dialog elements ----
+const apmOperationDlg        = document.getElementById('apmOperationDlg');
+const apmOperationNameInput  = document.getElementById('apmOperationNameInput');
+const apmOperationSaveBtn    = document.getElementById('apmOperationSaveBtn');
+const apmOperationCancelBtn  = document.getElementById('apmOperationCancelBtn');
+const apmOperationDlgError   = document.getElementById('apmOperationDlgError');
+
+let __apmOpDialogCallback = null;
+
+function __apmShowOperationError(msg){
+  if(!apmOperationDlgError) return;
+  apmOperationDlgError.textContent = msg;
+  apmOperationDlgError.style.display = msg ? 'block' : 'none';
+}
+
+if(apmOperationCancelBtn){
+  apmOperationCancelBtn.addEventListener('click', () => {
+    if(apmOperationDlg) apmOperationDlg.close();
+    __apmShowOperationError('');
+    __apmOpDialogCallback = null;
+  });
+}
+
+if(apmOperationSaveBtn){
+  apmOperationSaveBtn.addEventListener('click', async () => {
+    const name = (apmOperationNameInput ? apmOperationNameInput.value : '').trim();
+    if(!name){
+      __apmShowOperationError('يرجى إدخال اسم العملية');
+      if(apmOperationNameInput) apmOperationNameInput.focus();
+      return;
+    }
+    __apmShowOperationError('');
+    apmOperationSaveBtn.disabled = true;
+    apmOperationSaveBtn.textContent = 'جاري الحفظ...';
+    try{
+      const res = await window.api.ops_add({ name });
+      if(!res || !res.ok){
+        __apmShowOperationError(res?.error || 'فشل الحفظ');
+        return;
+      }
+      apmOperationDlg.close();
+      if(apmOperationNameInput) apmOperationNameInput.value = '';
+      __apmShowOperationError('');
+      await __apmLoadGlobalOps();
+      if(typeof __apmOpDialogCallback === 'function'){
+        await __apmOpDialogCallback(res.id);
+        __apmOpDialogCallback = null;
+      }
+    }catch(e){
+      __apmShowOperationError('حدث خطأ أثناء الحفظ');
+    }finally{
+      apmOperationSaveBtn.disabled = false;
+      apmOperationSaveBtn.textContent = '✓ حفظ';
+    }
+  });
+}
+
+if(apmOperationDlg){
+  apmOperationDlg.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); apmOperationSaveBtn && apmOperationSaveBtn.click(); }
+    if(e.key === 'Escape'){ apmOperationDlg.close(); __apmOpDialogCallback = null; }
   });
 }
 
