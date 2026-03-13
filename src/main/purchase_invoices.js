@@ -317,7 +317,7 @@ function registerPurchaseInvoicesIPC(){
         if(!validation.ok) return { ok:false, error: validation.error };
         await conn.beginTransaction();
         const invNo = await nextInvoiceNo(conn);
-        const discountGeneralUi = (String(p.price_mode||'exclusive')==='inclusive') ? Number((Number(p.discount_general||0) * (1 + (Number(p.vat_percent||0)/100))).toFixed(2)) : Number(p.discount_general||0);
+        const discountGeneralUi = Number(p.discount_general||0);
         const [res] = await conn.query(
           `INSERT INTO purchase_invoices (invoice_no, invoice_at, supplier_id, payment_method, price_mode, reference_no, notes, sub_total, discount_general, discount_general_ui, vat_percent, vat_total, grand_total, amount_paid, amount_due)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
@@ -426,7 +426,7 @@ function registerPurchaseInvoicesIPC(){
         // Replace details
         await conn.query('DELETE FROM purchase_invoice_details WHERE purchase_id=?', [id]);
         // Update header (keep invoice_no)
-        const discountGeneralUi = (String(p.price_mode||'exclusive')==='inclusive') ? Number((Number(p.discount_general||0) * (1 + (Number(p.vat_percent||0)/100))).toFixed(2)) : Number(p.discount_general||0);
+        const discountGeneralUi = Number(p.discount_general||0);
         await conn.query(
           `UPDATE purchase_invoices SET invoice_at=?, supplier_id=?, payment_method=?, price_mode=?, reference_no=?, notes=?, sub_total=?, discount_general=?, discount_general_ui=?, vat_percent=?, vat_total=?, grand_total=?, amount_paid=?, amount_due=? WHERE id=?`,
           [atStr, supplierId, header.method, String(p.price_mode||'exclusive'), referenceNo, notes, header.sub, header.discountGeneral, discountGeneralUi, header.vatPercent, header.vatTotal, header.grand, header.amountPaid, header.amountDue, id]

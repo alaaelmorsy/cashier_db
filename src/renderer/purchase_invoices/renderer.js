@@ -521,15 +521,12 @@ function computeTotals(){
   // Keep discount value exclusive of VAT. If loaded from DB, use the stored exclusive to avoid any change on screen recalc.
   let discountExclusive = Number(currentTotalsState.discountGeneralExclusive||0);
   const currentInputDiscount = Math.max(0, Number(discGenEl.value||0));
-  const dbExclusiveHint = Number(discGenEl.dataset?.exclusive || '');
+  const exclusiveAttr = discGenEl.dataset?.exclusive;
+  const dbExclusiveHint = (exclusiveAttr !== undefined && exclusiveAttr !== '') ? Number(exclusiveAttr) : NaN;
   if(!Number.isNaN(dbExclusiveHint) && dbExclusiveHint>=0){
     discountExclusive = dbExclusiveHint; // trust stored value
-  } else if(priceMode === 'zero_vat'){
-    discountExclusive = currentInputDiscount;
   } else {
-    const divisor = 1 + (vatPct/100);
-    const safeDivisor = divisor > 0 ? divisor : 1;
-    discountExclusive = Number((currentInputDiscount / safeDivisor).toFixed(2));
+    discountExclusive = currentInputDiscount; // treat discount input as exclusive (pre-tax) always
   }
   currentTotalsState.discountGeneralExclusive = discountExclusive;
 
@@ -666,7 +663,8 @@ prodSearch?.addEventListener('keydown', async (e)=>{
 });
 
 function recalcOnChange(){ computeTotals(); }
-[discGenEl, vatPctEl, methodSel, priceModeSel].forEach(el => el?.addEventListener('input', recalcOnChange));
+discGenEl?.addEventListener('input', () => { delete discGenEl.dataset.exclusive; computeTotals(); });
+[vatPctEl, methodSel, priceModeSel].forEach(el => el?.addEventListener('input', recalcOnChange));
 
 // Handle zero_vat mode: set VAT to 0 and make field read-only
 priceModeSel?.addEventListener('change', () => {
@@ -690,7 +688,7 @@ vatPctEl?.addEventListener('input', () => {
   computeTotals();
 });
 
-function clearForm(){ editingId=null; originalPaymentMethod=null; btnSave.textContent='💾 حفظ الفاتورة'; invNo.value=''; setNow(); supplierSel.value=''; methodSel.value='cash'; refNo.value=''; notes.value=''; discGenEl.value='0'; currentTotalsState.discountGeneralExclusive = 0; priceModeSel.value='inclusive'; vatPctEl.value='15'; vatPctEl.readOnly=false; vatPctEl.style.backgroundColor=''; lines = []; renderLines(); setError(''); hideSuggestions(); }
+function clearForm(){ editingId=null; originalPaymentMethod=null; btnSave.textContent='💾 حفظ الفاتورة'; invNo.value=''; setNow(); supplierSel.value=''; methodSel.value='cash'; refNo.value=''; notes.value=''; discGenEl.value='0'; delete discGenEl.dataset.exclusive; currentTotalsState.discountGeneralExclusive = 0; priceModeSel.value='inclusive'; vatPctEl.value='15'; vatPctEl.readOnly=false; vatPctEl.style.backgroundColor=''; lines = []; renderLines(); setError(''); hideSuggestions(); }
 
 btnNew?.addEventListener('click', clearForm);
 
@@ -815,15 +813,10 @@ async function fillFormFromInvoice(it, details){
   const vatPct = priceMode === 'zero_vat' ? 0 : (it.vat_percent != null ? Number(it.vat_percent) : 15);
   const divisor = priceMode === 'inclusive' ? (1 + (vatPct/100)) : 1;
   const safeDivisor = divisor > 0 ? divisor : 1;
-  // Stored discount_general is exclusive. Display it inclusive in UI if needed, but keep exclusive in state
+  // discount_general is always exclusive (pre-tax). Display as-is.
   const discountExclusiveStored = Number(it.discount_general||0);
-  const discountUiStored = (it.discount_general_ui!=null) ? Number(it.discount_general_ui) : null;
-  const discountUiInput = (discountUiStored!=null && !Number.isNaN(discountUiStored) && discountUiStored>0)
-    ? discountUiStored
-    : (priceMode === 'inclusive' ? Number((discountExclusiveStored * safeDivisor).toFixed(2)) : discountExclusiveStored);
-  discGenEl.value = Number(discountUiInput||0).toFixed(2);
-  // Preserve the exact stored exclusive discount to avoid re-conversion drift on loaded inclusive invoices
-  discGenEl.dataset.exclusive = Number(discountExclusiveStored||0).toFixed(2);
+  discGenEl.value = discountExclusiveStored.toFixed(2);
+  discGenEl.dataset.exclusive = discountExclusiveStored.toFixed(2);
   currentTotalsState.discountGeneralExclusive = discountExclusiveStored;
   lines = (details||[]).map(x=>({
     product_id: x.product_id,

@@ -296,8 +296,9 @@
       <table class="totals">
         <tbody>
           <tr><td>الإجمالي قبل الضريبة</td><td id="sub" style="text-align:left"></td></tr>
-          <tr id="discRow" style="display:none"><td>الخصم العام (غير شامل)</td><td id="disc" style="text-align:left"></td></tr>
-          <tr><td>قيمة الضريبة</td><td id="vat" style="text-align:left"></td></tr>
+          <tr id="discRow" style="display:none"><td>خصم نقدي</td><td id="disc" style="text-align:left"></td></tr>
+          <tr id="netAfterDiscRow" style="display:none"><td>الإجمالي بعد الخصم (قبل الضريبة)</td><td id="netAfterDisc" style="text-align:left"></td></tr>
+          <tr><td>ضريبة VAT</td><td id="vat" style="text-align:left"></td></tr>
           <tr><td><b>الإجمالي شامل الضريبة</b></td><td id="grand" style="text-align:left"></td></tr>
           <tr id="paidRow"><td>مدفوع</td><td id="paid" style="text-align:left"></td></tr>
           <tr id="dueRow"><td>متبقي</td><td id="due" style="text-align:left"></td></tr>
@@ -513,18 +514,17 @@
           }
 
           // Totals
-          // الصافي (غير شامل) = الإجمالي بدون الضريبة = sub_total (already after discount in DB)
-          const subExclusive = Number(it.sub_total||0);
+          // sub_total in DB is already net after discount (exclusive)
+          const netExclusive = Number(it.sub_total||0);
           const discExclusive = Number(it.discount_general||0);
-          // Note: sub_total in DB is already net after discount, so we use it directly
-          const netExclusive = subExclusive;
-          
+          // gross before discount = net + discount
+          const grossExclusive = Number((netExclusive + discExclusive).toFixed(2));
+
           // For zero_vat mode: recalculate totals with 0% VAT regardless of stored values
           let vatTotal, grandInclusive, paidVal, dueVal;
           if(priceMode === 'zero_vat'){
             vatTotal = 0;
             grandInclusive = netExclusive;
-            // Recalculate paid and due based on payment method
             const paymentMethod = String(it.payment_method||'').toLowerCase();
             const isCredit = (paymentMethod === 'credit' || paymentMethod === 'آجل');
             paidVal = isCredit ? 0 : grandInclusive;
@@ -535,12 +535,13 @@
             paidVal = Number(it.amount_paid||0);
             dueVal = (it.amount_due!=null) ? Number(it.amount_due) : Number((grandInclusive - paidVal).toFixed(2));
           }
-          
-          document.getElementById('sub').textContent = netExclusive.toFixed(2) + ' \ue900';
-          // إظهار صف الخصم فقط إذا كان هناك خصم
+
+          document.getElementById('sub').textContent = grossExclusive.toFixed(2) + ' \ue900';
           if(discExclusive > 0){
             document.getElementById('discRow').style.display='';
             document.getElementById('disc').textContent = discExclusive.toFixed(2) + ' \ue900';
+            document.getElementById('netAfterDiscRow').style.display='';
+            document.getElementById('netAfterDisc').textContent = netExclusive.toFixed(2) + ' \ue900';
           }
           document.getElementById('vat').textContent = vatTotal.toFixed(2) + ' \ue900';
           document.getElementById('grand').textContent = grandInclusive.toFixed(2) + ' \ue900';
