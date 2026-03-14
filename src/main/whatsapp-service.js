@@ -1,35 +1,54 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { execSync } = require('child_process');
 
-let wppconnect;
+// Switch implementation from WPPConnect (Puppeteer/Chrome) to Baileys (WA Web protocol)
+// Baileys is ESM-only in recent versions, while this project is CommonJS.
+// So we must load it via dynamic import().
+let baileys;
+async function loadBaileys() {
+  if (baileys) return baileys;
+  try {
+    // eslint-disable-next-line no-return-await
+    baileys = await import('@whiskeysockets/baileys');
+    return baileys;
+  } catch (err) {
+    console.error('Baileys module not installed:', err.message);
+    return null;
+  }
+}
+
+let qrcode;
 try {
-  wppconnect = require('@wppconnect-team/wppconnect');
+  qrcode = require('qrcode');
 } catch (err) {
-  console.error('WhatsApp module not installed:', err.message);
+  console.error('qrcode module not installed:', err.message);
 }
 
 class WhatsAppService {
   constructor() {
-    this.client = null;
+    this.client = null;              // Baileys sock
     this.isConnected = false;
-    this.qrCode = null;
-    this.sessionDir = null;
+    this.qrCode = null;              // dataURL (base64) for UI compatibility
+    this.qrString = null;            // raw QR string from Baileys
+    this.sessionDir = null;          // base dir in userData
+    this.authDir = null;             // baileys auth state dir
+    this.isInitializing = false;
+    this._saveCreds = null;
+
+    // Reconnect management
+    this._reconnectAttempts = 0;
+    this._reconnectTimer = null;
   }
 
   async hasValidSession() {
+    // Baileys uses multi-file auth state. If credentials exist, we consider session valid.
     try {
-      if (!this.sessionDir) {
-        this.sessionDir = path.join(app.getPath('userData'), 'whatsapp-tokens');
-      }
-      
-      const sessionPath = path.join(this.sessionDir, 'pos-session');
-      
+      this.ensureSessionDirs();
+
       try {
-        await fs.access(sessionPath);
-        const files = await fs.readdir(sessionPath);
-        return files.length > 0;
+        await fs.access(path.join(this.authDir, 'creds.json'));
+        return true;
       } catch (_) {
         return false;
       }
@@ -39,118 +58,183 @@ class WhatsAppService {
     }
   }
 
-  async killAllChrome() {
-    try {
-      execSync('taskkill /F /IM chrome.exe', { 
-        stdio: 'ignore', 
-        windowsHide: true 
-      });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (_) { }
+  ensureSessionDirs() {
+    if (!this.sessionDir) {
+      // Keep old folder name to avoid confusion for support, but auth will be stored in a new subdir.
+      this.sessionDir = path.join(app.getPath('userData'), 'whatsapp-tokens');
+    }
+    if (!this.authDir) {
+      this.authDir = path.join(this.sessionDir, 'baileys-pos-session');
+    }
   }
 
+  // WPPConnect-specific helpers (Chrome/Puppeteer) are no longer needed.
+  async killOrphanedChrome() { return; }
+  async cleanSessionDirectory() { return; }
+
   async initialize() {
-    if (!wppconnect) {
-      return { success: false, error: 'WhatsApp module not installed. Run: npm install @wppconnect-team/wppconnect' };
+    const b = await loadBaileys();
+    if (!b) {
+      return { success: false, error: 'WhatsApp module not installed. Run: npm install @whiskeysockets/baileys' };
+    }
+    if (!qrcode) {
+      return { success: false, error: 'QR module not installed. Run: npm install qrcode' };
     }
 
+    // Prevent concurrent initialization attempts
+    if (this.isInitializing) {
+      console.log('WhatsApp initialization already in progress, waiting...');
+      // Wait for existing initialization to complete
+      let attempts = 0;
+      while (this.isInitializing && attempts < 30) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
+      if (this.isInitializing) {
+        return { success: false, error: 'Another initialization is still in progress' };
+      }
+      // If we have a client now, return success
+      if (this.client) {
+        return { success: true, connected: this.isConnected };
+      }
+    }
+
+    this.isInitializing = true;
+
     try {
+      // Reset
+      this.qrCode = null;
+      this.qrString = null;
+
       if (this.client) {
         await this.disconnect();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      await this.killAllChrome();
-      
-      this.client = null;
-      this.isConnected = false;
-      this.qrCode = null;
-      
-      if (!this.sessionDir) {
-        this.sessionDir = path.join(app.getPath('userData'), 'whatsapp-tokens');
-      }
-      
-      await fs.mkdir(this.sessionDir, { recursive: true });
-
-      const chromePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env.PROGRAMFILES || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google\\Chrome\\Application\\chrome.exe')
-      ];
-
-      let chromePath = null;
-      for (const p of chromePaths) {
-        try {
-          await fs.access(p);
-          chromePath = p;
-          break;
-        } catch (_) { }
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      const createOptions = {
-        session: 'pos-session',
-        catchQR: (base64Qr, asciiQR, attempts, urlCode) => {
-          this.qrCode = base64Qr;
-        },
-        statusFind: (statusSession, session) => {
-          this.isConnected = statusSession === 'isLogged' || 
-                             statusSession === 'qrReadSuccess' || 
-                             statusSession === 'inChat';
-        },
-        folderNameToken: this.sessionDir,
-        headless: true,
-        devtools: false,
-        useChrome: true,
-        debug: false,
-        logQR: false,
-        autoClose: 0,
-        userDataDir: this.sessionDir,
-        browserArgs: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--disable-blink-features=AutomationControlled'
-        ],
-        disableWelcome: true,
-        updatesLog: false
-      };
+      this.ensureSessionDirs();
+      await fs.mkdir(this.authDir, { recursive: true });
 
-      if (chromePath) {
-        createOptions.browserArgs.push(`--user-data-dir=${this.sessionDir}`);
+      // Baileys is ESM. Depending on version, exports may be available on:
+      // - module.default (common in ESM interop)
+      // - module itself
+      const baileysMod = b?.default || b;
+
+      const {
+        makeWASocket,
+        useMultiFileAuthState,
+        DisconnectReason,
+        fetchLatestBaileysVersion
+      } = baileysMod;
+
+      const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
+      this._saveCreds = saveCreds;
+
+      const { version } = await fetchLatestBaileysVersion();
+
+      if (typeof makeWASocket !== 'function') {
+        throw new Error('Baileys load error: makeWASocket is not a function (invalid module export shape)');
       }
 
-      this.client = await wppconnect.create(createOptions);
-
-      this.client.onStateChange((state) => {
-        this.isConnected = state === 'CONNECTED';
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: false,
+        generateHighQualityLinkPreview: false,
+        syncFullHistory: false
       });
 
+      this.client = sock;
+
+      sock.ev.on('creds.update', async () => {
+        try { await saveCreds(); } catch (e) { console.warn('Failed saving creds:', e.message); }
+      });
+
+      sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          this.qrString = qr;
+          try {
+            // Keep same behavior as before: UI expects base64/dataURL
+            this.qrCode = await qrcode.toDataURL(qr);
+          } catch (e) {
+            console.warn('Failed to encode QR:', e.message);
+            this.qrCode = null;
+          }
+        }
+
+        if (connection === 'open') {
+          this.isConnected = true;
+          this.qrCode = null;
+          this.qrString = null;
+
+          this._reconnectAttempts = 0;
+          if (this._reconnectTimer) {
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
+          }
+        }
+
+        if (connection === 'close') {
+          this.isConnected = false;
+
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+          if (!shouldReconnect) {
+            // logged out: clear auth
+            this._reconnectAttempts = 0;
+            if (this._reconnectTimer) {
+              clearTimeout(this._reconnectTimer);
+              this._reconnectTimer = null;
+            }
+            try {
+              await fs.rm(this.authDir, { recursive: true, force: true });
+              await fs.mkdir(this.authDir, { recursive: true });
+            } catch (_) { }
+            return;
+          }
+
+          // If connection closed for transient reasons (e.g. stream error 515), schedule reconnect.
+          if (!this.isInitializing) {
+            const attempt = Math.min(10, this._reconnectAttempts + 1);
+            this._reconnectAttempts = attempt;
+            const delayMs = Math.min(60000, 2000 * Math.pow(2, attempt - 1)); // 2s,4s,8s.. up to 60s
+
+            if (this._reconnectTimer) {
+              clearTimeout(this._reconnectTimer);
+            }
+
+            console.warn(`WhatsApp disconnected (statusCode=${statusCode}). Reconnecting in ${delayMs}ms (attempt ${attempt})...`);
+            this._reconnectTimer = setTimeout(() => {
+              // Fire and forget
+              this.initialize().catch(e => console.warn('Reconnect initialize failed:', e.message));
+            }, delayMs);
+          }
+        }
+      });
+
+      this.isInitializing = false;
       return { success: true, connected: this.isConnected };
     } catch (error) {
+      this.isInitializing = false;
       console.error('WhatsApp initialization error:', error);
       return { success: false, error: error.message || 'Failed to initialize WhatsApp' };
     }
   }
 
   formatPhoneNumber(phone) {
-    let cleaned = String(phone || '').replace(/[^\d+]/g, '');
-    
+    // Baileys expects JID like: 9665xxxxxxxx@s.whatsapp.net
+    let cleaned = String(phone || '').replace(/[^\d]/g, '');
+
     if (/^05\d{8}$/.test(cleaned)) {
       cleaned = '966' + cleaned.slice(1);
     }
-    
-    if (!cleaned.includes('@')) {
-      cleaned = cleaned + '@c.us';
-    }
-    
-    return cleaned;
+
+    if (!cleaned) return '';
+
+    // NOTE: groups end with @g.us, but we only support individuals here.
+    return cleaned + '@s.whatsapp.net';
   }
 
   async sendFile(phone, filePath, filename, caption = '') {
@@ -182,12 +266,14 @@ class WhatsAppService {
         return { success: false, error: 'File not found: ' + filePath };
       }
 
-      const result = await this.client.sendFile(
-        formattedPhone,
-        filePath,
-        filename,
-        caption
-      );
+      const buffer = await fs.readFile(filePath);
+
+      const result = await this.client.sendMessage(formattedPhone, {
+        document: buffer,
+        fileName: filename,
+        mimetype: 'application/pdf',
+        caption: caption || undefined
+      });
 
       await this.incrementMessagesSent();
 
@@ -216,7 +302,7 @@ class WhatsAppService {
       }
 
       const formattedPhone = this.formatPhoneNumber(phone);
-      const result = await this.client.sendText(formattedPhone, message);
+      const result = await this.client.sendMessage(formattedPhone, { text: message });
       
       await this.incrementMessagesSent();
       
@@ -236,42 +322,31 @@ class WhatsAppService {
       this.isConnected = false;
       return { connected: false };
     }
-    
-    try {
-      const state = await this.client.getConnectionState();
-      const isConnected = state === 'CONNECTED';
-      this.isConnected = isConnected;
-      return { connected: isConnected, state };
-    } catch (error) {
-      console.warn('Failed to get connection state:', error.message);
-      this.isConnected = false;
-      return { connected: false, error: error.message };
-    }
+
+    // Baileys doesn't expose getConnectionState like WPPConnect.
+    return { connected: !!this.isConnected };
   }
 
   async disconnect() {
     try {
+      if (this._reconnectTimer) {
+        clearTimeout(this._reconnectTimer);
+        this._reconnectTimer = null;
+      }
+      this._reconnectAttempts = 0;
+
       if (this.client) {
         try {
-          await this.client.close();
-        } catch (e) {
-          console.warn('Close call failed:', e.message);
-        }
-        
-        try {
-          const browser = await this.client.pupBrowser;
-          if (browser && browser.process()) {
-            browser.process().kill('SIGKILL');
-          }
+          // End socket
+          this.client.end?.();
         } catch (_) { }
-        
+
         this.client = null;
         this.isConnected = false;
         this.qrCode = null;
+        this.qrString = null;
       }
-      
-      await this.killAllChrome();
-      
+
       return { success: true };
     } catch (error) {
       console.error('WhatsApp disconnect error:', error);
@@ -281,41 +356,18 @@ class WhatsAppService {
 
   async logout() {
     try {
-      if (this.client) {
-        try {
-          await this.client.logout();
-        } catch (e) {
-          console.warn('Logout call failed:', e.message);
-        }
-        
-        try {
-          await this.client.close();
-        } catch (e) {
-          console.warn('Close call failed:', e.message);
-        }
-        
-        try {
-          const browser = await this.client.pupBrowser;
-          if (browser && browser.process()) {
-            browser.process().kill('SIGKILL');
-          }
-        } catch (_) { }
-      }
-      
-      this.client = null;
-      this.isConnected = false;
-      this.qrCode = null;
-      
-      await this.killAllChrome();
-      
+      // For Baileys, "logout" means: end current socket + delete auth state so next init requires QR.
+      await this.disconnect();
+
+      this.ensureSessionDirs();
       try {
-        await fs.rm(this.sessionDir, { recursive: true, force: true });
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await fs.mkdir(this.sessionDir, { recursive: true });
+        await fs.rm(this.authDir, { recursive: true, force: true });
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await fs.mkdir(this.authDir, { recursive: true });
       } catch (e) {
-        console.warn('Failed to clean session directory:', e.message);
+        console.warn('Failed to clean auth directory:', e.message);
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error('WhatsApp logout error:', error);

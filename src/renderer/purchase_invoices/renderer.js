@@ -483,7 +483,7 @@ function computeLineTotals(ln, vatPercent, priceMode){
   const qty = Math.max(0, Number(ln.qty||0));
   const unitInput = Math.max(0, Number(ln.unit_cost||0));
   const discInput = 0; // No per-line discount
-  // For zero_vat mode, treat as exclusive but vatPercent is 0
+  // For zero_vat and exclusive modes, treat unit price as already exclusive (no division)
   const divisor = priceMode === 'inclusive' ? (1 + (vatPercent/100)) : 1;
   const safeDivisor = divisor > 0 ? divisor : 1;
   const unitExclusive = priceMode === 'inclusive' ? (unitInput / safeDivisor) : unitInput;
@@ -680,7 +680,8 @@ priceModeSel?.addEventListener('change', () => {
       vatPctEl.value = '15';
     }
   }
-  computeTotals();
+  // Re-render lines to update all per-line totals with new mode
+  renderLines();
 });
 
 // Recalculate totals when VAT percentage changes
@@ -811,6 +812,8 @@ async function fillFormFromInvoice(it, details){
     vatPctEl.style.backgroundColor = '';
   }
   const vatPct = priceMode === 'zero_vat' ? 0 : (it.vat_percent != null ? Number(it.vat_percent) : 15);
+  // For inclusive mode: stored exclusive values need to be multiplied back to inclusive for UI display
+  // For exclusive/zero_vat modes: stored values are already what the user entered
   const divisor = priceMode === 'inclusive' ? (1 + (vatPct/100)) : 1;
   const safeDivisor = divisor > 0 ? divisor : 1;
   // discount_general is always exclusive (pre-tax). Display as-is.

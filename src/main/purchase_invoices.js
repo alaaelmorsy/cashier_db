@@ -332,8 +332,14 @@ function registerPurchaseInvoicesIPC(){
             `INSERT INTO purchase_invoice_details (purchase_id, product_id, description, qty, unit_cost, discount_line, line_total, ui_unit_cost, ui_line_total) VALUES (?,?,?,?,?,?,?,?,?)`,
             [purchaseId, ln.product_id, ln.description, ln.qty, ln.unit_cost, ln.discount_line, ln.line_total, uiUnit, uiLine]
           );
-          // Update stock and purchase cost in products table (use UI-entered price)
-          await conn.query(`UPDATE products SET stock = stock + ?, cost = ? WHERE id = ?`, [ln.qty, uiUnit, ln.product_id]);
+          // Product cost should always be stored inclusive of VAT.
+          // For exclusive mode: add VAT to the entered price (e.g., 5 → 5.75)
+          // For inclusive mode: uiUnit is already inclusive
+          // For zero_vat mode: no VAT to add
+          const costForProduct = (String(p.price_mode||'exclusive')==='exclusive')
+            ? Number((ln.unit_cost * (1 + (Number(p.vat_percent||0)/100))).toFixed(2))
+            : uiUnit;
+          await conn.query(`UPDATE products SET stock = stock + ?, cost = ? WHERE id = ?`, [ln.qty, costForProduct, ln.product_id]);
         }
         if(header.isCredit){
           await conn.query(`UPDATE suppliers SET balance = balance + ? WHERE id = ?`, [header.grand, supplierId]);
@@ -439,8 +445,11 @@ function registerPurchaseInvoicesIPC(){
             'INSERT INTO purchase_invoice_details (purchase_id, product_id, description, qty, unit_cost, discount_line, line_total, ui_unit_cost, ui_line_total) VALUES (?,?,?,?,?,?,?,?,?)',
             [id, ln.product_id, ln.description, ln.qty, ln.unit_cost, ln.discount_line, ln.line_total, uiUnit, uiLine]
           );
-          // Update stock and purchase cost in products table (use UI-entered price)
-          await conn.query('UPDATE products SET stock = stock + ?, cost = ? WHERE id=?', [ln.qty, uiUnit, ln.product_id]);
+          // Product cost should always be stored inclusive of VAT
+          const costForProduct = (String(p.price_mode||'exclusive')==='exclusive')
+            ? Number((ln.unit_cost * (1 + (Number(p.vat_percent||0)/100))).toFixed(2))
+            : uiUnit;
+          await conn.query('UPDATE products SET stock = stock + ?, cost = ? WHERE id=?', [ln.qty, costForProduct, ln.product_id]);
         }
         // Apply new supplier balance if credit
         if(header.isCredit){

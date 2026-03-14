@@ -1318,7 +1318,7 @@
                   }catch(_){ }
                   const html = '<!doctype html>' + root.outerHTML;
                   const fname = `invoice-${sale.invoice_no}.pdf`;
-                  const r = await window.opener?.api?.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
+                  const r = await api.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
                   if(!r || !r.ok){ alert('تعذر إنشاء PDF للفاتورة'); }
                 }catch(e){ alert('فشل التصدير إلى PDF'); }
               });

@@ -918,9 +918,12 @@ async function createMainWindow() {
       await shell.openPath(filePath);
       return { ok:true, path: filePath };
     }catch(e){ 
-      console.error('pdf:export error:', e && e.message ? e.message : e); 
+      console.error('pdf:export error:', e); 
       if(tmpWin) try{ tmpWin.destroy(); }catch(_){ }
-      return { ok:false, error: 'تعذر إنشاء PDF: ' + (e && e.message ? e.message : 'خطأ غير محدد') }; 
+      // include stack/details to help debug issues like A4 export failures
+      const msg = e && e.message ? e.message : 'خطأ غير محدد';
+      const details = e && e.stack ? String(e.stack) : String(e || '');
+      return { ok:false, error: 'تعذر إنشاء PDF: ' + msg, details };
     }
   });
 

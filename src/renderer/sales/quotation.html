@@ -899,7 +899,7 @@
                   }catch(_){ }
                   const html = '<!doctype html>' + root.outerHTML;
                   const fname = `quotation-${refNum}.pdf`;
-                  const r = await window.opener?.api?.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
+                  const r = await api.pdf_export(html, { pageSize: 'A4', printBackground: true, saveMode: 'auto', filename: fname });
                   if(!r || !r.ok){ 
                     showWhatsAppToast('فشل التصدير', 'تعذر إنشاء PDF لعرض السعر', 'error'); 
                   } else {
