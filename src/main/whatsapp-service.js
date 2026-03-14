@@ -135,9 +135,19 @@ class WhatsAppService {
         throw new Error('Baileys load error: makeWASocket is not a function (invalid module export shape)');
       }
 
+      let logger;
+      try {
+        const pino = require('pino');
+        logger = pino({ level: 'silent' });
+      } catch (e) {
+        // Fallback if pino somehow isn't directly available
+        console.warn('Pino logger not found, using default');
+      }
+
       const sock = makeWASocket({
         version,
         auth: state,
+        logger, // Pass custom silent logger
         printQRInTerminal: false,
         generateHighQualityLinkPreview: false,
         syncFullHistory: false
