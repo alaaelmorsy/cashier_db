@@ -9,6 +9,8 @@ let __timer = null;
 let __lastConfigKey = '';
 let __timerBackup = null;
 let __timerBackupLocal = null;
+let __unsentInvoicesInterval = null;
+let __unsentInvoicesTimeout = null;
 
 async function readSettings(conn){
   const [[s]] = await conn.query('SELECT * FROM app_settings WHERE id=1');
@@ -214,6 +216,15 @@ function registerDailyEmailScheduler(){
   });
 }
 
+function stopDailyEmailScheduler(){
+  try { if (__timer) clearTimeout(__timer); } catch (_) {}
+  try { if (__timerBackup) clearTimeout(__timerBackup); } catch (_) {}
+  try { if (__timerBackupLocal) clearTimeout(__timerBackupLocal); } catch (_) {}
+  __timer = null;
+  __timerBackup = null;
+  __timerBackupLocal = null;
+}
+
 async function submitUnsentInvoicesHourly(){
   const LocalZatcaBridge = require('./local-zatca');
   let running = false;
@@ -247,8 +258,17 @@ async function submitUnsentInvoicesHourly(){
     finally { running = false; }
   }
   // run once at start, then every 15 minutes
-  setTimeout(runOnce, 1000);
-  setInterval(runOnce, 15*60*1000);
+  try { if (__unsentInvoicesTimeout) clearTimeout(__unsentInvoicesTimeout); } catch (_) {}
+  try { if (__unsentInvoicesInterval) clearInterval(__unsentInvoicesInterval); } catch (_) {}
+  __unsentInvoicesTimeout = setTimeout(runOnce, 1000);
+  __unsentInvoicesInterval = setInterval(runOnce, 15*60*1000);
+}
+
+function stopUnsentInvoicesScheduler(){
+  try { if (__unsentInvoicesTimeout) clearTimeout(__unsentInvoicesTimeout); } catch (_) {}
+  try { if (__unsentInvoicesInterval) clearInterval(__unsentInvoicesInterval); } catch (_) {}
+  __unsentInvoicesTimeout = null;
+  __unsentInvoicesInterval = null;
 }
 
 // Internal helper for low stock emails (reused by products update and future hooks)
@@ -331,4 +351,10 @@ async function __sendLowStockEmailInternal(settings, items){
   throw lastErr || new Error('SMTP send failed');
 }
 
-module.exports = { registerDailyEmailScheduler, submitUnsentInvoicesHourly, __sendLowStockEmailInternal };
+module.exports = {
+  registerDailyEmailScheduler,
+  stopDailyEmailScheduler,
+  submitUnsentInvoicesHourly,
+  stopUnsentInvoicesScheduler,
+  __sendLowStockEmailInternal
+};

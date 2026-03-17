@@ -59,22 +59,29 @@ const { registerPermissionsIPC } = require('./permissions');
 const { registerVouchersIPC } = require('./vouchers');
 const setupQuotationsIPC = require('./quotations');
 const whatsappService = require('./whatsapp-service');
-const { registerDailyEmailScheduler, submitUnsentInvoicesHourly } = require('./scheduler');
-const { startAppointmentReminderService } = require('./appointment-reminder');
+const { registerDailyEmailScheduler, submitUnsentInvoicesHourly, stopDailyEmailScheduler, stopUnsentInvoicesScheduler } = require('./scheduler');
+const { startAppointmentReminderService, stopAppointmentReminderService } = require('./appointment-reminder');
 const { updateConfig, getConfig, testConnection } = require('../db/connection');
 // const ZatcaIntegration = require('./zatca');
 // const ZatcaSalesIntegration = require('./zatca-sales-integration');
 const { registerBackupIPC } = require('./backup');
 const { setupAutoUpdater, registerUpdateIPC } = require('./updater');
-const { startAPIServer } = require('./api-server');
+const { startAPIServer, stopAPIServer } = require('./api-server');
 const { isPrimaryDevice, isSecondaryDevice, fetchFromAPI } = require('./api-client');
 const customerDisplay = require('./customer-display/index');
+
+let __tWhatsAppAutoConnect = null;
+let __tPrewarmPrint = null;
+let __isQuitting = false;
+let __mainWindow = null;
+let __tForceExit = null;
 
 // ===== Pre-warm print window pool (1 window kept ready to eliminate BrowserWindow creation overhead) =====
 let _prewarmPrintWin = null;
 let _prewarmPrintWinBusy = false;
 
 function _spawnPrewarmPrintWin() {
+  if (__isQuitting) return;
   if (_prewarmPrintWin && !_prewarmPrintWin.isDestroyed()) return;
   try {
     const _path = require('path');
@@ -111,7 +118,9 @@ function _releasePrewarmWin(win, destroy) {
     try { win.destroy(); } catch(_) {}
     _prewarmPrintWinBusy = false;
     _prewarmPrintWin = null;
-    setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 1000);
+    if (!__isQuitting) {
+      setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 1000);
+    }
   } else {
     _prewarmPrintWinBusy = false;
   }
@@ -512,6 +521,20 @@ async function createMainWindow() {
     show: false,
     backgroundColor: '#667eea',
     icon: path.join(__dirname, '..', '..', 'assets', 'icon', 'app.ico')
+  });
+
+  __mainWindow = win;
+  win.on('closed', () => {
+    __mainWindow = null;
+  });
+
+  win.on('close', () => {
+    try {
+      if (process.platform !== 'darwin' && !__isQuitting) {
+        __isQuitting = true;
+        app.quit();
+      }
+    } catch (_) {}
   });
 
   win.loadFile(loginPage);
@@ -1390,7 +1413,8 @@ app.whenReady().then(async () => {
       registerWhatsAppIPC();
       
       // Auto-connect to WhatsApp if enabled and session exists
-      setTimeout(() => {
+      try { if (__tWhatsAppAutoConnect) clearTimeout(__tWhatsAppAutoConnect); } catch (_) {}
+      __tWhatsAppAutoConnect = setTimeout(() => {
         try {
           whatsappService.autoConnectIfEnabled().catch(err => {
             console.log('WhatsApp auto-connect skipped:', err.reason || err.message);
@@ -1453,7 +1477,8 @@ app.whenReady().then(async () => {
       });
 
       // Pre-warm print window after 4s to avoid slowing startup
-      setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 4000);
+      try { if (__tPrewarmPrint) clearTimeout(__tPrewarmPrint); } catch (_) {}
+      __tPrewarmPrint = setTimeout(() => { try { _spawnPrewarmPrintWin(); } catch(_) {} }, 4000);
 
       try {
         const ZatcaSalesIntegration = require('./zatca-sales-integration');
@@ -1475,7 +1500,34 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', async () => {
+  __isQuitting = true;
+  try { if (__tWhatsAppAutoConnect) clearTimeout(__tWhatsAppAutoConnect); } catch (_) {}
+  try { if (__tPrewarmPrint) clearTimeout(__tPrewarmPrint); } catch (_) {}
+  try { if (__tForceExit) clearTimeout(__tForceExit); } catch (_) {}
+  __tWhatsAppAutoConnect = null;
+  __tPrewarmPrint = null;
+  __tForceExit = null;
+
+  try { stopDailyEmailScheduler && stopDailyEmailScheduler(); } catch (_) {}
+  try { stopUnsentInvoicesScheduler && stopUnsentInvoicesScheduler(); } catch (_) {}
+  try { stopAppointmentReminderService && stopAppointmentReminderService(); } catch (_) {}
+  try { stopAPIServer && stopAPIServer(); } catch (_) {}
+
+  try { await whatsappService.disconnect(); } catch (_) {}
   try { await customerDisplay.cleanup(); } catch (_) {}
+
+  try {
+    if (_prewarmPrintWin && !_prewarmPrintWin.isDestroyed()) {
+      _prewarmPrintWin.destroy();
+    }
+  } catch (_) {}
+  _prewarmPrintWin = null;
+  _prewarmPrintWinBusy = false;
+
+  __tForceExit = setTimeout(() => {
+    try { app.exit(0); } catch (_) {}
+    try { process.exit(0); } catch (_) {}
+  }, 3000);
 });
 
 app.on('window-all-closed', () => {

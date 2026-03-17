@@ -1082,6 +1082,154 @@
         margin-bottom: 0;
       }
 
+      /* Professional Compact Tax Form Styles */
+      .tax-compact-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .tax-form-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-3);
+      }
+
+      .tax-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+
+      .tax-field label {
+        font-weight: 600;
+        color: var(--gray-700);
+        font-size: 12px;
+        margin-bottom: 0;
+      }
+
+      .tax-field input {
+        padding: var(--space-2) var(--space-2);
+        font-size: 13px;
+      }
+
+      .tax-checkboxes-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-2);
+        padding: var(--space-3);
+        background: var(--gray-50);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--gray-200);
+      }
+
+      .tax-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2);
+        border-radius: var(--radius-md);
+      }
+
+      .tax-checkbox-item:hover {
+        background: var(--gray-100);
+      }
+
+      .tax-checkbox-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
+      .tax-checkbox-item label {
+        font-size: 12px;
+        color: var(--gray-700);
+        font-weight: 500;
+        cursor: pointer;
+        margin: 0;
+      }
+
+      @media (max-width: 1200px) {
+        .tax-form-row {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .tax-checkboxes-row {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .tax-form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .tax-checkboxes-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Professional Compact Payment Form Styles */
+      .payment-compact-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .payment-form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--space-3);
+        align-items: end;
+      }
+
+      .payment-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+
+      .payment-field.payment-field-wide {
+        min-width: 200px;
+      }
+
+      .payment-field label {
+        font-weight: 600;
+        color: var(--gray-700);
+        font-size: 12px;
+        margin-bottom: 0;
+      }
+
+      .payment-field input,
+      .payment-field select {
+        padding: var(--space-2) var(--space-2);
+        font-size: 13px;
+      }
+
+      .payment-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+      }
+
+      .payment-checkbox-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
+      .payment-checkbox-item label {
+        font-size: 12px;
+        color: var(--gray-700);
+        font-weight: 500;
+        cursor: pointer;
+        margin: 0;
+      }
+
       @media (max-width: 768px) {
         .form-row {
           grid-template-columns: 1fr;
@@ -1409,57 +1557,42 @@
                 </div>
                 <div class="divider"></div>
 
-                <!-- نسبة الضريبة -->
-                <div class="subsection">
-                  <div id="ssTitle-vatRate" class="subsection-title">نسبة الضريبة المضافة</div>
-                  <div class="form-row single">
-                    <div>
+                <!-- Professional Compact Tax Form -->
+                <div class="tax-compact-form">
+                  <!-- Row 1: VAT Rate + Tax Number + Commercial Register -->
+                  <div class="tax-form-row">
+                    <div class="tax-field">
                       <label>نسبة الضريبة VAT %</label>
                       <input id="f_vat" type="number" min="0" step="0.01" placeholder="15" />
                     </div>
-                  </div>
-                </div>
-
-                <!-- طريقة الحساب -->
-                <div class="subsection">
-                  <div id="ssTitle-taxMethod" class="subsection-title">طريقة احتساب الضريبة</div>
-                  <div class="switch">
-                    <input id="f_prices_inc" type="checkbox" />
-                    <label for="f_prices_inc">أسعار البيع شاملة الضريبة (حسب السعودية)</label>
-                  </div>
-                  <div class="switch">
-                    <input id="f_cost_inc_vat" type="checkbox" />
-                    <label for="f_cost_inc_vat">سعر التكلفة (الشراء) شامل الضريبة</label>
-                  </div>
-                </div>
-
-                <!-- البيانات الضريبية -->
-                <div class="subsection">
-                  <div id="ssTitle-taxData" class="subsection-title">البيانات الضريبية والرسمية</div>
-                  <div class="form-row">
-                    <div>
+                    <div class="tax-field">
                       <label>الرقم الضريبي (ZATCA)</label>
                       <input id="f_seller_vat" placeholder="رقم التسجيل الضريبي" />
                     </div>
-                    <div>
+                    <div class="tax-field">
                       <label>رقم السجل التجاري</label>
                       <input id="f_commercial_register" placeholder="رقم السجل التجاري" />
                     </div>
-                  </div>
-                  <div class="form-row single">
-                    <div>
+                    <div class="tax-field">
                       <label>الرقم الوطني</label>
                       <input id="f_national_number" placeholder="الرقم الوطني" />
                     </div>
                   </div>
-                </div>
 
-                <!-- الربط الإلكتروني -->
-                <div class="subsection">
-                  <div id="ssTitle-zatca" class="subsection-title">الربط الإلكتروني مع الهيئة</div>
-                  <div class="switch">
-                    <input id="f_zatca_enabled" type="checkbox" />
-                    <label for="f_zatca_enabled">تفعيل الربط الإلكتروني مع هيئة الزكاة والضريبة والجمارك (ZATCA)</label>
+                  <!-- Row 2: Checkboxes in compact grid -->
+                  <div class="tax-checkboxes-row">
+                    <div class="tax-checkbox-item">
+                      <input id="f_prices_inc" type="checkbox" />
+                      <label for="f_prices_inc">أسعار البيع شاملة الضريبة</label>
+                    </div>
+                    <div class="tax-checkbox-item">
+                      <input id="f_cost_inc_vat" type="checkbox" />
+                      <label for="f_cost_inc_vat">سعر التكلفة شامل الضريبة</label>
+                    </div>
+                    <div class="tax-checkbox-item">
+                      <input id="f_zatca_enabled" type="checkbox" />
+                      <label for="f_zatca_enabled">تفعيل الربط الإلكتروني (ZATCA)</label>
+                    </div>
                   </div>
                 </div>
 
@@ -1712,7 +1845,7 @@
             <!-- Tab Panel 4: Payment -->
             <div id="tab-payment" class="tab-panel">
               
-              <!-- طرق الدفع -->
+              <!-- طرق الدفع والعملة - تصميم مدمج -->
               <div class="section">
                 <div class="section-header">
                   <div class="section-icon" style="background:linear-gradient(135deg, #06b6d4, #67e8f9)">
@@ -1722,91 +1855,78 @@
                     </svg>
                   </div>
                   <div>
-                    <div id="sTitle-payment" class="section-title">طرق الدفع</div>
-                    <div id="sDesc-payment" class="section-desc">تفعيل طرق الدفع والطريقة الافتراضية</div>
+                    <div id="sTitle-payment" class="section-title">طرق الدفع والعملة</div>
+                    <div id="sDesc-payment" class="section-desc">تفعيل طرق الدفع وإعدادات العملة</div>
                   </div>
                 </div>
                 <div class="divider"></div>
-                <div class="form-grid">
-                  <div>
-                    <label id="pmLabel">طرق الدفع المفعّلة</label>
-                    <div class="pm-dropdown">
-                      <div class="pm-dropdown-trigger" id="pmDropdownTrigger">
-                        <span id="pmDropdownText">اختر طرق الدفع</span>
-                        <span class="pm-dropdown-arrow">▼</span>
-                      </div>
-                      <div class="pm-dropdown-menu" id="pmDropdownMenu">
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="cash" id="pm_cash" checked />
-                          <label for="pm_cash" style="margin:0; cursor:pointer;">كاش</label>
+
+                <!-- Professional Compact Payment Form -->
+                <div class="payment-compact-form">
+                  <!-- Row 1: Payment Methods Dropdown + Default + Currency -->
+                  <div class="payment-form-row">
+                    <div class="payment-field payment-field-wide">
+                      <label id="pmLabel">طرق الدفع المفعّلة</label>
+                      <div class="pm-dropdown">
+                        <div class="pm-dropdown-trigger" id="pmDropdownTrigger">
+                          <span id="pmDropdownText">اختر طرق الدفع</span>
+                          <span class="pm-dropdown-arrow">▼</span>
                         </div>
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="card" id="pm_card" />
-                          <label for="pm_card" style="margin:0; cursor:pointer;">شبكة (مدى)</label>
-                        </div>
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="credit" id="pm_credit" />
-                          <label for="pm_credit" style="margin:0; cursor:pointer;">آجل</label>
-                        </div>
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="mixed" id="pm_mixed" />
-                          <label for="pm_mixed" style="margin:0; cursor:pointer;">مختلط</label>
-                        </div>
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="tamara" id="pm_tamara" />
-                          <label for="pm_tamara" style="margin:0; cursor:pointer;">تمارا</label>
-                        </div>
-                        <div class="pm-dropdown-item">
-                          <input type="checkbox" class="pm" value="tabby" id="pm_tabby" />
-                          <label for="pm_tabby" style="margin:0; cursor:pointer;">تابي</label>
+                        <div class="pm-dropdown-menu" id="pmDropdownMenu">
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="cash" id="pm_cash" checked />
+                            <label for="pm_cash" style="margin:0; cursor:pointer;">كاش</label>
+                          </div>
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="card" id="pm_card" />
+                            <label for="pm_card" style="margin:0; cursor:pointer;">شبكة (مدى)</label>
+                          </div>
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="credit" id="pm_credit" />
+                            <label for="pm_credit" style="margin:0; cursor:pointer;">آجل</label>
+                          </div>
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="mixed" id="pm_mixed" />
+                            <label for="pm_mixed" style="margin:0; cursor:pointer;">مختلط</label>
+                          </div>
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="tamara" id="pm_tamara" />
+                            <label for="pm_tamara" style="margin:0; cursor:pointer;">تمارا</label>
+                          </div>
+                          <div class="pm-dropdown-item">
+                            <input type="checkbox" class="pm" value="tabby" id="pm_tabby" />
+                            <label for="pm_tabby" style="margin:0; cursor:pointer;">تابي</label>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <label>طريقة الدفع الافتراضية</label>
-                    <select id="f_default_payment">
-                      <option value="">بدون افتراضي</option>
-                      <option value="cash">كاش</option>
-                      <option value="card">شبكة (مدى)</option>
-                      <option value="credit">آجل</option>
-                      <option value="mixed">مختلط</option>
-                      <option value="tamara">تمارا</option>
-                      <option value="tabby">تابي</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- العملة -->
-              <div class="section">
-                <div class="section-header">
-                  <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #34d399)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 1V23M17 5H9.5C8.57 5 7.69 5.37 7.05 6.05C6.37 6.69 6 7.57 6 8.5S6.37 10.31 7.05 10.95C7.69 11.63 8.57 12 9.5 12H14.5C15.43 12 16.31 12.37 16.95 13.05C17.63 13.69 18 14.57 18 15.5S17.63 17.31 16.95 17.95C16.31 18.63 15.43 19 14.5 19H6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div id="sTitle-currency" class="section-title">إعدادات العملة</div>
-                    <div id="sDesc-currency" class="section-desc">رمز العملة وموقعه في المبالغ</div>
-                  </div>
-                </div>
-                <div class="divider"></div>
-                <div class="form-grid">
-                  <div>
-                    <label>رمز العملة</label>
-                    <input id="f_currency_code" placeholder="SAR" />
-                  </div>
-                  <div>
-                    <label>رمز العملة (نصي)</label>
-                    <input id="f_currency_symbol" placeholder="﷼" />
-                  </div>
-                  <div>
-                    <label>موضع الرمز</label>
-                    <select id="f_currency_pos">
-                      <option value="after">الرمز بعد المبلغ (مثال: 100 ﷼)</option>
-                      <option value="before">الرمز قبل المبلغ (مثال: ﷼ 100)</option>
-                    </select>
+                    <div class="payment-field">
+                      <label>طريقة الدفع الافتراضية</label>
+                      <select id="f_default_payment">
+                        <option value="">بدون افتراضي</option>
+                        <option value="cash">كاش</option>
+                        <option value="card">شبكة (مدى)</option>
+                        <option value="credit">آجل</option>
+                        <option value="mixed">مختلط</option>
+                        <option value="tamara">تمارا</option>
+                        <option value="tabby">تابي</option>
+                      </select>
+                    </div>
+                    <div class="payment-field">
+                      <label>رمز العملة</label>
+                      <input id="f_currency_code" placeholder="SAR" />
+                    </div>
+                    <div class="payment-field">
+                      <label>رمز العملة (نصي)</label>
+                      <input id="f_currency_symbol" placeholder="﷼" />
+                    </div>
+                    <div class="payment-field">
+                      <label>موضع الرمز</label>
+                      <select id="f_currency_pos">
+                        <option value="after">بعد المبلغ</option>
+                        <option value="before">قبل المبلغ</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1826,17 +1946,18 @@
                   </div>
                 </div>
                 <div class="divider"></div>
-                <div class="form-grid">
-                  <div class="switch">
-                    <input id="f_customer_display_enabled" type="checkbox" style="width:15px; height:15px; accent-color:#8b5cf6;" />
-                    <label for="f_customer_display_enabled">تفعيل شاشة العرض</label>
-                  </div>
-                  <div>
-                    <label for="f_customer_display_port">منفذ COM</label>
-                    <select id="f_customer_display_port">
-                      <option value="">-- جاري التحميل... --</option>
-                    </select>
-                    <div class="section-desc">المنافذ المتاحة على الكمبيوتر</div>
+                <div class="payment-compact-form">
+                  <div class="payment-form-row">
+                    <div class="payment-checkbox-item">
+                      <input id="f_customer_display_enabled" type="checkbox" />
+                      <label for="f_customer_display_enabled">تفعيل شاشة العرض</label>
+                    </div>
+                    <div class="payment-field">
+                      <label for="f_customer_display_port">منفذ COM</label>
+                      <select id="f_customer_display_port">
+                        <option value="">-- جاري التحميل... --</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
