@@ -68,15 +68,17 @@
         border-bottom: 2px solid #0f172a !important; /* خط سفلي مستمر */
         border-left: 2px solid #0f172a;
         color: #000 !important;
-        font-weight: 900 !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        overflow-wrap: anywhere !important;
-        padding: 4px 6px !important;
-        vertical-align: middle !important;
-        font-size: 11px !important;
+        font-weight: 800;
+        font-size: 13px;
+        padding: 8px 10px;
+        text-align: center;
         line-height: 1.3 !important;
         min-height: 30px;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: normal;
+        word-break: keep-all;
       }
       #itemsTable thead th:first-child{ border-right: 2px solid #0f172a; }
       #itemsTable thead th:last-child{ border-left: 2px solid #0f172a; }
@@ -130,12 +132,20 @@
       table.no-vat thead th:nth-child(7), table.no-vat tbody td:nth-child(7),
       table.no-vat thead th:nth-child(8), table.no-vat tbody td:nth-child(8){ display:none; }
       #itemsTable.no-vat tbody td.num{ text-align: center; }
-      #itemsTable.no-vat thead th:nth-child(n+3){ text-align: center; }
-      #itemsTable.no-vat thead th:nth-child(1), #itemsTable.no-vat tbody td:nth-child(1){ width: 10%; }
-      #itemsTable.no-vat thead th:nth-child(2), #itemsTable.no-vat tbody td:nth-child(2){ width: 40%; }
-      #itemsTable.no-vat thead th:nth-child(3), #itemsTable.no-vat tbody td:nth-child(3){ width: 10%; }
-      #itemsTable.no-vat thead th:nth-child(4), #itemsTable.no-vat tbody td:nth-child(4){ width: 20%; }
-      #itemsTable.no-vat thead th:nth-child(5), #itemsTable.no-vat tbody td:nth-child(5){ width: 20%; }
+      /* عند عدم وجود ضريبة + وجود عمود العملية: 6 أعمدة */
+      table.no-vat.has-op thead th:nth-child(1), table.no-vat.has-op tbody td:nth-child(1){ width: 12%; text-align:left; }
+      table.no-vat.has-op thead th:nth-child(2), table.no-vat.has-op tbody td:nth-child(2){ width: 38%; }
+      table.no-vat.has-op thead th:nth-child(3), table.no-vat.has-op tbody td:nth-child(3){ width: 10%; text-align:center; }
+      table.no-vat.has-op thead th:nth-child(4), table.no-vat.has-op tbody td:nth-child(4){ width: 10%; text-align:center; }
+      table.no-vat.has-op thead th:nth-child(5), table.no-vat.has-op tbody td:nth-child(5){ width: 15%; text-align:center; }
+      table.no-vat.has-op thead th:nth-child(6), table.no-vat.has-op tbody td:nth-child(6){ width: 15%; text-align:center; }
+      
+      /* عند عدم وجود ضريبة + بدون عمود العملية: 5 أعمدة */
+      table.no-vat.no-op thead th:nth-child(1), table.no-vat.no-op tbody td:nth-child(1){ width: 12%; text-align:left; }
+      table.no-vat.no-op thead th:nth-child(2), table.no-vat.no-op tbody td:nth-child(2){ width: 43%; }
+      table.no-vat.no-op thead th:nth-child(3), table.no-vat.no-op tbody td:nth-child(3){ width: 12%; text-align:center; }
+      table.no-vat.no-op thead th:nth-child(4), table.no-vat.no-op tbody td:nth-child(4){ width: 17%; text-align:center; }
+      table.no-vat.no-op thead th:nth-child(5), table.no-vat.no-op tbody td:nth-child(5){ width: 16%; text-align:center; }
       /* خلايا الأرقام: حجم أصغر قليلًا وخط ثقيل مع أرقام متساوية العرض */
       #itemsTable tbody td.num{
         white-space: nowrap;
@@ -841,9 +851,8 @@
               // لا تُطبق no-op تلقائيًا عند عدم وجود ضريبة حتى لا يختفي عمود "عدد"
               itemsTable.classList.remove('has-op','no-op');
               itemsTable.classList.toggle('hide-barcode', !showBarcode);
-              if(vatPercent > 0){
-                itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
-              }
+              // تطبيق has-op/no-op دائمًا لتنسيق الأعمدة الصحيح
+              itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
               itemsTable.classList.toggle('no-vat', vatPercent === 0);
               if(vatPercent === 0){
                 const thead = itemsTable.querySelector('thead');
@@ -1256,9 +1265,23 @@
           try{
             const qrBox = document.querySelector('.qr');
             const qrImg = document.getElementById('qrImg');
-            if(settings.seller_legal_name && settings.seller_vat_number){
+            const __vatEnabled = Number(settings?.vat_percent || 0) > 0;
+            const __infoQrEnabled = Number(settings?.show_info_qr_in_a4_no_vat || 0) === 1;
+            const __canZatca = !!(settings.seller_legal_name && settings.seller_vat_number);
+            const __shouldShowQR = (__vatEnabled && __canZatca) || (!__vatEnabled && __infoQrEnabled);
+
+            if(__shouldShowQR){
               const issueISO = new Date(sale.created_at).toISOString();
-              const b64 = genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
+              let b64 = '';
+              if(__vatEnabled && __canZatca){
+                b64 = genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
+              } else {
+                const seller = String(settings?.seller_legal_name || settings?.branch_name || settings?.company_location || '').slice(0, 40);
+                const inv = String(sale.invoice_no || '').slice(0, 32);
+                const total = (Number(sale.grand_total || 0)).toFixed(2);
+                const vat = (Number(sale.vat_total || 0)).toFixed(2);
+                b64 = `INFO|INV:${inv}|DT:${issueISO}|TOTAL:${total}|VAT:${vat}|SELLER:${seller}`;
+              }
               try{
                 const svg = await api.qr_to_svg(b64, { width: 120, margin: 1 });
                 if(svg && typeof svg === 'string'){
@@ -1271,7 +1294,7 @@
                 } else {
                   const dataUrl = await api.qr_to_data_url(b64, { errorCorrectionLevel: 'M', width: 120, margin: 1 });
                   if(dataUrl){
-                    qrImg.alt = 'ZATCA QR';
+                    qrImg.alt = (__vatEnabled && __canZatca) ? 'ZATCA QR' : 'INFO QR';
                     qrImg.src = dataUrl;
                     qrImg.addEventListener('load', () => { window.__QR_READY = true; }, { once: true });
                   }else{

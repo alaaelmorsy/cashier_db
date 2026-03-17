@@ -213,9 +213,12 @@ function registerSettingsIPC(){
     if(await missing('show_whatsapp_controls')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN show_whatsapp_controls TINYINT NOT NULL DEFAULT 1 AFTER zatca_enabled");
     }
+    if(await missing('show_info_qr_in_a4_no_vat')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN show_info_qr_in_a4_no_vat TINYINT NOT NULL DEFAULT 0 AFTER show_whatsapp_controls");
+    }
     // UI toggle for Quotation button (show/hide in sales screen)
     if(await missing('show_quotation_button')){
-      await conn.query("ALTER TABLE app_settings ADD COLUMN show_quotation_button TINYINT NOT NULL DEFAULT 1 AFTER show_whatsapp_controls");
+      await conn.query("ALTER TABLE app_settings ADD COLUMN show_quotation_button TINYINT NOT NULL DEFAULT 1 AFTER show_info_qr_in_a4_no_vat");
     }
     // UI toggle for selling units in products screen (show/hide units section)
     if(await missing('show_selling_units')){
