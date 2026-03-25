@@ -1670,7 +1670,8 @@ async function loadInvoiceIntoCartByNumber(invNo){
       unit_multiplier: (it.unit_multiplier || 1),
       category: (it.category || null),
       // Preserve tobacco flag so totals can compute tobacco fee during processing
-      is_tobacco: (Number(it.is_tobacco||0) === 1)
+      is_tobacco: (Number(it.is_tobacco||0) === 1),
+      is_vat_exempt: (it.is_vat_exempt === true || String(it.is_vat_exempt||'').trim().toLowerCase() === 'true' || String(it.is_vat_exempt||'').trim().toLowerCase() === 'yes' || Number(it.is_vat_exempt||0) === 1)
     }));
     __processedSaleId = Number(det.sale?.id || gid);
     
@@ -1730,19 +1731,33 @@ function computeTotals(){
   let sub = 0, vat = 0, grand = 0;
   const vatPct = (Number(settings.vat_percent) || 0) / 100;
 
-  // إجمالي قبل الضريبة (sub) من عناصر السلة
+  const __isVatExempt = (v) => {
+    if(v === true) return true;
+    if(v == null) return false;
+    if(typeof v === 'number') return v === 1;
+    const s = String(v).trim().toLowerCase();
+    return (s === '1' || s === 'true' || s === 'yes');
+  };
+
+  // إجمالي قبل الضريبة (sub) من عناصر السلة، والأساس الخاضع للضريبة لتجاهل الأصناف المعفاة
   let subEligibleForOffer = 0;
+  let taxableBase = 0;
   cart.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 1);
     let itemBase = 0;
     if(settings.prices_include_vat){
-      const base = price / (1 + vatPct);
+      // If item is VAT-exempt, its price does not include VAT; don't strip VAT from it.
+      const base = __isVatExempt(item.is_vat_exempt) ? price : (price / (1 + vatPct));
       itemBase = base * qty;
       sub += itemBase;
     } else {
       itemBase = price * qty;
       sub += itemBase;
+    }
+
+    if(!__isVatExempt(item.is_vat_exempt)){
+      taxableBase += itemBase;
     }
 
     // Check eligibility for global offer
@@ -1926,16 +1941,15 @@ function computeTotals(){
     }
   }catch(_){ /* ignore */ }
 
-  // الضريبة تُحسب على المبلغ بعد الخصم: إذا كانت الأسعار شاملة الضريبة، نحسب VAT على الفرق فقط
+  // قم بتوزيع الخصم النسبي على الجزء القابل للضريبة
+  const taxableAfterDiscount = Math.max(0, taxableBase * (sub > 0 ? (subAfterDiscount / sub) : 0));
+
+  // الضريبة تُحسب على الجزء الخاضع للضريبة بعد الخصم
   if(settings.prices_include_vat){
-    // grand قبل كانت تساوي sum(prices) + extra - discount + tobaccoFee (شاملة الضريبة)،
-    // لكن هنا subAfterDiscount يمثل الأساس بعد الخصم مضافًا له رسوم التبغ.
-    // VAT = الأساس بعد الخصم × نسبة الضريبة
-    vat = subAfterDiscount * vatPct;
+    vat = taxableAfterDiscount * vatPct;
     grand = subAfterDiscount + vat;
   } else {
-    // في حالة الأسعار غير شاملة الضريبة: VAT دائمًا على الأساس بعد الخصم
-    vat = subAfterDiscount * vatPct;
+    vat = taxableAfterDiscount * vatPct;
     grand = subAfterDiscount + vat;
   }
 
@@ -3288,6 +3302,7 @@ async function addToCart(p){
       image_path: p.image_path,
       category: p.category || null,
       is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+      is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
       unit_name: null,
       unit_multiplier: 1,
       operation_id: (first.operation_id||first.id),
@@ -3308,6 +3323,7 @@ async function addToCart(p){
       image_path: p.image_path, 
       category: p.category || null, 
       is_tobacco: Number(p.is_tobacco||0) ? 1 : 0, 
+      is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
       unit_name: null, 
       unit_multiplier: 1, 
       operation_name: null, 
@@ -3418,6 +3434,7 @@ if(barcode){
             image_path: p.image_path,
             category: p.category || null,
             is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+            is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
             unit_name: null,
             unit_multiplier: 1,
             operation_name: null,
@@ -3477,6 +3494,7 @@ if(barcode){
             image_path: p.image_path,
             category: p.category || null,
             is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+            is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
             unit_name: null,
             unit_multiplier: 1,
             variant_id: p.variant_id,
@@ -5377,6 +5395,7 @@ async function openAddProductModal(barcode){
   const pickImageBtn = document.getElementById('apmPickImage');
   const removeImageBtn = document.getElementById('apmRemoveImage');
   const hideFromSalesCheckbox = document.getElementById('apmHideFromSales');
+  const vatExemptCheckbox = document.getElementById('apmVatExempt');
   const apmOpSelect = document.getElementById('apmOpSelect');
   const apmOpPrice = document.getElementById('apmOpPrice');
   const apmOpAdd = document.getElementById('apmOpAdd');
@@ -5414,6 +5433,7 @@ async function openAddProductModal(barcode){
   if(descriptionInput) descriptionInput.value = '';
   if(thumbImg) thumbImg.src = '';
   if(hideFromSalesCheckbox) hideFromSalesCheckbox.checked = false;
+  if(vatExemptCheckbox) vatExemptCheckbox.checked = false;
   pickedImagePath = null;
   apmProdOps = [];
   renderApmOpList();
@@ -5537,6 +5557,7 @@ async function openAddProductModal(barcode){
 
       const description = (descriptionInput ? descriptionInput.value : '').trim();
       const hideFromSales = hideFromSalesCheckbox ? (hideFromSalesCheckbox.checked ? 1 : 0) : 0;
+      const isVatExempt = vatExemptCheckbox ? (vatExemptCheckbox.checked ? 1 : 0) : 0;
       
       // Validation
       if(!name){
@@ -5566,6 +5587,7 @@ async function openAddProductModal(barcode){
         description: description || null,
         image_path: pickedImagePath || null,
         hide_from_sales: hideFromSales,
+        is_vat_exempt: isVatExempt,
         is_active: 1
       };
       

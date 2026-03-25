@@ -281,6 +281,7 @@ function registerSalesIPC(){
         price DECIMAL(12,2) NOT NULL,
         qty DECIMAL(12,3) NOT NULL,
         line_total DECIMAL(12,2) NOT NULL,
+        is_vat_exempt TINYINT NOT NULL DEFAULT 0,
         operation_id INT NULL,
         operation_name VARCHAR(128) NULL,
         FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
@@ -302,6 +303,8 @@ function registerSalesIPC(){
     // تأكد من وجود أعمدة العملية عند الترقية القديمة
     const [colOpIdEnsure] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_id'");
     if(!colOpIdEnsure.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_id INT NULL AFTER line_total"); }
+    const [colIsVatExempt] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'is_vat_exempt'");
+    if(!colIsVatExempt.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN is_vat_exempt TINYINT NOT NULL DEFAULT 0 AFTER line_total"); }
     const [colOpNameEnsure] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_name'");
     if(!colOpNameEnsure.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"); }
     // تأكد من وجود عمود الموظف المرتبط بالصنف
@@ -743,12 +746,13 @@ function registerSalesIPC(){
           Number(it.price||0),
           Number(it.qty||1),
           Number(it.line_total||0),
+          (Number(it.is_vat_exempt||0) === 1 ? 1 : 0),
           (it.operation_id || null),
           (it.operation_name || null),
           (it.employee_id || null)
         ]);
         if(items.length){
-          await conn.query(`INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, operation_id, operation_name, employee_id) VALUES ?`, [items]);
+          await conn.query(`INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, is_vat_exempt, operation_id, operation_name, employee_id) VALUES ?`, [items]);
         }
 
         // لا يوجد BOM: لا نستخدم product_bom أو inventory_items هنا
@@ -1421,8 +1425,12 @@ function registerSalesIPC(){
           }
         }catch(_){ }
         if(!sale) return { ok:false, error:'الفاتورة غير موجودة' };
-        const [items] = await conn.query('SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier, si.price, si.qty, si.line_total, si.operation_id, si.operation_name, si.employee_id, p.is_tobacco, p.category, p.name_en, COALESCE(pv.barcode, p.barcode) AS barcode, e.name as employee_name FROM sales_items si LEFT JOIN products p ON p.id = si.product_id LEFT JOIN product_variants pv ON pv.id = si.operation_id LEFT JOIN employees e ON e.id = si.employee_id WHERE si.sale_id=?', [sid]);
-        return { ok:true, sale, items };
+        const [items] = await conn.query('SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier, si.price, si.qty, si.line_total, si.is_vat_exempt, si.operation_id, si.operation_name, si.employee_id, p.is_tobacco, p.is_vat_exempt AS product_is_vat_exempt, p.category, p.name_en, COALESCE(pv.barcode, p.barcode) AS barcode, e.name as employee_name FROM sales_items si LEFT JOIN products p ON p.id = si.product_id LEFT JOIN product_variants pv ON pv.id = si.operation_id LEFT JOIN employees e ON e.id = si.employee_id WHERE si.sale_id=?', [sid]);
+        const normalizedItems = items.map(it => ({
+          ...it,
+          is_vat_exempt: Number(it.is_vat_exempt||0) === 1 ? 1 : (Number(it.product_is_vat_exempt||0) === 1 ? 1 : 0)
+        }));
+        return { ok:true, sale, items: normalizedItems };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'تعذر جلب الفاتورة' }; }
   });

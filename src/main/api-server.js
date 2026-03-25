@@ -232,7 +232,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { q, active, hide_from_sales, category, sort, limit = 500, offset = 0, skip_count, starts_with } = req.query;
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
       const where = [];
       const whereParams = [];
       const orderParams = [];

@@ -1098,7 +1098,6 @@ async function loadRange(startStr, endStr){
     });
 
     const salesPre = invoices.reduce((acc,s)=> acc + Number(s.sub_total||0), 0);
-    // VAT before discount for display (apply on sub_total + tobacco)
     let tobInv = 0, tobCN = 0;
     try{ tobInv = invoices.reduce((a,s)=> a + Number(s.tobacco_fee||0), 0); }catch(_){ tobInv = 0; }
     try{ tobCN = creditNotes.reduce((a,s)=> a + Number(s.tobacco_fee||0), 0); }catch(_){ tobCN = 0; }
@@ -1106,8 +1105,8 @@ async function loadRange(startStr, endStr){
     const retTob = Math.max(0, Math.abs(tobCN));
     const settingsRes = await window.api.settings_get();
     const settings = (settingsRes && settingsRes.ok) ? settingsRes.item : {};
-    const vatPct = Number(settings.vat_percent || 15) / 100;
-    const salesVatBefore = Number((salesPre + salesTob) * vatPct);
+    // استخدم صافي ضريبة الفواتير (التي تحسبها الفاتورة نفسها عبر is_vat_exempt)
+    const salesVatBefore = invoices.reduce((acc,s)=> acc + Number(s.vat_total||0), 0);
 
     const discTotal = Number(disc||0);
 
@@ -1201,6 +1200,7 @@ async function loadRange(startStr, endStr){
         const product = __prodById.get(pid);
         const cost = Number(product?.cost || 0);
         const price = Number(product?.price || 0);
+        const itemVatPct = (Number(product?.is_vat_exempt || 0) === 1) ? 0 : vatPct;
         
         // حساب التكلفة شاملة الضريبة حسب الإعدادات
         let costWithVat;
@@ -1209,7 +1209,7 @@ async function loadRange(startStr, endStr){
           costWithVat = cost;
         } else {
           // سعر التكلفة مُدخل قبل الضريبة، نضيف الضريبة
-          costWithVat = cost * (1 + vatPct);
+          costWithVat = cost * (1 + itemVatPct);
         }
         costTotalWithVat += (qty * costWithVat);
         
@@ -1220,7 +1220,7 @@ async function loadRange(startStr, endStr){
           priceWithVat = price;
         } else {
           // سعر البيع مُدخل قبل الضريبة، نضيف الضريبة
-          priceWithVat = price * (1 + vatPct);
+          priceWithVat = price * (1 + itemVatPct);
         }
         salesTotalWithVat += (qty * priceWithVat);
       });

@@ -2179,9 +2179,15 @@ table tr td, table tr th { vertical-align: middle; }
                 </div>
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
-              <input type="checkbox" id="apmHideFromSales" style="width:20px; height:20px; cursor:pointer;" />
-              <label for="apmHideFromSales" style="cursor:pointer; font-weight:600; color:#0f172a; margin:0;">🔒 إخفاء المنتج من شاشة الفاتورة</label>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:12px; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0; flex:1;">
+                <input type="checkbox" id="apmHideFromSales" style="width:20px; height:20px; cursor:pointer;" />
+                <label for="apmHideFromSales" style="cursor:pointer; font-weight:600; color:#0f172a; margin:0;">🔒 إخفاء المنتج من شاشة الفاتورة</label>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:12px; background:#eff6ff; border-radius:10px; border:2px solid #3b82f6; flex:1;">
+                <input type="checkbox" id="apmVatExempt" style="width:20px; height:20px; cursor:pointer;" />
+                <label for="apmVatExempt" style="cursor:pointer; font-weight:600; color:#1e40af; margin:0;">🚫 استثناء هذا الصنف من الضريبة (VAT)</label>
+              </div>
             </div>
             <div>
               <label style="display:block; font-weight:600; color:#374151; margin-bottom:8px;">🔧 عمليات المنتج وأسعارها</label>

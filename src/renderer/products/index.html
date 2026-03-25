@@ -396,9 +396,21 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
-          <input type="checkbox" id="f_hide_from_sales" class="w-5 h-5 cursor-pointer" />
-          <label for="f_hide_from_sales" class="cursor-pointer font-semibold text-gray-700">إخفاء المنتج من شاشة الفاتورة</label>
+        <div class="flex items-center gap-3 p-3 bg-gray-100 rounded-lg" style="display:none">
+          <input type="checkbox" id="f_is_tobacco" class="w-5 h-5 cursor-pointer" />
+          <label for="f_is_tobacco" class="cursor-pointer font-semibold text-gray-700">تطبيق رسوم التبغ على هذا المنتج</label>
+        </div>
+
+        <div class="flex gap-3">
+          <div class="flex-1 flex items-center gap-3 p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <input type="checkbox" id="f_is_vat_exempt" class="w-5 h-5 cursor-pointer" />
+            <label for="f_is_vat_exempt" class="cursor-pointer font-semibold text-blue-800">استثناء هذا الصنف من الضريبة (VAT)</label>
+          </div>
+
+          <div class="flex-1 flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+            <input type="checkbox" id="f_hide_from_sales" class="w-5 h-5 cursor-pointer" />
+            <label for="f_hide_from_sales" class="cursor-pointer font-semibold text-gray-700">إخفاء المنتج من شاشة الفاتورة</label>
+          </div>
         </div>
 
         <div class="flex gap-3 justify-end pt-2">

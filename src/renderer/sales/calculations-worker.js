@@ -30,15 +30,31 @@ function computeTotalsInWorker(data) {
   let grand = 0;
   const vatPct = (Number(settings.vat_percent) || 0) / 100;
 
+  const __isVatExempt = (v) => {
+    if(v === true) return true;
+    if(v == null) return false;
+    if(typeof v === 'number') return v === 1;
+    const s = String(v).trim().toLowerCase();
+    return (s === '1' || s === 'true' || s === 'yes');
+  };
+
   // إجمالي قبل الضريبة من عناصر السلة
+  let taxableBase = 0; // the part of sub that is subject to VAT
   cart.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 1);
+    let itemBase = 0;
     if(settings.prices_include_vat){
-      const base = price / (1 + vatPct);
-      sub += base * qty;
+      // If item is VAT-exempt, its price does not include VAT; don't strip VAT from it.
+      const base = __isVatExempt(item.is_vat_exempt) ? price : (price / (1 + vatPct));
+      itemBase = base * qty;
     } else {
-      sub += price * qty;
+      itemBase = price * qty;
+    }
+    sub += itemBase;
+    // Only count towards VAT if item is NOT vat exempt
+    if(!__isVatExempt(item.is_vat_exempt)){
+      taxableBase += itemBase;
     }
   });
 
@@ -130,6 +146,7 @@ function computeTotalsInWorker(data) {
   const totalDiscount = Math.min(sub, Number((qtyOffersDiscount + percentDiscountAmount + manualAmt + couponAmt + offerAmt).toFixed(2)));
   const itemsSubAfterDiscount = Math.max(0, itemsSub - (totalDiscount * (itemsSub > 0 ? (itemsSub / sub) : 0)));
   let subAfterDiscount = Math.max(0, sub - totalDiscount);
+  let taxableAfterDiscount = Math.max(0, (taxableBase * (sub > 0 ? (sub - totalDiscount) / sub : 0))); // discount applies proportionally to taxable base
 
   // رسوم التبغ
   let tobaccoFee = 0;
@@ -162,10 +179,10 @@ function computeTotalsInWorker(data) {
 
   // الضريبة
   if(settings.prices_include_vat){
-    vat = subAfterDiscount * vatPct;
+    vat = taxableAfterDiscount * vatPct;
     grand = subAfterDiscount + vat;
   } else {
-    vat = subAfterDiscount * vatPct;
+    vat = taxableAfterDiscount * vatPct;
     grand = subAfterDiscount + vat;
   }
 

@@ -1001,8 +1001,9 @@ async function load(){
       const r = scaleForPartial(s);
       const subOrig = Number(s.sub_total||0);
       const tobOrig = Number(s.tobacco_fee||0);
-      const vatBefore = (subOrig + tobOrig) * vatPctLocal * r; // VAT for "المبيعات" row (before discount)
-      const vatAfter = Number(s.vat_total||0) * r;             // VAT for "المبيعات بعد الخصم" row
+      // استخدم قيمة الضريبة الفعلية من الفاتورة (تعكس الإعفاءات وحسومات المنتج)
+      const vatBefore = Number(s.vat_total||0) * r; // VAT for "المبيعات" row
+      const vatAfter = Number(s.vat_total||0) * r;  // VAT for "المبيعات بعد الخصم" row
       const discAmt = Number(s.discount_amount||0) * r;
       const sub = subOrig * r;
       const tob = tobOrig * r;
@@ -1125,6 +1126,7 @@ async function load(){
           const product = __prodById.get(pid);
           const cost = Number(product?.cost || 0);
           const price = Number(product?.price || 0);
+          const itemVatPct = (Number(product?.is_vat_exempt || 0) === 1) ? 0 : vatPct;
           
           // حساب التكلفة شاملة الضريبة حسب الإعدادات
           let costWithVat;
@@ -1133,7 +1135,7 @@ async function load(){
             costWithVat = cost;
           } else {
             // سعر التكلفة مُدخل قبل الضريبة، نضيف الضريبة
-            costWithVat = cost * (1 + vatPct);
+            costWithVat = cost * (1 + itemVatPct);
           }
           costTotalWithVat += (qty * costWithVat);
           
@@ -1144,7 +1146,7 @@ async function load(){
             priceWithVat = price;
           } else {
             // سعر البيع مُدخل قبل الضريبة، نضيف الضريبة
-            priceWithVat = price * (1 + vatPct);
+            priceWithVat = price * (1 + itemVatPct);
           }
           salesTotalWithVat += (qty * priceWithVat);
         });

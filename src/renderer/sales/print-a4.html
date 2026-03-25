@@ -909,6 +909,7 @@
             }
           }catch(_){ pricesInclVat = true; }
           const vatRate = Number(settings?.vat_percent || 0) / 100;
+          const effectiveVatRate = (String(sale.price_mode||'') === 'zero_vat') ? 0 : vatRate;
 
           items.forEach(it => {
             // الصف الأساسي للبند
@@ -943,16 +944,17 @@
             const lineTotalRaw = Number(it.line_total|| (unitPrice * qtyNum));
             const lineTotal = isCredit ? Math.abs(lineTotalRaw) : lineTotalRaw;
             let net = 0, vatAmt = 0, gross = 0;
-            if(vatRate > 0){
+            const itemVatRate = (Number(it.is_vat_exempt||0) === 1) ? 0 : effectiveVatRate;
+            if(itemVatRate > 0){
               if(pricesInclVat){
                 // الإجمالي يشمل الضريبة -> صافي = الإجمالي / (1+نسبة) ، الضريبة = الإجمالي - الصافي
-                net = lineTotal / (1 + vatRate);
+                net = lineTotal / (1 + itemVatRate);
                 vatAmt = lineTotal - net;
                 gross = lineTotal;
               }else{
                 // الإجمالي لا يشمل الضريبة -> صافي = الإجمالي ، الضريبة = صافي * نسبة ، الإجمالي = صافي + الضريبة
                 net = lineTotal;
-                vatAmt = net * vatRate;
+                vatAmt = net * itemVatRate;
                 gross = net + vatAmt;
               }
             }else{
@@ -964,19 +966,19 @@
 
             // Quantity text: no decimals if integer; otherwise 3 decimals
             const qtyTxt = Number.isInteger(qtyNum) ? String(qtyNum) : qtyNum.toFixed(3);
-            const vatRateTxt = (vatRate>0) ? (vatRate*100).toFixed(0) : '0';
+            const vatRateTxt = (itemVatRate>0) ? (itemVatRate*100).toFixed(0) : '0';
             const empName = it.employee_name ? `<div style='font-size:12px; color:#64748b; margin-top:2px; font-weight:700;'>الموظف: ${it.employee_name}</div>` : '';
 
             // الإجمالي بدون الضريبة = صافي السطر دائمًا (لا نعرض سعر القطعة هنا)
             const displayNet = net;
             // Render cells based on VAT presence: with VAT → 8 columns; no VAT → 4 or 5 columns (with Operation if present)
-            if(vatRate > 0){
+            if(effectiveVatRate > 0){
               tr.innerHTML = `
                 <td class="barcode-cell">${it.barcode||''}</td>
                 <td>
                   <div class="item-name">${it.name||''}</div>
                   ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                  ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
+                  ${(it.description || Number(it.is_tobacco||0) || Number(it.is_vat_exempt||0) || it.employee_name) ? `<div class='desc-print'>${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${Number(it.is_vat_exempt||0) ? `<span style='color:#2563eb; font-weight:800; margin-inline-end:10px;'>الصنف غير مطبق عليه الضريبة</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                 </td>
                 <td>${opCell}</td>
                 <td class="num">${qtyTxt}</td>
@@ -995,7 +997,7 @@
                   <td>
                     <div class="item-name">${it.name||''}</div>
                     ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
+                    ${(it.description || Number(it.is_tobacco||0) || Number(it.is_vat_exempt||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${Number(it.is_vat_exempt||0) ? `<span style='color:#2563eb; font-weight:800; margin-inline-end:10px;'>الصنف غير مطبق عليه الضريبة</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                   </td>
                   <td>${opCell}</td>
                   <td class="num">${qtyTxt}</td>
@@ -1008,7 +1010,7 @@
                   <td>
                     <div class="item-name">${it.name||''}</div>
                     ${it.name_en ? `<div class="item-name-en">${it.name_en}</div>` : ''}
-                    ${(it.description || Number(it.is_tobacco||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
+                    ${(it.description || Number(it.is_tobacco||0) || Number(it.is_vat_exempt||0) || it.employee_name) ? `<div class="desc-print">${Number(it.is_tobacco||0) ? `<span style='color:#b91c1c; font-weight:800; margin-inline-end:10px;'>هذا الصنف يطبق عليه رسوم التبغ</span>` : ''}${Number(it.is_vat_exempt||0) ? `<span style='color:#2563eb; font-weight:800; margin-inline-end:10px;'>الصنف غير مطبق عليه الضريبة</span>` : ''}${it.description ? `${it.description}` : ''}${empName}</div>` : ''}
                   </td>
                   <td class="num">${qtyTxt}</td>
                   <td class="num">${fmt(unitPrice)}</td>
@@ -1089,16 +1091,19 @@
           }catch(_){ }
           // في إشعار الدائن: اعرض VAT والإجمالي كقيم موجبة
           const isCreditAbs = String(sale.doc_type||'')==='credit_note' || String(sale.invoice_no||'').startsWith('CN-');
-          document.getElementById('vat').innerHTML = fmt(isCreditAbs ? Math.abs(Number(sale.vat_total||0)) : Number(sale.vat_total||0));
-          // إخفاء صف الضريبة بالكامل إذا كانت نسبة الضريبة = 0 في الإعدادات
+          const effectiveVatTotal = (effectiveVatRate > 0)
+            ? (isCreditAbs ? Math.abs(Number(sale.vat_total||0)) : Number(sale.vat_total||0))
+            : 0;
+          document.getElementById('vat').innerHTML = fmt(effectiveVatTotal);
+          // إخفاء صف الضريبة بالكامل إذا كانت نسبة الضريبة = 0 في الإعدادات أو إذا كانت الفاتورة zero_vat
           try{
-            if(Number(settings?.vat_percent||0) === 0){
+            if(Number(settings?.vat_percent||0) === 0 || effectiveVatRate === 0){
               const vatRow = document.getElementById('vat')?.closest('tr');
               if(vatRow){ vatRow.style.display = 'none'; }
             }
           }catch(_){ /* ignore */ }
           const afterDiscForGrand = Number(sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0) + Number(sale.tobacco_fee||0)));
-          const computedGrand = Number(sale.grand_total ?? (afterDiscForGrand + Number(sale.vat_total||0)));
+          const computedGrand = Number(sale.grand_total ?? (afterDiscForGrand + effectiveVatTotal));
           document.getElementById('grand').innerHTML = fmt(isCreditAbs ? Math.abs(computedGrand) : computedGrand);
 
           // عند عدم وجود ضريبة: أعِد تسمية الصفوف وأخفِ صف "بعد الخصم"
