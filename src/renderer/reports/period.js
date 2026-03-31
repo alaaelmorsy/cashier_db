@@ -1218,6 +1218,7 @@ async function loadRange(startStr, endStr){
     let costTotalExVat = 0;
     let salesTotalExVat = 0;
     try{
+      const vatPct = Number(settings.vat_percent || 15) / 100;
       const costIncludesVat = Boolean(Number(settings.cost_includes_vat ?? 1));
       const pricesIncludeVat = Boolean(Number(settings.prices_include_vat ?? 1));
       (soldItems||[]).forEach(it => {
