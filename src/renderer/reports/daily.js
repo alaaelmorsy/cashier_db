@@ -42,6 +42,11 @@ function translateDailyUI(isAr){
     totalCostPrice: 'إجمالي بسعر الشراء (شامل الضريبة)',
     totalSalePrice: 'إجمالي بسعر البيع (شامل الضريبة)',
     netProfit: 'صافي الربح (شامل الضريبة)',
+    inclVatLabel: 'شامل الضريبة',
+    exclVatLabel: 'غير شامل الضريبة',
+    totalCostPriceExVat: 'إجمالي بسعر الشراء (غير شامل الضريبة)',
+    totalSalePriceExVat: 'إجمالي بسعر البيع (غير شامل الضريبة)',
+    netProfitExVat: 'صافي الربح (غير شامل الضريبة)',
     paymentMethods: 'طرق الدفع',
     method: 'الطريقة',
     total: 'الإجمالي',
@@ -85,6 +90,11 @@ function translateDailyUI(isAr){
     totalCostPrice: 'Total cost price (incl. VAT)',
     totalSalePrice: 'Total sale price (incl. VAT)',
     netProfit: 'Net profit (incl. VAT)',
+    inclVatLabel: 'Incl. VAT',
+    exclVatLabel: 'Excl. VAT',
+    totalCostPriceExVat: 'Total cost price (excl. VAT)',
+    totalSalePriceExVat: 'Total sale price (excl. VAT)',
+    netProfitExVat: 'Net profit (excl. VAT)',
     paymentMethods: 'Payment methods',
     method: 'Method',
     total: 'Total',
@@ -162,8 +172,20 @@ function translateDailyUI(isAr){
       }
     }
     
+    const profitInclVatLabel = document.getElementById('profitInclVatLabel');
+    if(profitInclVatLabel) profitInclVatLabel.textContent = t.inclVatLabel;
+    const profitExclVatLabel = document.getElementById('profitExclVatLabel');
+    if(profitExclVatLabel) profitExclVatLabel.textContent = t.exclVatLabel;
+    
     const profitLabels = document.querySelectorAll('.profitability-section .kpi .label');
-    if(profitLabels.length >= 3){
+    if(profitLabels.length >= 6){
+      profitLabels[0].textContent = t.totalCostPrice;
+      profitLabels[1].textContent = t.totalSalePrice;
+      profitLabels[2].textContent = t.netProfit;
+      profitLabels[3].textContent = t.totalCostPriceExVat;
+      profitLabels[4].textContent = t.totalSalePriceExVat;
+      profitLabels[5].textContent = t.netProfitExVat;
+    } else if(profitLabels.length >= 3){
       profitLabels[0].textContent = t.totalCostPrice;
       profitLabels[1].textContent = t.totalSalePrice;
       profitLabels[2].textContent = t.netProfit;
@@ -1109,13 +1131,18 @@ async function load(){
       set('netVat', netVat);
       set('netAfter', netAfter);
 
-      // Profitability KPIs (with VAT):
-      // - costTotalWithVat: sum of (sold qty x product.cost) including VAT based on cost_includes_vat setting
-      // - salesTotalWithVat: sum of (sold qty x product.price) including VAT based on prices_include_vat setting
+      // Profitability KPIs (with VAT and without VAT):
+      // - costTotalWithVat: sum of (sold qty x product.cost) including VAT
+      // - salesTotalWithVat: sum of (sold qty x product.price) including VAT
       // - profitNetWithVat: salesTotalWithVat - costTotalWithVat
+      // - costTotalExVat: same but excluding VAT
+      // - salesTotalExVat: same but excluding VAT
+      // - profitNetExVat: salesTotalExVat - costTotalExVat
       try{
         let costTotalWithVat = 0;
         let salesTotalWithVat = 0;
+        let costTotalExVat = 0;
+        let salesTotalExVat = 0;
         const vatPct = Number(s.vat_percent || 15) / 100;
         const costIncludesVat = Boolean(Number(s.cost_includes_vat ?? 1));
         const pricesIncludeVat = Boolean(Number(s.prices_include_vat ?? 1));
@@ -1129,34 +1156,40 @@ async function load(){
           const itemVatPct = (Number(product?.is_vat_exempt || 0) === 1) ? 0 : vatPct;
           
           // حساب التكلفة شاملة الضريبة حسب الإعدادات
-          let costWithVat;
+          let costWithVat, costExVat;
           if(costIncludesVat){
-            // سعر التكلفة مُدخل شامل الضريبة بالفعل
             costWithVat = cost;
+            costExVat = itemVatPct > 0 ? cost / (1 + itemVatPct) : cost;
           } else {
-            // سعر التكلفة مُدخل قبل الضريبة، نضيف الضريبة
+            costExVat = cost;
             costWithVat = cost * (1 + itemVatPct);
           }
           costTotalWithVat += (qty * costWithVat);
+          costTotalExVat += (qty * costExVat);
           
           // حساب سعر البيع شامل الضريبة حسب الإعدادات
-          let priceWithVat;
+          let priceWithVat, priceExVat;
           if(pricesIncludeVat){
-            // سعر البيع مُدخل شامل الضريبة بالفعل
             priceWithVat = price;
+            priceExVat = itemVatPct > 0 ? price / (1 + itemVatPct) : price;
           } else {
-            // سعر البيع مُدخل قبل الضريبة، نضيف الضريبة
+            priceExVat = price;
             priceWithVat = price * (1 + itemVatPct);
           }
           salesTotalWithVat += (qty * priceWithVat);
+          salesTotalExVat += (qty * priceExVat);
         });
         
         const profitNetWithVat = Number(salesTotalWithVat - costTotalWithVat);
+        const profitNetExVat = Number(salesTotalExVat - costTotalExVat);
         
         set('costTotalPre', costTotalWithVat);
         set('salesTotalPre', salesTotalWithVat);
         set('profitNetPre', profitNetWithVat);
-      }catch(_){ set('costTotalPre', 0); set('salesTotalPre', 0); set('profitNetPre', 0); }
+        set('costTotalExVat', costTotalExVat);
+        set('salesTotalExVat', salesTotalExVat);
+        set('profitNetExVat', profitNetExVat);
+      }catch(_){ set('costTotalPre', 0); set('salesTotalPre', 0); set('profitNetPre', 0); set('costTotalExVat', 0); set('salesTotalExVat', 0); set('profitNetExVat', 0); }
     }catch(_){ }
 
     // Populate tables

@@ -66,6 +66,13 @@
       details > summary::before{content:'▸'; position:absolute; right:0; top:0; color:#94a3b8; transform:translateY(2px); transition:transform .2s}
       details[open] > summary::before{transform:rotate(90deg) translateX(2px)}
       @media (max-width: 640px){ .btn{padding:8px 10px} th,td{padding:8px} .range-bar{flex-direction:column; align-items:stretch} .range-actions{justify-content:space-between} }
+      .profit-group-label{font-size:11px; font-weight:700; color:var(--muted); margin:4px 0 2px; padding:2px 6px; background:#f1f5f9; border-radius:6px; display:inline-block}
+      .profitability-section .kpis{gap:6px; margin:4px 0}
+      .profitability-section .kpi{padding:8px 10px}
+      .profitability-section .kpi .value{font-size:16px}
+      .profitability-section .kpi .label{font-size:11px; margin-top:2px}
+      .profitability-section h3{margin:0 0 4px}
+      .section.profitability-section{padding:8px 12px; margin:8px 0}
       .badge{display:inline-block; padding:2px 6px; border-radius:6px; font-size:11px; border:1px solid var(--border); background:#fff; color:var(--muted)}
       .badge-credit{background:#fff7ed; border-color:#fdba74; color:#c2410c}
       .credit-row td{background:#fff7ed}
@@ -228,6 +235,11 @@
           color: var(--text);
         }
         
+        body.dark .profit-group-label {
+          background: #1e293b;
+          color: #93c5fd;
+        }
+        
         body.dark .badge {
           background: #1a1a1a;
           border-color: var(--border);
@@ -361,10 +373,17 @@
 
       <div class="section profitability-section">
         <h3>الربحية</h3>
+        <div class="profit-group-label" id="profitInclVatLabel">شامل الضريبة</div>
         <div class="kpis">
           <div class="kpi"><div class="value" id="costTotalPre">0.00</div><div class="label">إجمالي بسعر الشراء (شامل الضريبة)</div></div>
           <div class="kpi"><div class="value" id="salesTotalPre">0.00</div><div class="label">إجمالي بسعر البيع (شامل الضريبة)</div></div>
           <div class="kpi"><div class="value" id="profitNetPre">0.00</div><div class="label">صافي الربح (شامل الضريبة)</div></div>
+        </div>
+        <div class="profit-group-label" id="profitExclVatLabel">غير شامل الضريبة</div>
+        <div class="kpis">
+          <div class="kpi"><div class="value" id="costTotalExVat">0.00</div><div class="label">إجمالي بسعر الشراء (غير شامل الضريبة)</div></div>
+          <div class="kpi"><div class="value" id="salesTotalExVat">0.00</div><div class="label">إجمالي بسعر البيع (غير شامل الضريبة)</div></div>
+          <div class="kpi"><div class="value" id="profitNetExVat">0.00</div><div class="label">صافي الربح (غير شامل الضريبة)</div></div>
         </div>
       </div>
 
