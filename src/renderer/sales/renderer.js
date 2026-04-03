@@ -437,10 +437,9 @@ const catalog = document.getElementById('catalog');
 let isMainDevice = true;
 async function checkDeviceType() {
   try {
-    const r = await window.api.db_get_config();
+    const r = await window.api.device_get_mode();
     if (r && r.ok && r.config) {
-      const host = (r.config.host || '').toLowerCase();
-      isMainDevice = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+      isMainDevice = r.config.mode !== 'secondary';
     }
   } catch(_) {
     isMainDevice = true;
@@ -2171,6 +2170,7 @@ function renderCart(){
       <td>
         <div style="display:block; margin-bottom:3px;">
           <span class="p-name" title="${escapeHtml(it.name)}" style="display:block; white-space:normal; word-break:break-word; overflow-wrap:anywhere; color:#0b3daa; font-weight:700; font-size:12px; line-height:1.25;">${nameHtml}${it.name_en ? `<div style='font-size:11px; color:#64748b; font-weight:500; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;'>${escapeHtml(it.name_en)}</div>`:''}</span>
+          ${it.__pending ? `<span style="font-size:10px;color:#f59e0b;animation:spin 1s linear infinite;display:inline-block;">⟳</span>` : ''}
         </div>
         ${settings.show_employee_selector ? `<div style="display:block; margin-top:3px;"><select data-idx="${idx}" class="employee-select" title="${empTitle}" ${__isProcessingOld?'disabled':''}>
           <option value="">${__isAr ? 'اختر' : 'Select'}</option>
@@ -3177,7 +3177,7 @@ async function pickUnitAndApply(it, productMeta){
     // والتركيز على product_units المحددة للمنتج
     let units = [];
     try{
-      const r = await window.api.product_units_list(it.id);
+      const r = await cachedRequest(`units_${it.id}`, () => window.api.product_units_list(it.id), 60000);
       units = (r && r.ok && Array.isArray(r.items)) ? r.items : [];
     }catch(_){ units = []; }
     
@@ -3254,112 +3254,89 @@ async function addToCart(p){
     return;
   }
 
-  // Helpers
-  const applyOffer = async (it) => {
-    try{
-      const opId = (typeof it.operation_id !== 'undefined' && it.operation_id != null) ? Number(it.operation_id) : null;
-      const cacheKey = `offer_${it.id}_${opId||''}`;
-      const or = await cachedRequest(cacheKey, () => window.api.offers_find_for_product({ product_id: it.id, operation_id: opId }), 30000);
-      if(or && or.ok && or.item && !Number(or.item.is_global)){
-        if(or.item.mode === 'percent') it.price = Number((it.price * (1 - Number(or.item.value||0)/100)).toFixed(2));
-        else it.price = Math.max(0, Number(it.price) - Number(or.item.value||0));
-      }
-    }catch(_){ }
+  // ── أضف الصنف فوراً بالسعر الأساسي (Optimistic UI) ──────────────────────────
+  const it = {
+    id: p.id,
+    name: p.name,
+    name_en: p.name_en || null,
+    barcode: p.barcode || null,
+    price: Number(p.price||0),
+    qty: 1,
+    image_path: p.image_path,
+    category: p.category || null,
+    is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+    is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+    unit_name: null,
+    unit_multiplier: 1,
+    operation_name: null,
+    __opsLoaded: false,
+    __ops: [],
+    __pending: true,
+    product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
   };
-
-  const checkMin = (it) => {
-    const mp = (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null;
-    if(mp!=null && !isNaN(mp) && Number(it.price||0) < mp){
-      __showSalesToast(`السعر أقل من الحد الأدنى لهذا الصنف وهو (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
-      return false;
-    }
-    return true;
-  };
-
-  // اجلب عمليات المنتج وبيانات المنتج بشكل متوازي لتسريع الإضافة
-  let ops = [], __addToCartMeta = null;
-  try{
-    const [opsRes, metaRes] = await Promise.all([
-      fetchProductOps(p.id).catch(() => []),
-      window.api.products_get(p.id).catch(() => null)
-    ]);
-    ops = Array.isArray(opsRes) ? opsRes : [];
-    __addToCartMeta = (metaRes && metaRes.ok) ? metaRes.item : null;
-  }catch(_){ ops = []; }
-  
-  let it;
-  
-  if(Array.isArray(ops) && ops.length){
-    // اختر أول عملية حسب الترتيب القادم من السيرفر (sort_order ASC)
-    const first = ops[0];
-    it = {
-      id: p.id,
-      name: p.name,
-      name_en: p.name_en || null,
-      barcode: p.barcode || null,
-      price: Number(first.price||0), // استخدم سعر العملية الأولى
-      qty: 1,
-      image_path: p.image_path,
-      category: p.category || null,
-      is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
-      is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
-      unit_name: null,
-      unit_multiplier: 1,
-      operation_id: (first.operation_id||first.id),
-      operation_name: first.name,
-      __opsLoaded:true,
-      __ops: ops,
-      product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
-    };
-  } else {
-    // لا توجد عمليات: استخدم السعر الأساسي للمنتج
-    it = { 
-      id: p.id, 
-      name: p.name, 
-      name_en: p.name_en || null, 
-      barcode: p.barcode || null, 
-      price: Number(p.price||0), 
-      qty: 1, 
-      image_path: p.image_path, 
-      category: p.category || null, 
-      is_tobacco: Number(p.is_tobacco||0) ? 1 : 0, 
-      is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
-      unit_name: null, 
-      unit_multiplier: 1, 
-      operation_name: null, 
-      __opsLoaded:true, 
-      __ops: [], 
-      product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null 
-    };
-  }
-
-  // 1. Apply customer pricing first (sets base for customer)
-  await applyCustomerPricingForItem(it);
-
-  // 2. Apply Unit selection (uses pre-fetched meta from parallel load above)
-  try{ await pickUnitAndApply(it, __addToCartMeta||{}); }catch(_){ }
-
-  // 3. Apply Offer (Specific Product Offer) - AFTER unit application to ensure it applies to manual unit prices too
-  await applyOffer(it);
-
-  // 4. Check Min Price
-  if(!checkMin(it)) return;
-
-  // Add to cart
   cart.unshift(it);
+  renderCart(); // ← يظهر في السلة فوراً
 
-  // Cache Qty Rules
-  try{
-    if(!window.__qtyRulesCache) window.__qtyRulesCache = new Map();
-    const key = it.id + '|' + (it.operation_id==null?'null':String(it.operation_id));
-    const rr = await window.api.offers_qty_find_for_product({ product_id: it.id, operation_id: it.operation_id });
-    if(rr && rr.ok && rr.item){ window.__qtyRulesCache.set(key, rr.item); }
-  }catch(_){ }
+  // ── تحديث البيانات الكاملة في الخلفية (ops / units / عروض / سعر العميل) ─────
+  (async () => {
+    try {
+      // جلب العمليات والوحدات بالتوازي
+      const [opsRes] = await Promise.all([
+        fetchProductOps(p.id).catch(() => []),
+        cachedRequest(`units_${p.id}`, () => window.api.product_units_list(p.id), 60000).catch(() => null),
+      ]);
+      const ops = Array.isArray(opsRes) ? opsRes : [];
 
-  renderCart();
-  try{ await checkLowStockForItems([cart.find(x=>x.id===p.id)]); }catch(_){ }
-  // إذا كانت التنبيهات معطلة، تأكد من الإخفاء الفوري عند إضافة الصنف عبر الكتالوج
-  try{ if(settings && settings.show_low_stock_alerts === false){ __lowStockEpoch++; if(__lowStockTimer){ clearTimeout(__lowStockTimer); __lowStockTimer=null; } if(lowStockBanner){ lowStockBanner.style.display='none'; lowStockBanner.classList.remove('show'); } if(lowStockList){ lowStockList.innerHTML=''; } } }catch(_){ }
+      // تطبيق العملية الأولى إن وُجدت
+      if(ops.length){
+        const first = ops[0];
+        it.price = Number(first.price||0);
+        it.operation_id = (first.operation_id||first.id);
+        it.operation_name = first.name;
+      }
+      it.__opsLoaded = true;
+      it.__ops = ops;
+
+      // سعر العميل + وحدات البيع + عروض الأسعار بالتسلسل الصحيح
+      await applyCustomerPricingForItem(it);
+      try{ await pickUnitAndApply(it, p); }catch(_){ }
+
+      // تطبيق العرض الخاص بالمنتج
+      try{
+        const opId = it.operation_id != null ? Number(it.operation_id) : null;
+        const cacheKey = `offer_${it.id}_${opId||''}`;
+        const or = await cachedRequest(cacheKey, () => window.api.offers_find_for_product({ product_id: it.id, operation_id: opId }), 30000);
+        if(or && or.ok && or.item && !Number(or.item.is_global)){
+          if(or.item.mode === 'percent') it.price = Number((it.price * (1 - Number(or.item.value||0)/100)).toFixed(2));
+          else it.price = Math.max(0, Number(it.price) - Number(or.item.value||0));
+        }
+      }catch(_){ }
+
+      // التحقق من الحد الأدنى للسعر
+      const mp = (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null;
+      if(mp!=null && !isNaN(mp) && Number(it.price||0) < mp){
+        const cidx = cart.indexOf(it);
+        if(cidx >= 0) cart.splice(cidx, 1);
+        __showSalesToast(`السعر أقل من الحد الأدنى لهذا الصنف وهو (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
+      }
+
+      it.__pending = false;
+      renderCart(); // تحديث السلة بالسعر النهائي الصحيح
+
+      // حفظ قواعد الكمية في الخلفية
+      try{
+        if(!window.__qtyRulesCache) window.__qtyRulesCache = new Map();
+        const key = it.id + '|' + (it.operation_id==null?'null':String(it.operation_id));
+        const rr = await cachedRequest(`qtyRule_${key}`, () => window.api.offers_qty_find_for_product({ product_id: it.id, operation_id: it.operation_id }), 60000);
+        if(rr && rr.ok && rr.item){ window.__qtyRulesCache.set(key, rr.item); }
+      }catch(_){ }
+
+      try{ await checkLowStockForItems([it]); }catch(_){ }
+      try{ if(settings && settings.show_low_stock_alerts === false){ __lowStockEpoch++; if(__lowStockTimer){ clearTimeout(__lowStockTimer); __lowStockTimer=null; } if(lowStockBanner){ lowStockBanner.style.display='none'; lowStockBanner.classList.remove('show'); } if(lowStockList){ lowStockList.innerHTML=''; } } }catch(_){ }
+    } catch(_) {
+      it.__pending = false;
+    }
+  })();
 }
 
 // Helper: parse electronic scale barcode (13-digit EAN format)

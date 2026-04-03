@@ -18,6 +18,7 @@
   - types (main_types)
   - offers, coupons, customer_pricing
   - reports endpoints via IPC from renderer
+  - branches (multi-branch support)
 
 ### Key sales report IPC
 - sales:items_summary(from,to) -> SUM qty and amount per product
@@ -29,11 +30,14 @@
   - Shows summary by category
   - Shows per-category product breakdown
   - Tobacco section: now includes summary by (category, operation_name) and detailed rows with date, invoice number, doc type, product, category, operation, qty, price, total
+- Branch selection screen (branch-selection/index.html) - appears when multiple branches are configured
+- Activation screen with branch management (activation/index.html) - allows adding/editing/deleting branches
 
 ## Notable behaviors
 - Product categories sourced from main_types names
 - Sub-type is represented by operation (operation_name) per product (large/small etc.)
 - Credit notes are represented in sales with doc_type='credit_note' and are included in detailed report
+- Multi-branch support: when multiple branches are configured, app shows branch selection screen on startup
 
 ## Run/Dev
 - npm install

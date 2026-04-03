@@ -583,10 +583,12 @@ contextBridge.exposeInMainWorld('api', {
   // App-level
   app_quit: () => ipcRenderer.invoke('app:quit'),
   app_relaunch: () => ipcRenderer.invoke('app:relaunch'),
+  app_restart: () => ipcRenderer.invoke('app:restart'),
   app_get_locale: () => ipcRenderer.invoke('app:get_locale'),
   app_set_locale: (lang) => ipcRenderer.invoke('app:set_locale', { lang }),
   app_on_locale_changed: (cb) => { try { ipcRenderer.removeAllListeners('app:locale_changed'); } catch (_) { } ipcRenderer.on('app:locale_changed', (_ev, lang) => { try { cb && cb(lang); } catch (_) { } }); },
   show_context_menu: (payload) => ipcRenderer.invoke('context:show', payload),
+  window_set_size: (opts) => ipcRenderer.invoke('window:set_size', opts),
 
   zoom_get: () => ipcRenderer.invoke('zoom:get'),
   zoom_set: (factor) => {
@@ -803,6 +805,12 @@ contextBridge.exposeInMainWorld('api', {
   settings_get: () => ipcRenderer.invoke('settings:get'),
   settings_save: (payload) => ipcRenderer.invoke('settings:save', payload),
 
+  // Branches
+  branches_get: () => ipcRenderer.invoke('branches:get'),
+  branches_save: (payload) => ipcRenderer.invoke('branches:save', payload),
+  branches_delete: (payload) => ipcRenderer.invoke('branches:delete', payload),
+  branches_test_connection: (payload) => ipcRenderer.invoke('branches:test_connection', payload),
+
   // Scheduler
   scheduler_trigger_daily_email: () => ipcRenderer.invoke('scheduler:trigger_daily_email'),
   scheduler_trigger_backup: () => ipcRenderer.invoke('scheduler:trigger_backup'),
@@ -939,6 +947,13 @@ contextBridge.exposeInMainWorld('api', {
   customer_display_connect:     ()             => ipcRenderer.invoke('customer_display:connect'),
   customer_display_disconnect:  ()             => ipcRenderer.invoke('customer_display:disconnect'),
   customer_display_send_text:   (text)         => ipcRenderer.invoke('customer_display:send_text', text),
+
+  // ─── Batch screen-init calls (reduce round-trips, fast screen open) ───
+  screen_init_invoices:  ()       => ipcRenderer.invoke('screen:init:invoices'),
+  screen_init_customers: ()       => ipcRenderer.invoke('screen:init:customers'),
+  screen_init_products:  ()       => ipcRenderer.invoke('screen:init:products'),
+  screen_init_shifts:    (params) => ipcRenderer.invoke('screen:init:shifts', params),
+  sales_init:            (params) => ipcRenderer.invoke('sales:init', params),
 
   // Generic invoke method for any IPC handler
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),

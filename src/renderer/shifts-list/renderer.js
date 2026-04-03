@@ -3,6 +3,8 @@ let allShifts = [];
 let __page = 1;
 let __pageSize = 20;
 let permissions = new Set();
+const __shiftsInitPromise = window.api && window.api.screen_init_shifts ? window.api.screen_init_shifts({ limit: 20 }) : Promise.resolve(null);
+let __shiftsInitUsed = false;
 
 function hasPermission(key) {
   return permissions.has('shifts') && permissions.has(key);
@@ -24,8 +26,8 @@ async function loadPermissions() {
 
 async function ensureShiftsEnabled() {
   try {
-    const r = await window.api.settings_get();
-    const s = r && r.ok ? (r.item || {}) : {};
+    const r = await __shiftsInitPromise;
+    const s = r && r.ok ? (r.settings || r.item || {}) : {};
     if (s.show_shifts === 0 || s.show_shifts === false) {
       showError('نظام الشفتات غير مفعل');
       setTimeout(() => {
@@ -54,14 +56,33 @@ async function init() {
       window.location.href = '../login/index.html';
       return;
     }
-    
+
     const enabled = await ensureShiftsEnabled();
     if (!enabled) return;
-    
-    await initializePermissions();
-    await loadStatistics();
+
+    await Promise.all([initializePermissions(), loadStatistics()]);
+
+    if (!__shiftsInitUsed) {
+      try {
+        const d = await __shiftsInitPromise;
+        __shiftsInitUsed = true;
+        if (d && d.ok && Array.isArray(d.shifts)) {
+          document.getElementById('loading').style.display = 'none';
+          allShifts = d.shifts;
+          if (allShifts.length === 0) {
+            document.getElementById('empty').style.display = 'block';
+            document.getElementById('shiftsTable').style.display = 'none';
+          } else {
+            document.getElementById('empty').style.display = 'none';
+            document.getElementById('shiftsTable').style.display = 'table';
+            renderShifts();
+          }
+          return;
+        }
+      } catch (_) {}
+    }
     await loadShifts();
-    
+
   } catch (err) {
     console.error('Init error:', err);
     showError('حدث خطأ أثناء التحميل');

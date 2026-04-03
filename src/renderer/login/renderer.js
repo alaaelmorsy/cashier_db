@@ -62,7 +62,7 @@ function renderSavedAccounts() {
   if (savedWrap) savedWrap.style.display = 'none';
   // لا نعرض أي chips
   if (savedUsersDiv) savedUsersDiv.innerHTML = '';
-  // عبّي فقط قائمة datalist لحقل اسم المستخدم
+  // عبّي قائمة datalist لحقل اسم المستخدم
   if (savedUsersList) {
     savedUsersList.innerHTML = '';
     list.forEach(acc => {
@@ -71,21 +71,28 @@ function renderSavedAccounts() {
       savedUsersList.appendChild(opt);
     });
   }
+  // إذا كان هناك مستخدم واحد فقط محفوظ، عبّي الحقول مباشرة
+  // وإذا كان هناك أكثر من مستخدم، أظهر القائمة المنسدلة للاختيار
+  if (list.length === 1) {
+    const acc = list[0];
+    if (usernameInput) usernameInput.value = acc.username;
+    if (passwordInput) passwordInput.value = acc.password || '';
+    if (rememberCheck) rememberCheck.checked = true;
+    // أخفِ القائمة المنسدلة في حالة المستخدم الواحد
+    if (savedUsersList) savedUsersList.innerHTML = '';
+  }
 }
 
 renderSavedAccounts();
 
-// Sync with fallback file then re-render options (show all users by default)
+// Sync with fallback file then re-render options
 (async () => {
   try {
     await syncSavedAccounts();
   } catch (_) { }
   try {
-    // After syncing, re-render the datalist so all accounts appear
+    // After syncing, re-render which will auto-fill if single account
     renderSavedAccounts();
-    // Keep inputs empty so the datalist shows all saved users on first open
-    if (usernameInput) usernameInput.value = '';
-    if (passwordInput) passwordInput.value = '';
     updateDeleteBtn();
   } catch (_) { }
 })();

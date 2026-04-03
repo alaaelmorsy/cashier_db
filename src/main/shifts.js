@@ -1,9 +1,17 @@
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI, postToAPI } = require('./api-client');
 
 function registerShiftsIPC() {
   
   ipcMain.handle('shift:get-current', async (event, userId) => {
+    if (isSecondaryDevice()) {
+      try {
+        const r = await fetchFromAPI('/shifts/current', { user_id: userId });
+        if (r && r.ok) return { ok: true, shift: r.shift || null };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {
@@ -25,6 +33,13 @@ function registerShiftsIPC() {
   });
 
   ipcMain.handle('shift:get-any-open', async () => {
+    if (isSecondaryDevice()) {
+      try {
+        const r = await fetchFromAPI('/shifts/open-any');
+        if (r && r.ok) return { ok: true, shift: r.shift || null };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {
@@ -46,7 +61,13 @@ function registerShiftsIPC() {
 
   ipcMain.handle('shift:open', async (event, data) => {
     const { userId, username, openingCash, openingNotes } = data;
-    
+    if (isSecondaryDevice()) {
+      try {
+        const r = await postToAPI('/shifts/open', { userId, username, openingCash, openingNotes });
+        if (r && r.ok) return { ok: true, shift: r.shift || null };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {
@@ -99,7 +120,13 @@ function registerShiftsIPC() {
 
   ipcMain.handle('shift:close', async (event, data) => {
     const { shiftId, actualCash, closingNotes } = data;
-    
+    if (isSecondaryDevice()) {
+      try {
+        const r = await postToAPI(`/shifts/${shiftId}/close`, { shiftId, closingCash: actualCash, closingNotes });
+        if (r && r.ok) return { ok: true };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {

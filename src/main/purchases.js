@@ -1,6 +1,7 @@
 // Purchases IPC: record purchases with optional VAT inclusive logic
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerPurchasesIPC(){
   async function ensureTables(conn){
@@ -78,6 +79,18 @@ function registerPurchasesIPC(){
   });
 
   ipcMain.handle('purchases:list', async (_e, query) => {
+    if (isSecondaryDevice()) {
+      try {
+        const q2 = query || {};
+        const p = {};
+        if (q2.from_date) p.from = q2.from_date;
+        if (q2.to_date) p.to = q2.to_date;
+        if (q2.page) { p.limit = q2.pageSize || 50; p.offset = ((Number(q2.page || 1) - 1) * Number(q2.pageSize || 50)); }
+        const r = await fetchFromAPI('/purchases', p);
+        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0 };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     const q = query || {};
     let where = '';
     const params = [];

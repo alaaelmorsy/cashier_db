@@ -1,6 +1,7 @@
 // Permissions IPC handlers
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 // Ensure required permission keys exist (idempotent)
 async function ensureDefaultPermissions() {
@@ -110,6 +111,17 @@ function registerPermissionsIPC(){
   // Get permissions for a user -> returns array of keys
   ipcMain.handle('perms:get_for_user', async (_evt, { user_id }) => {
     if(!user_id) return { ok:false, error:'معرّف المستخدم مفقود' };
+    
+    // If Secondary device, fetch from API
+    if (isSecondaryDevice()) {
+      try {
+        const result = await fetchFromAPI(`/permissions/${user_id}`);
+        return { ok: true, keys: result.keys || [] };
+      } catch (err) {
+        return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' };
+      }
+    }
+    
     try{
       const conn = await dbAdapter.getConnection();
       try{

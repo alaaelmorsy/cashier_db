@@ -1,4 +1,7 @@
 // Products screen: modal add + list/edit/delete/toggle
+const __prodInitPromise = window.api && window.api.screen_init_products ? window.api.screen_init_products() : Promise.resolve(null);
+let __prodInitUsed = false;
+
 const tbody = document.getElementById('tbody');
 const errorDiv = document.getElementById('error');
 const addBtn = document.getElementById('addBtn');
@@ -83,10 +86,9 @@ function t(key) {
 let showSellingUnits = true; // default
 async function loadSellingUnitsVisibility(){
   try{
-    const r = await window.api.settings_get();
-    if(r && r.ok && r.item){
-      showSellingUnits = (r.item.show_selling_units === undefined || r.item.show_selling_units === null) ? true : !!r.item.show_selling_units;
-    }
+    const r = await __prodInitPromise;
+    const s = r && r.ok ? (r.settings || r.item || {}) : {};
+    showSellingUnits = (s.show_selling_units === undefined || s.show_selling_units === null) ? true : !!s.show_selling_units;
     applySellingUnitsVisibility();
   }catch(_){ showSellingUnits = true; applySellingUnitsVisibility(); }
 }
@@ -122,11 +124,9 @@ function throttle(func, limit) {
 let isMainDevice = true; // default to main device (no cache)
 async function checkDeviceType() {
   try {
-    const r = await window.api.db_get_config();
+    const r = await window.api.device_get_mode();
     if (r && r.ok && r.config) {
-      const host = (r.config.host || '').toLowerCase();
-      // Main device uses localhost/127.0.0.1, secondary uses remote IP
-      isMainDevice = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+      isMainDevice = r.config.mode !== 'secondary';
     }
   } catch(_) {
     isMainDevice = true; // default to main device on error
@@ -208,7 +208,7 @@ function applyTopPermissions(){
   if(saveOrderBtn && !hasProd('products.reorder')) saveOrderBtn.style.display='none';
 }
 // initial load perms and apply
-(async ()=>{ await loadPerms(); applyTopPermissions(); })();
+const __permsReadyPromise = (async ()=>{ await loadPerms(); applyTopPermissions(); })();
 
 // dialog fields
 const dlg = document.getElementById('dlg');
@@ -404,76 +404,55 @@ async function openEditDialog(item){
   try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; }catch(_){ }
   window.__removeImage = false;
   f_name.value=item.name||''; f_name_en.value=item.name_en||''; if(f_barcode) f_barcode.value=item.barcode||''; f_price.value=item.price; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el){ if(item.min_price!=null && item.min_price!==''){ const mp=Number(item.min_price); f_min_price_el.value = isNaN(mp) ? '' : String(mp.toFixed(2)); } else { f_min_price_el.value=''; } } f_cost.value=item.cost; f_stock.value=item.stock; f_description.value=item.description||''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el){ if(item.expiry_date){ const dt=new Date(item.expiry_date); if(!isNaN(dt.getTime())){ const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); f_expiry_date_el.value=`${y}-${m}-${d}`; } else { f_expiry_date_el.value=''; } } else { f_expiry_date_el.value=''; } } if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value = (item.is_tobacco ? '1' : '0'); if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked = !!item.is_vat_exempt; if(f_hide_from_sales) f_hide_from_sales.checked = (item.hide_from_sales === 1);
-  await populateCategories();
-  const currentCat = item.category || '';
-  if(currentCat){
-    // إذا لم تكن الفئة الحالية ضمن الخيارات (ربما تم حذف/إيقاف النوع)، أضفها مؤقتًا حتى لا تضيع القيمة
-    const exists = Array.from(f_category.options).some(o => o.value === currentCat);
-    if(!exists){
-      const opt = document.createElement('option');
-      opt.value = currentCat;
-      opt.textContent = currentCat + ' (غير موجود في الأنواع)';
-      f_category.appendChild(opt);
-    }
-  }
-  f_category.value=currentCat;
-
-  // load product operations
-  try{
-    await loadAllOps();
-    const rpo = await window.api.prod_ops_list(item.id);
-    prodOps = (rpo && rpo.ok) ? (rpo.items||[]).map(x=>({ operation_id:x.operation_id, name:x.name, price:Number(x.price||0) })) : [];
-    renderProdOps();
-  }catch(_){ prodOps=[]; renderProdOps(); }
-
-  // load product units
-  try{
-    const ru = await window.api.product_units_list(item.id);
-    prodUnits = (ru && ru.ok) ? (ru.items||[]).map(x=>({ unit_name:String(x.unit_name||'').trim(), multiplier:Number(x.multiplier||1), price_mode:(x.price_mode==='manual'?'manual':'auto'), price:(x.price!=null? Number(x.price): null) })) : [];
-    renderProdUnits();
-  }catch(_){ prodUnits=[]; renderProdUnits(); }
-
-  // load product variants
-  try{
-    const rv = await window.api.product_variants_list(item.id);
-    prodVariants = (rv && rv.ok) ? (rv.items||[]).map(x=>({ id:x.id, variant_name:String(x.variant_name||'').trim(), barcode:String(x.barcode||'').trim(), price:Number(x.price||0), cost:(x.cost!=null? Number(x.cost): null), stock_deduct_multiplier: (x.stock_deduct_multiplier!=null ? Number(x.stock_deduct_multiplier) : 1), is_active: x.is_active })) : [];
-    // track original IDs to detect deletions on save
-    initialVariantIds = new Set((rv && rv.ok) ? (rv.items||[]).map(x=>x.id).filter(Boolean) : []);
-    renderProdVariants();
-  }catch(_){ prodVariants=[]; initialVariantIds = new Set(); renderProdVariants(); }
-
-  pickedImagePath = item.image_path || null;
-  // Prefer BLOB on-demand fetch for preview
-  try{
-    const ir = await window.api.products_image_get(item.id);
-    if(ir && ir.ok && ir.base64){
-      f_thumb.src = `data:${ir.mime||'image/png'};base64,${ir.base64}`;
-    } else if(pickedImagePath){
-      if(pickedImagePath.startsWith('assets/')){
-        const relToAbs = '../../../' + pickedImagePath;
-        f_thumb.src = relToAbs;
-      } else {
-        f_thumb.src = 'file:///' + pickedImagePath.replace(/\\/g, '/');
-      }
-    } else {
-      f_thumb.src = '';
-    }
-  }catch(_){
-    // fallback to legacy path if available
-    if(pickedImagePath){
-      if(pickedImagePath.startsWith('assets/')){
-        const relToAbs = '../../../' + pickedImagePath;
-        f_thumb.src = relToAbs;
-      } else {
-        f_thumb.src = 'file:///' + pickedImagePath.replace(/\\/g, '/');
-      }
-    } else {
-      f_thumb.src = '';
-    }
-  }
+  
+  // Open dialog immediately for faster perceived response
   applySellingUnitsVisibility();
   safeShowModal(dlg);
   focusFirstField();
+  
+  // Load remaining data in parallel (background)
+  try{
+    const [catRes, opsRes, unitsRes, variantsRes, imgRes] = await Promise.all([
+      populateCategories(),
+      loadAllOps().then(() => window.api.prod_ops_list(item.id).catch(() => null)),
+      window.api.product_units_list(item.id).catch(() => null),
+      window.api.product_variants_list(item.id).catch(() => null),
+      window.api.products_image_get(item.id).catch(() => null)
+    ]);
+    
+    // Apply category
+    const currentCat = item.category || '';
+    if(currentCat){
+      const exists = Array.from(f_category.options).some(o => o.value === currentCat);
+      if(!exists){
+        const opt = document.createElement('option');
+        opt.value = currentCat;
+        opt.textContent = currentCat + ' (غير موجود في الأنواع)';
+        f_category.appendChild(opt);
+      }
+    }
+    f_category.value=currentCat;
+
+    // Apply operations
+    if(opsRes && opsRes.ok){ prodOps = (opsRes.items||[]).map(x=>({ operation_id:x.operation_id, name:x.name, price:Number(x.price||0) })); renderProdOps(); }
+
+    // Apply units
+    if(unitsRes && unitsRes.ok){ prodUnits = (unitsRes.items||[]).map(x=>({ unit_name:String(x.unit_name||'').trim(), multiplier:Number(x.multiplier||1), price_mode:(x.price_mode==='manual'?'manual':'auto'), price:(x.price!=null? Number(x.price): null) })); renderProdUnits(); }
+
+    // Apply variants
+    if(variantsRes && variantsRes.ok){ prodVariants = (variantsRes.items||[]).map(x=>({ id:x.id, variant_name:String(x.variant_name||'').trim(), barcode:String(x.barcode||'').trim(), price:Number(x.price||0), cost:(x.cost!=null? Number(x.cost): null), stock_deduct_multiplier: (x.stock_deduct_multiplier!=null ? Number(x.stock_deduct_multiplier) : 1), is_active: x.is_active })); initialVariantIds = new Set((variantsRes.items||[]).map(x=>x.id).filter(Boolean)); renderProdVariants(); }
+
+    // Apply image
+    pickedImagePath = item.image_path || null;
+    if(imgRes && imgRes.ok && imgRes.base64){
+      f_thumb.src = `data:${imgRes.mime||'image/png'};base64,${imgRes.base64}`;
+    } else if(pickedImagePath){
+      if(pickedImagePath.startsWith('assets/')){ f_thumb.src = '../../../' + pickedImagePath; }
+      else { f_thumb.src = 'file:///' + pickedImagePath.replace(/\\/g, '/'); }
+    } else { f_thumb.src = ''; }
+  }catch(_){
+    // Fallback: ensure dialog stays open even if background load fails
+  }
 }
 function closeDialog(){ dlg.close(); }
 
@@ -766,8 +745,14 @@ async function loadProducts(resetPage = true, clearError = true){
   try {
     // Load active types (cached)
     try{
-      const t = await cachedRequest('types_list', () => window.api.types_list(), 10000);
-      activeTypes = new Set((t && t.ok ? (t.items||[]) : []).map(x => x.name));
+      const initData = !__prodInitUsed ? await __prodInitPromise : null;
+      if(initData && initData.ok && initData.types){
+        activeTypes = new Set((initData.types || []).map(x => x.name));
+      } else {
+        const t = await cachedRequest('types_list', () => window.api.types_list(), 10000);
+        activeTypes = new Set((t && t.ok ? (t.items||[]) : []).map(x => x.name));
+      }
+      __prodInitUsed = true;
     }catch(_){ activeTypes = new Set(); }
 
     if(resetPage) __page = 1;
@@ -2188,6 +2173,6 @@ if(btnDownloadTemplate){
 }
 
 (async () => {
-  await populateFilterCategories();
+  await Promise.all([__permsReadyPromise, populateFilterCategories()]);
   await loadProducts();
 })();

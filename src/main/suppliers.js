@@ -1,6 +1,7 @@
 // Suppliers IPC handlers
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerSuppliersIPC(){
   async function ensureTable(conn){
@@ -55,6 +56,17 @@ function registerSuppliersIPC(){
 
   // list
   ipcMain.handle('suppliers:list', async (_e, q) => {
+    if (isSecondaryDevice()) {
+      try {
+        const query = q || {};
+        const p = {};
+        if (query.q) p.search = query.q;
+        if (query.active === '1') p.active = '1';
+        const r = await fetchFromAPI('/suppliers', p);
+        if (r && r.ok) return { ok: true, items: r.items || [] };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     const query = q || {};
     const where = [];
     const params = [];

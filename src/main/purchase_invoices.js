@@ -5,6 +5,7 @@
 
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerPurchaseInvoicesIPC(){
   async function ensureTables(conn){
@@ -354,6 +355,20 @@ function registerPurchaseInvoicesIPC(){
 
   // List
   ipcMain.handle('purchase_invoices:list', async (_e, q) => {
+    if (isSecondaryDevice()) {
+      try {
+        const query = q || {};
+        const p = {};
+        if (query.from) p.from = query.from;
+        if (query.to) p.to = query.to;
+        if (query.supplier_id) p.supplier_id = query.supplier_id;
+        if (query.invoice_no) p.search = query.invoice_no;
+        if (query.page) { p.limit = query.pageSize || 50; p.offset = ((Number(query.page || 1) - 1) * Number(query.pageSize || 50)); }
+        const r = await fetchFromAPI('/purchase-invoices', p);
+        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0, page: Number(query.page || 1), pageSize: Number(query.pageSize || 50) };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     const query = q || {};
     const where = [];
     const params = [];

@@ -153,16 +153,29 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { id } = req.params;
       conn = await dbAdapter.getConnection();
-      const [results] = await conn.query(
-        'SELECT * FROM sales WHERE id=? LIMIT 1; SELECT * FROM sales_items WHERE sale_id=? ORDER BY id',
-        [id, id]
-      );
-      const invoiceRows = results[0];
-      const items = results[1];
-      if (!invoiceRows.length) {
+      const [[saleRow], items] = await Promise.all([
+        conn.query('SELECT * FROM sales WHERE id=? LIMIT 1', [id]),
+        conn.query(
+          `SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier,
+                  si.price, si.qty, si.line_total, si.is_vat_exempt, si.operation_id, si.operation_name,
+                  si.employee_id, p.is_tobacco, p.is_vat_exempt AS product_is_vat_exempt, p.category, p.name_en,
+                  COALESCE(pv.barcode, p.barcode) AS barcode, e.name AS employee_name
+           FROM sales_items si
+           LEFT JOIN products p ON p.id = si.product_id
+           LEFT JOIN product_variants pv ON pv.id = si.operation_id
+           LEFT JOIN employees e ON e.id = si.employee_id
+           WHERE si.sale_id=? ORDER BY si.id`,
+          [id]
+        ),
+      ]);
+      if (!saleRow || !saleRow.length) {
         return res.status(404).json({ ok: false, error: 'Invoice not found' });
       }
-      res.json({ ok: true, invoice: invoiceRows[0], items });
+      const normalizedItems = (items[0] || []).map(it => ({
+        ...it,
+        is_vat_exempt: Number(it.is_vat_exempt||0) === 1 ? 1 : (Number(it.product_is_vat_exempt||0) === 1 ? 1 : 0)
+      }));
+      res.json({ ok: true, sale: saleRow[0], invoice: saleRow[0], items: normalizedItems });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -385,7 +398,14 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
 
       conn = await dbAdapter.getConnection();
       const placeholders = idArray.map(() => '?').join(',');
-      const [rows] = await conn.query(`SELECT * FROM product_operations WHERE product_id IN (${placeholders}) ORDER BY product_id, id`, idArray);
+      const [rows] = await conn.query(
+        `SELECT po.product_id, po.operation_id, po.price, o.name, o.is_active, o.sort_order
+         FROM product_operations po
+         JOIN operations o ON o.id = po.operation_id
+         WHERE po.product_id IN (${placeholders})
+         ORDER BY po.product_id ASC, o.sort_order ASC, o.name ASC`,
+        idArray
+      );
       res.json({ ok: true, operations: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -517,7 +537,193 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (!rows.length) {
         return res.json({ ok: true, settings: {} });
       }
-      res.json({ ok: true, settings: rows[0] });
+      const item = rows[0];
+      // Normalize support_end_date to YYYY-MM-DD (MySQL may return datetime/Buffer)
+      if (item.support_end_date !== null && item.support_end_date !== undefined) {
+        const raw = String(item.support_end_date).trim();
+        if (raw) {
+          try {
+            const d = new Date(raw);
+            if (!isNaN(d)) item.support_end_date = d.toISOString().slice(0, 10);
+          } catch (_) { item.support_end_date = raw; }
+        } else { item.support_end_date = null; }
+      }
+      // Normalize boolean/toggle fields so secondary device reads them as 0/1
+      const boolFields = [
+        'show_shifts', 'show_appointments', 'show_whatsapp_controls',
+        'weight_mode_enabled', 'electronic_scale_enabled', 'silent_print',
+        'prices_include_vat', 'allow_sell_zero_stock', 'allow_negative_inventory',
+        'op_price_manual', 'cart_separate_duplicate_lines', 'zatca_enabled',
+        'hide_product_images', 'show_quotation_button', 'show_selling_units',
+        'show_employee_selector', 'recovery_unlocked', 'require_payment_before_print',
+        'daily_email_enabled', 'db_backup_enabled', 'db_backup_local_enabled',
+        'smtp_secure', 'show_trial_notice', 'show_email_in_invoice', 'show_barcode_in_a4',
+        'print_show_change', 'allow_discount', 'barcode_show_shop_name',
+        'barcode_show_product_name', 'barcode_show_price', 'barcode_show_barcode_text',
+      ];
+      boolFields.forEach(f => {
+        if (f in item) item[f] = item[f] ? 1 : 0;
+      });
+      // Normalize payment_methods to array
+      try {
+        if (item.payment_methods && typeof item.payment_methods === 'string') {
+          item.payment_methods = JSON.parse(item.payment_methods);
+        } else if (!Array.isArray(item.payment_methods)) {
+          item.payment_methods = [];
+        }
+      } catch (_) { item.payment_methods = []; }
+      res.json({ ok: true, settings: item });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.post('/api/settings', async (req, res) => {
+    let conn;
+    try {
+      const p = req.body || {};
+      conn = await dbAdapter.getConnection();
+      const [curRows] = await conn.query('SELECT whatsapp_on_print, show_whatsapp_controls, support_end_date FROM app_settings WHERE id=1 LIMIT 1');
+      const cur = curRows[0] || {};
+      const hasOwn = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
+      const wop = hasOwn(p, 'whatsapp_on_print') ? (p.whatsapp_on_print ? 1 : 0) : (cur.whatsapp_on_print ? 1 : 0);
+      const showW = hasOwn(p, 'show_whatsapp_controls') ? (p.show_whatsapp_controls ? 1 : 0) : (cur.show_whatsapp_controls ? 1 : 0);
+      const methods = Array.isArray(p.payment_methods) ? JSON.stringify(p.payment_methods) : null;
+      let supportEndToSave = cur.support_end_date || null;
+      if (hasOwn(p, 'support_end_date')) {
+        const raw = String(p.support_end_date || '').trim();
+        if (raw) {
+          const m = raw.match(/^(\d{4})[-\/.](\d{2})[-\/.](\d{2})$/);
+          if (m) supportEndToSave = `${m[1]}-${m[2]}-${m[3]}`;
+          else { try { const d = new Date(raw); if (!isNaN(d)) supportEndToSave = d.toISOString().slice(0,10); } catch(_){} }
+        } else { supportEndToSave = null; }
+      }
+      await conn.query(`UPDATE app_settings SET
+        seller_legal_name=?, seller_legal_name_en=?, seller_vat_number=?, company_site=?,
+        company_location=?, company_location_en=?, mobile=?, email=?, show_email_in_invoice=?,
+        logo_path=?, vat_percent=?, prices_include_vat=?, cost_includes_vat=?, payment_methods=?,
+        default_payment_method=?, currency_code=?, currency_symbol=?, currency_symbol_position=?,
+        app_locale=?, default_print_format=?, print_copies=?, silent_print=?, print_show_change=?,
+        show_barcode_in_a4=?, unit_price_label=?, quantity_label=?, op_price_manual=?,
+        allow_sell_zero_stock=?, allow_negative_inventory=?, cart_separate_duplicate_lines=?,
+        logo_width_px=?, logo_height_px=?, invoice_footer_note=?, hide_product_images=?,
+        closing_hour=?, zatca_enabled=?, recovery_unlocked=?,
+        tobacco_fee_percent=?, tobacco_min_fee_amount=?,
+        daily_email_enabled=?, daily_email_time=?, db_backup_enabled=?, db_backup_time=?,
+        db_backup_local_enabled=?, db_backup_local_time=?, db_backup_local_path=?,
+        smtp_host=?, smtp_port=?, smtp_secure=?, smtp_user=?, smtp_pass=?,
+        support_end_date=?, whatsapp_on_print=?, whatsapp_auto_connect=?, whatsapp_message=?,
+        commercial_register=?, national_number=?, show_whatsapp_controls=?,
+        print_margin_right_mm=?, print_margin_left_mm=?,
+        low_stock_threshold=?, show_low_stock_alerts=?, low_stock_email_enabled=?,
+        low_stock_email_per_item=?, low_stock_email_cooldown_hours=?,
+        weight_mode_enabled=?, electronic_scale_enabled=?, electronic_scale_type=?,
+        show_quotation_button=?, show_selling_units=?, show_employee_selector=?,
+        require_payment_before_print=?, require_customer_before_print=?, require_phone_min_10=?,
+        customer_display_enabled=?, customer_display_simulator=?, customer_display_port=?,
+        customer_display_baud_rate=?, customer_display_columns=?, customer_display_rows=?,
+        customer_display_protocol=?, customer_display_encoding=?, customer_display_brightness=?,
+        customer_display_welcome_msg=?, customer_display_thankyou_msg=?,
+        appointment_reminder_minutes=?, app_theme=?,
+        barcode_printer_device_name=?, barcode_paper_width_mm=?, barcode_paper_height_mm=?,
+        barcode_show_shop_name=?, barcode_show_product_name=?, barcode_show_price=?,
+        barcode_show_barcode_text=?, barcode_font_size_shop=?, barcode_font_size_product=?,
+        barcode_font_size_price=?, barcode_font_size_barcode_text=?,
+        barcode_height_px=?, barcode_label_offset_right_mm=?, barcode_label_offset_left_mm=?,
+        barcode_label_offset_top_mm=?, barcode_label_offset_bottom_mm=?,
+        branch_name=?, show_shifts=?, show_appointments=?
+        WHERE id=1`,
+        [
+          p.seller_legal_name||null, p.seller_legal_name_en||null, p.seller_vat_number||null,
+          p.company_site||null, p.company_location||null, p.company_location_en||null,
+          p.mobile||null, p.email||null, p.show_email_in_invoice ? 1 : 0,
+          p.logo_path||null,
+          (p.vat_percent===''||p.vat_percent===null||p.vat_percent===undefined) ? 15.00 : Number(p.vat_percent),
+          p.prices_include_vat ? 1 : 0,
+          p.cost_includes_vat ? 1 : 0,
+          methods,
+          p.default_payment_method||null,
+          p.currency_code||'SAR', p.currency_symbol||'﷼', p.currency_symbol_position||'after',
+          p.app_locale||'ar', p.default_print_format||'thermal', Math.max(1, Number(p.print_copies||1)),
+          p.silent_print ? 1 : 0, p.print_show_change===0 ? 0 : 1,
+          p.show_barcode_in_a4 ? 1 : 0, p.unit_price_label||'سعر القطعة',
+          p.quantity_label||'عدد', p.op_price_manual ? 1 : 0,
+          p.allow_sell_zero_stock ? 1 : 0, p.allow_negative_inventory ? 1 : 0,
+          p.cart_separate_duplicate_lines ? 1 : 0,
+          Number(p.logo_width_px)||null, Number(p.logo_height_px)||null,
+          p.invoice_footer_note||null, p.hide_product_images ? 1 : 0,
+          p.closing_hour ? String(p.closing_hour).slice(0,5)+':00' : null,
+          p.zatca_enabled ? 1 : 0, p.recovery_unlocked ? 1 : 0,
+          (p.tobacco_fee_percent===''||p.tobacco_fee_percent===null||p.tobacco_fee_percent===undefined) ? null : Number(p.tobacco_fee_percent),
+          (p.tobacco_min_fee_amount===''||p.tobacco_min_fee_amount===null||p.tobacco_min_fee_amount===undefined) ? null : Number(p.tobacco_min_fee_amount),
+          p.daily_email_enabled ? 1 : 0, p.daily_email_time ? String(p.daily_email_time).slice(0,5)+':00' : null,
+          p.db_backup_enabled ? 1 : 0, p.db_backup_time ? String(p.db_backup_time).slice(0,5)+':00' : null,
+          p.db_backup_local_enabled ? 1 : 0, p.db_backup_local_time ? String(p.db_backup_local_time).slice(0,5)+':00' : null,
+          p.db_backup_local_path||null,
+          p.smtp_host||null, p.smtp_port ? Number(p.smtp_port) : null,
+          p.smtp_secure ? 1 : 0, p.smtp_user||null, p.smtp_pass||null,
+          supportEndToSave, wop,
+          p.whatsapp_auto_connect ? 1 : 0, p.whatsapp_message||null,
+          p.commercial_register||null, p.national_number||null, showW,
+          (p.print_margin_right_mm===''||p.print_margin_right_mm===null||p.print_margin_right_mm===undefined) ? null : Number(p.print_margin_right_mm),
+          (p.print_margin_left_mm===''||p.print_margin_left_mm===null||p.print_margin_left_mm===undefined) ? null : Number(p.print_margin_left_mm),
+          Math.max(0, Number(p.low_stock_threshold===''||p.low_stock_threshold===null||p.low_stock_threshold===undefined ? 5 : p.low_stock_threshold)),
+          p.show_low_stock_alerts ? 1 : 0, p.low_stock_email_enabled ? 1 : 0,
+          p.low_stock_email_per_item ? 1 : 0,
+          Math.max(1, Number(p.low_stock_email_cooldown_hours===''||p.low_stock_email_cooldown_hours===null||p.low_stock_email_cooldown_hours===undefined ? 24 : p.low_stock_email_cooldown_hours)),
+          p.weight_mode_enabled ? 1 : 0, p.electronic_scale_enabled ? 1 : 0,
+          p.electronic_scale_type==='price' ? 'price' : 'weight',
+          p.show_quotation_button ? 1 : 0, p.show_selling_units ? 1 : 0, p.show_employee_selector ? 1 : 0,
+          p.require_payment_before_print ? 1 : 0, p.require_customer_before_print ? 1 : 0, p.require_phone_min_10 ? 1 : 0,
+          p.customer_display_enabled ? 1 : 0, p.customer_display_simulator ? 1 : 0,
+          p.customer_display_port||null, p.customer_display_baud_rate ? Number(p.customer_display_baud_rate) : 9600,
+          p.customer_display_columns ? Number(p.customer_display_columns) : 20,
+          p.customer_display_rows ? Number(p.customer_display_rows) : 2,
+          p.customer_display_protocol||'escpos', p.customer_display_encoding||'windows-1256',
+          p.customer_display_brightness ? Number(p.customer_display_brightness) : 100,
+          p.customer_display_welcome_msg||'مرحباً بك', p.customer_display_thankyou_msg||'شكراً لزيارتك',
+          p.appointment_reminder_minutes!==undefined ? Number(p.appointment_reminder_minutes) : 15,
+          p.app_theme && ['light','gray','dark','auto'].includes(p.app_theme) ? p.app_theme : 'light',
+          p.barcode_printer_device_name||null,
+          (p.barcode_paper_width_mm===''||p.barcode_paper_width_mm===null||p.barcode_paper_width_mm===undefined) ? null : Number(p.barcode_paper_width_mm),
+          (p.barcode_paper_height_mm===''||p.barcode_paper_height_mm===null||p.barcode_paper_height_mm===undefined) ? null : Number(p.barcode_paper_height_mm),
+          p.barcode_show_shop_name ? 1 : 0, p.barcode_show_product_name ? 1 : 0,
+          p.barcode_show_price ? 1 : 0, p.barcode_show_barcode_text ? 1 : 0,
+          p.barcode_font_size_shop ? Number(p.barcode_font_size_shop) : 12,
+          p.barcode_font_size_product ? Number(p.barcode_font_size_product) : 12,
+          p.barcode_font_size_price ? Number(p.barcode_font_size_price) : 12,
+          p.barcode_font_size_barcode_text ? Number(p.barcode_font_size_barcode_text) : 10,
+          p.barcode_height_px ? Number(p.barcode_height_px) : 40,
+          (p.barcode_label_offset_right_mm!==undefined && p.barcode_label_offset_right_mm!==null && p.barcode_label_offset_right_mm!=='') ? Number(p.barcode_label_offset_right_mm) : 0,
+          (p.barcode_label_offset_left_mm!==undefined && p.barcode_label_offset_left_mm!==null && p.barcode_label_offset_left_mm!=='') ? Number(p.barcode_label_offset_left_mm) : 0,
+          (p.barcode_label_offset_top_mm!==undefined && p.barcode_label_offset_top_mm!==null && p.barcode_label_offset_top_mm!=='') ? Number(p.barcode_label_offset_top_mm) : 0,
+          (p.barcode_label_offset_bottom_mm!==undefined && p.barcode_label_offset_bottom_mm!==null && p.barcode_label_offset_bottom_mm!=='') ? Number(p.barcode_label_offset_bottom_mm) : 0,
+          p.branch_name||null, p.show_shifts ? 1 : 0, p.show_appointments ? 1 : 0
+        ]
+      );
+      // Handle logo updates (DB BLOB)
+      if(p && p.logo_clear === true){
+        await conn.query('UPDATE app_settings SET logo_blob=NULL, logo_mime=NULL, logo_path=NULL WHERE id=1');
+      } else if(p && p.logo_blob_base64){
+        try{
+          const buf = Buffer.from(p.logo_blob_base64, 'base64');
+          const mime = p.logo_mime || 'image/png';
+          await conn.query('UPDATE app_settings SET logo_blob=?, logo_mime=?, logo_path=NULL WHERE id=1', [buf, mime]);
+        }catch(_){ /* ignore malformed base64 */ }
+      }
+      // Handle default product image updates
+      if(p && p.default_product_img_clear === true){
+        await conn.query('UPDATE app_settings SET default_product_img_blob=NULL, default_product_img_mime=NULL WHERE id=1');
+      } else if(p && p.default_product_img_blob_base64){
+        try{
+          const buf2 = Buffer.from(p.default_product_img_blob_base64, 'base64');
+          const mime2 = p.default_product_img_mime || 'image/png';
+          await conn.query('UPDATE app_settings SET default_product_img_blob=?, default_product_img_mime=? WHERE id=1', [buf2, mime2]);
+        }catch(_){ /* ignore malformed base64 */ }
+      }
+      res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -832,6 +1038,415 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // Drivers Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/drivers', async (req, res) => {
+    let conn;
+    try {
+      const { only_active, term } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (only_active === '1' || only_active === 'true') { terms.push('active=1'); }
+      if (term) { terms.push('(name LIKE ? OR phone LIKE ?)'); const t = `%${term}%`; params.push(t, t); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [rows] = await conn.query(`SELECT * FROM drivers ${where} ORDER BY id DESC`, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Employees Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/employees', async (req, res) => {
+    let conn;
+    try {
+      const { term } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (term) { terms.push('name LIKE ?'); params.push(`%${term}%`); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [rows] = await conn.query(`SELECT * FROM employees ${where} ORDER BY id DESC`, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Shifts Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/shifts/open-any', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [rows] = await conn.query(`SELECT * FROM shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1`);
+      res.json({ ok: true, shift: rows[0] || null });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.get('/api/shifts/current', async (req, res) => {
+    let conn;
+    try {
+      const userId = Number(req.query.user_id || 0);
+      conn = await dbAdapter.getConnection();
+      const [rows] = await conn.query(
+        `SELECT * FROM shifts WHERE user_id=? AND status='open' ORDER BY opened_at DESC LIMIT 1`,
+        [userId]
+      );
+      res.json({ ok: true, shift: rows[0] || null });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.post('/api/shifts/open', async (req, res) => {
+    let conn;
+    try {
+      const { userId, username, openingCash, openingNotes } = req.body || {};
+      conn = await dbAdapter.getConnection();
+      const [existing] = await conn.query(`SELECT id FROM shifts WHERE user_id=? AND status='open'`, [userId]);
+      if (existing.length > 0) return res.json({ ok: false, error: 'يوجد وردية مفتوحة بالفعل' });
+      const [[maxRow]] = await conn.query(`SELECT COALESCE(MAX(CAST(shift_no AS UNSIGNED)),0) AS m FROM shifts WHERE shift_no REGEXP '^[0-9]+$'`);
+      const shiftNo = String((Number(maxRow.m || 0)) + 1);
+      const now = new Date();
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      const [result] = await conn.query(
+        `INSERT INTO shifts (shift_no, user_id, username, opening_cash, opening_notes, status, opened_at, total_invoices, total_sales, cash_sales, card_sales) VALUES (?,?,?,?,?,'open',?,0,0,0,0)`,
+        [shiftNo, userId, username, openingCash || 0, openingNotes || null, nowStr]
+      );
+      const [[shift]] = await conn.query(`SELECT * FROM shifts WHERE id=?`, [result.insertId]);
+      res.json({ ok: true, shift });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.post('/api/shifts/:id/close', async (req, res) => {
+    let conn;
+    try {
+      const shiftId = Number(req.params.id);
+      const { closingCash, closingNotes } = req.body || {};
+      conn = await dbAdapter.getConnection();
+      const [[shift]] = await conn.query(`SELECT * FROM shifts WHERE id=? AND status='open' LIMIT 1`, [shiftId]);
+      if (!shift) return res.json({ ok: false, error: 'الوردية غير موجودة أو مغلقة بالفعل' });
+      const [salesRows] = await conn.query(
+        `SELECT COALESCE(SUM(grand_total),0) AS total, COUNT(*) AS cnt FROM sales WHERE shift_id=? AND (doc_type IS NULL OR doc_type='invoice')`,
+        [shiftId]
+      );
+      const salesTotal = salesRows[0] ? Number(salesRows[0].total || 0) : 0;
+      const salesCount = salesRows[0] ? Number(salesRows[0].cnt || 0) : 0;
+      await conn.query(
+        `UPDATE shifts SET status='closed', closed_at=NOW(), closing_cash=?, closing_notes=?, total_sales=?, total_invoices=? WHERE id=?`,
+        [closingCash || 0, closingNotes || null, salesTotal, salesCount, shiftId]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Held Invoices Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/held-invoices', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [rows] = await conn.query('SELECT * FROM held_invoices ORDER BY id ASC');
+      const items = rows.map((r, idx) => {
+        try { const d = JSON.parse(r.invoice_data); return { ...d, db_id: r.id, id: idx + 1 }; }
+        catch (_) { return null; }
+      }).filter(x => x !== null);
+      res.json({ ok: true, items });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.post('/api/held-invoices', async (req, res) => {
+    let conn;
+    try {
+      const payload = req.body || {};
+      if (!payload.cart || !Array.isArray(payload.cart) || payload.cart.length === 0) {
+        return res.status(400).json({ ok: false, error: 'السلة فارغة' });
+      }
+      conn = await dbAdapter.getConnection();
+      const [result] = await conn.query('INSERT INTO held_invoices (invoice_data) VALUES (?)', [JSON.stringify(payload)]);
+      res.json({ ok: true, id: result.insertId });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.delete('/api/held-invoices/:id', async (req, res) => {
+    let conn;
+    try {
+      const id = Number(req.params.id);
+      conn = await dbAdapter.getConnection();
+      await conn.query('DELETE FROM held_invoices WHERE id=?', [id]);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Suppliers Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/suppliers', async (req, res) => {
+    let conn;
+    try {
+      const { search, active } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (active === '1') { terms.push('is_active=1'); }
+      if (search) { terms.push('(name LIKE ? OR phone LIKE ?)'); const s = `%${search}%`; params.push(s, s); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [rows] = await conn.query(`SELECT * FROM suppliers ${where} ORDER BY id DESC`, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Purchases Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/purchases', async (req, res) => {
+    let conn;
+    try {
+      const { limit = 50, offset = 0, from, to } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (from) { terms.push('purchase_date >= ?'); params.push(from); }
+      if (to) { terms.push('purchase_date <= ?'); params.push(to); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM purchases ${where}`, params);
+      const lim = Math.min(parseInt(limit) || 50, 500);
+      const [rows] = await conn.query(`SELECT * FROM purchases ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
+      res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Purchase Invoices Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/purchase-invoices', async (req, res) => {
+    let conn;
+    try {
+      const { limit = 50, offset = 0, supplier_id, from, to, search } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (supplier_id) { terms.push('pi.supplier_id=?'); params.push(Number(supplier_id)); }
+      if (from) { terms.push('DATE(pi.invoice_at) >= ?'); params.push(from); }
+      if (to) { terms.push('DATE(pi.invoice_at) <= ?'); params.push(to); }
+      if (search) { terms.push('(pi.invoice_no LIKE ? OR s.name LIKE ?)'); const sq = `%${search}%`; params.push(sq, sq); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const lim = Math.min(parseInt(limit) || 50, 500);
+      const [[cntRow]] = await conn.query(
+        `SELECT COUNT(*) AS total FROM purchase_invoices pi LEFT JOIN suppliers s ON s.id=pi.supplier_id ${where}`, params
+      );
+      const [rows] = await conn.query(
+        `SELECT pi.*, s.name AS supplier_name FROM purchase_invoices pi LEFT JOIN suppliers s ON s.id=pi.supplier_id ${where} ORDER BY pi.id DESC LIMIT ? OFFSET ?`,
+        [...params, lim, parseInt(offset) || 0]
+      );
+      res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.get('/api/purchase-invoices/:id', async (req, res) => {
+    let conn;
+    try {
+      const id = Number(req.params.id);
+      conn = await dbAdapter.getConnection();
+      const [[inv]] = await conn.query('SELECT pi.*, s.name AS supplier_name FROM purchase_invoices pi LEFT JOIN suppliers s ON s.id=pi.supplier_id WHERE pi.id=? LIMIT 1', [id]);
+      if (!inv) return res.status(404).json({ ok: false, error: 'غير موجود' });
+      const [details] = await conn.query('SELECT pid.*, p.name AS product_name FROM purchase_invoice_details pid LEFT JOIN products p ON p.id=pid.product_id WHERE pid.purchase_id=? ORDER BY pid.id', [id]);
+      res.json({ ok: true, invoice: inv, details });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Vouchers Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/vouchers', async (req, res) => {
+    let conn;
+    try {
+      const { limit = 50, offset = 0, voucher_type, from, to, entity_type } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (voucher_type) { terms.push('voucher_type=?'); params.push(voucher_type); }
+      if (entity_type) { terms.push('entity_type=?'); params.push(entity_type); }
+      if (from) { terms.push('DATE(created_at) >= ?'); params.push(from); }
+      if (to) { terms.push('DATE(created_at) <= ?'); params.push(to); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const lim = Math.min(parseInt(limit) || 50, 500);
+      const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM vouchers ${where}`, params);
+      const [rows] = await conn.query(`SELECT * FROM vouchers ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
+      res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Quotations Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/quotations', async (req, res) => {
+    let conn;
+    try {
+      const { limit = 50, offset = 0, search } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = []; const params = [];
+      if (search) { terms.push('(quotation_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)'); const s = `%${search}%`; params.push(s, s, s); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const lim = Math.min(parseInt(limit) || 50, 500);
+      const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM quotations ${where}`, params);
+      const [rows] = await conn.query(`SELECT id, quotation_no, customer_name, customer_phone, total, created_at FROM quotations ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
+      res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  app.get('/api/quotations/:id', async (req, res) => {
+    let conn;
+    try {
+      const id = Number(req.params.id);
+      conn = await dbAdapter.getConnection();
+      const [[row]] = await conn.query('SELECT * FROM quotations WHERE id=? LIMIT 1', [id]);
+      if (!row) return res.status(404).json({ ok: false, error: 'غير موجود' });
+      res.json({ ok: true, item: row });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Batch Screen-Init Endpoints (تسريع فتح الشاشات — طلب واحد بدل عدة طلبات)
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/init/invoices-screen — يجلب الإعدادات + إحصائية الفواتير دفعة واحدة
+  app.get('/api/init/invoices-screen', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[settingsRow], [cntRow]] = await Promise.all([
+        conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+        conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
+      ]);
+      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // GET /api/init/customers-screen — يجلب الإعدادات + أول 100 عميل دفعة واحدة
+  app.get('/api/init/customers-screen', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[settingsRow], [customers], [cntRow]] = await Promise.all([
+        conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+        conn.query('SELECT id, name, phone, email, vat_number, is_active, created_at FROM customers ORDER BY id DESC LIMIT 100'),
+        conn.query('SELECT COUNT(*) AS total FROM customers'),
+      ]);
+      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // GET /api/init/products-screen — يجلب الإعدادات + أول 100 منتج + الأنواع دفعة واحدة
+  app.get('/api/init/products-screen', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[settingsRow], [products], [types], [operations], [cntRow]] = await Promise.all([
+        conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+        conn.query('SELECT id, name, name_en, barcode, price, cost, stock, category, is_tobacco, is_active, sort_order FROM products ORDER BY sort_order ASC, name ASC LIMIT 100'),
+        conn.query('SELECT * FROM main_types WHERE is_active=1 ORDER BY sort_order ASC, name ASC'),
+        conn.query('SELECT * FROM operations ORDER BY id'),
+        conn.query('SELECT COUNT(*) AS total FROM products'),
+      ]);
+      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // GET /api/init/shifts-screen — يجلب الإعدادات + الورديات الأخيرة دفعة واحدة
+  app.get('/api/init/shifts-screen', async (req, res) => {
+    let conn;
+    try {
+      const { user_id, limit = 20 } = req.query;
+      conn = await dbAdapter.getConnection();
+      const lim = Math.min(parseInt(limit) || 20, 200);
+      const terms = []; const params = [];
+      if (user_id) { terms.push('user_id=?'); params.push(Number(user_id)); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [[settingsRow], [shifts], [openShift]] = await Promise.all([
+        conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+        conn.query(`SELECT * FROM shifts ${where} ORDER BY id DESC LIMIT ?`, [...params, lim]),
+        conn.query(`SELECT * FROM shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1`),
+      ]);
+      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, shifts, open_shift: openShift[0] || null });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // POST /api/customer-display/show
   // ═══════════════════════════════════════════════════════════════
   app.post('/api/customer-display/show', async (req, res) => {
@@ -862,6 +1477,41 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       res.json({ ok: true, success: true });
     } catch (e) {
       res.json({ ok: false, error: 'failed to update customer display' });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Permissions Endpoints
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/permissions/:user_id', async (req, res) => {
+    let conn;
+    try {
+      const { user_id } = req.params;
+      if (!user_id) return res.status(400).json({ ok: false, error: 'معرّف المستخدم مفقود' });
+      
+      conn = await dbAdapter.getConnection();
+      
+      // Fetch user role
+      const [uRows] = await conn.query('SELECT role FROM users WHERE id=? LIMIT 1', [user_id]);
+      if (!uRows.length) return res.status(404).json({ ok: false, error: 'المستخدم غير موجود' });
+      const role = uRows[0].role;
+
+      // Load saved permissions for this user
+      const [rows] = await conn.query('SELECT perm_key FROM user_permissions WHERE user_id=?', [user_id]);
+
+      if (role === 'admin') {
+        // Admin has all permissions
+        const [allPerms] = await conn.query('SELECT perm_key FROM permissions');
+        return res.json({ ok: true, keys: allPerms.map(r => r.perm_key) });
+      }
+
+      // Non-admin: return saved permissions
+      const keys = rows.map(r => r.perm_key);
+      res.json({ ok: true, keys });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
     }
   });
 

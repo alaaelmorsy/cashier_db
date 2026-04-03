@@ -501,7 +501,7 @@ function registerProductsIPC(){
       try {
         const result = await fetchFromAPI(`/products/${pid}`);
         if (!result.ok) return { ok: false, error: result.error || 'فشل جلب المنتج' };
-        return { ok: true, product: result.product };
+        return { ok: true, item: result.product };
       } catch (err) {
         return { ok: false, error: err.message };
       }
@@ -528,7 +528,7 @@ function registerProductsIPC(){
     if (isSecondaryDevice()) {
       try {
         const result = await fetchFromAPI(`/products/barcode/${code}`);
-        return { ok: true, product: result.product };
+        return { ok: true, item: result.product };
       } catch (err) {
         return { ok: false, error: err.message };
       }

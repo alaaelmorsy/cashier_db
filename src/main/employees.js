@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerEmployeesIPC(){
   async function ensureTables(conn){
@@ -14,6 +15,15 @@ function registerEmployeesIPC(){
 
   ipcMain.handle('employees:list', async (_e, query) => {
     const q = query || {}; const term = (q.term||'').trim();
+    if (isSecondaryDevice()) {
+      try {
+        const p = {};
+        if (term) p.term = term;
+        const r = await fetchFromAPI('/employees', p);
+        if (r && r.ok) return { ok: true, items: r.items || [] };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

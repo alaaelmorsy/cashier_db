@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'">
+  <title>اختيار الفرع - POS SA</title>
+  <link rel="stylesheet" href="../tailwind-output.css">
+  <style>
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+      font-weight: 900; font-style: normal; font-display: swap;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: "Cairo", system-ui, sans-serif;
+      background: #f8fafc;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 280px;
+    }
+
+    .toast {
+      padding: 12px 18px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.3s ease, transform 0.3s ease !important;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.hide { opacity: 0; transform: translateY(-10px); }
+    .toast-success { background: #10b981; color: #fff; }
+    .toast-error   { background: #ef4444; color: #fff; }
+
+    .branch-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s !important;
+    }
+    .branch-item:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.12);
+    }
+    .branch-item.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
+    .branch-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 17px;
+    }
+
+    .btn-connect {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 0;
+      width: 100%;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s !important;
+    }
+    .btn-connect:hover:not(:disabled) {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+    .btn-connect:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-back {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 0;
+      width: 100%;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s !important;
+    }
+    .btn-back:hover { background: #e2e8f0; }
+
+    .logo-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+      margin: 0 auto 14px;
+    }
+
+    #branchesScroll {
+      max-height: 200px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <div style="padding: 28px 28px 22px; display: flex; flex-direction: column; height: 100%;">
+
+    <div class="logo-box">POS</div>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h1 style="font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 4px;">اختيار الفرع</h1>
+      <p style="font-size: 12.5px; color: #64748b;">اختر الفرع الذي تريد الاتصال به</p>
+    </div>
+
+    <div id="branchesScroll" style="flex: 1; display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+      <button id="selectBtn" class="btn-connect" disabled>الاتصال بالفرع المحدد</button>
+      <button id="backBtn" class="btn-back">العودة للتفعيل</button>
+    </div>
+
+    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 9px; padding: 9px 13px; text-align: center;">
+      <p style="font-size: 11.5px; color: #0369a1; font-weight: 600;">ℹ️ سيتم حفظ اختيارك حتى يتم تغييره يدوياً</p>
+    </div>
+
+  </div>
+
+  <script>
+    (async function(){
+      let branches = [];
+      let selectedBranchId = null;
+
+      const branchesScroll = document.getElementById('branchesScroll');
+      const selectBtn = document.getElementById('selectBtn');
+      const backBtn = document.getElementById('backBtn');
+      const toastContainer = document.getElementById('toastContainer');
+
+      try { await window.api.window_set_size({ width: 460, height: 560 }); } catch(_){}
+
+      function showToast(message, type = 'error', duration = 5000) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icon = type === 'success' ? '✓' : '✕';
+        toast.innerHTML = `<span style="font-size:16px;">${icon}</span><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        if (duration > 0) {
+          setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            setTimeout(() => { if (toast.parentNode) toastContainer.removeChild(toast); }, 350);
+          }, duration);
+        }
+        return toast;
+      }
+
+      function renderBranches() {
+        branchesScroll.innerHTML = '';
+        if (branches.length === 0) {
+          branchesScroll.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px 0;font-size:13px;">لا توجد فروع متاحة</p>';
+          selectBtn.disabled = true;
+          return;
+        }
+        branches.forEach(branch => {
+          const el = document.createElement('div');
+          el.className = `branch-item${selectedBranchId === branch.id ? ' selected' : ''}`;
+          el.dataset.id = branch.id;
+          el.innerHTML = `
+            <div class="branch-icon">🏢</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13.5px;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${branch.name}</div>
+              <div style="font-size:11.5px;color:#64748b;margin-top:2px;">${branch.host}:${branch.port} &nbsp;·&nbsp; API: ${branch.api_port}</div>
+            </div>
+            ${selectedBranchId === branch.id ? '<div style="color:#2563eb;font-size:18px;flex-shrink:0;">✓</div>' : ''}
+          `;
+          el.addEventListener('click', () => {
+            selectedBranchId = branch.id;
+            renderBranches();
+            selectBtn.disabled = false;
+          });
+          branchesScroll.appendChild(el);
+        });
+      }
+
+      async function loadBranches() {
+        try {
+          const result = await window.api.branches_get();
+          if (result && result.ok) {
+            branches = result.branches || [];
+            renderBranches();
+          } else {
+            showToast('فشل في تحميل الفروع', 'error');
+          }
+        } catch (e) {
+          showToast('خطأ في تحميل الفروع: ' + String(e), 'error');
+        }
+      }
+
+      async function restoreWindow() {
+        try { await window.api.window_set_size({ width: 1200, height: 760, resizable: true, center: false }); } catch(_){}
+      }
+
+      selectBtn.addEventListener('click', async () => {
+        if (!selectedBranchId) { showToast('يرجى اختيار فرع أولاً', 'error'); return; }
+        const selectedBranch = branches.find(b => b.id === selectedBranchId);
+        if (!selectedBranch) { showToast('الفرع المحدد غير موجود', 'error'); return; }
+
+        selectBtn.textContent = 'جاري الاتصال...';
+        selectBtn.disabled = true;
+
+        try {
+          const applyResult = await window.api.db_apply({ host: selectedBranch.host, port: selectedBranch.port });
+          if (!applyResult || !applyResult.ok) throw new Error(applyResult.error || 'فشل حفظ إعدادات قاعدة البيانات');
+
+          const modeResult = await window.api.device_set_mode({ mode: 'secondary', api_host: selectedBranch.host, api_port: selectedBranch.api_port });
+          if (!modeResult || !modeResult.ok) throw new Error(modeResult.error || 'فشل حفظ إعدادات الجهاز');
+
+          showToast('تم الاتصال بنجاح. جاري الانتقال...', 'success', 2500);
+          setTimeout(async () => {
+            await restoreWindow();
+            window.location.href = '../login/index.html';
+          }, 1800);
+        } catch (err) {
+          showToast('فشل الاتصال: ' + String(err.message || err), 'error');
+          selectBtn.textContent = 'الاتصال بالفرع المحدد';
+          selectBtn.disabled = false;
+        }
+      });
+
+      backBtn.addEventListener('click', () => {
+        window.location.href = '../activation/index.html?from=branch-selection';
+      });
+
+      await loadBranches();
+    })();
+  </script>
+  <script src="../theme.js"></script>
+</body>
+</html>

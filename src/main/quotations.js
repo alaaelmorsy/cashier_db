@@ -1,6 +1,7 @@
 // Quotations IPC handlers (عروض الأسعار)
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 module.exports = function setupQuotationsIPC() {
   // Ensure quotations table exists
@@ -126,6 +127,17 @@ module.exports = function setupQuotationsIPC() {
 
   // Get quotations with optional search by quotation_no and pagination
   ipcMain.handle('quotations:list', async (event, params) => {
+    if (isSecondaryDevice()) {
+      try {
+        const q = params || {};
+        const p = {};
+        if (q.search) p.search = q.search;
+        if (q.page) { p.limit = q.pageSize || 20; p.offset = ((Number(q.page || 1) - 1) * Number(q.pageSize || 20)); }
+        const r = await fetchFromAPI('/quotations', p);
+        if (r && r.ok) return { ok: true, quotations: r.items || [], total: r.total || 0 };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {

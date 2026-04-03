@@ -1388,7 +1388,7 @@ function registerSalesIPC(){
       try {
         const result = await fetchFromAPI(`/invoices/${sid}`);
         if (!result.ok) return { ok: false, error: result.error || 'فشل جلب الفاتورة' };
-        return { ok: true, invoice: result.invoice, items: result.items || [] };
+        return { ok: true, sale: result.sale || result.invoice, items: result.items || [] };
       } catch (err) {
         return { ok: false, error: err.message };
       }

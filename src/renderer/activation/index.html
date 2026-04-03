@@ -8,227 +8,381 @@
   <title>تفعيل البرنامج - POS SA</title>
   <link rel="stylesheet" href="../tailwind-output.css">
   <style>
-    /* Local Cairo font faces */
-    @font-face {
-      font-family: 'Cairo';
-      src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
-      font-weight: 400; font-style: normal; font-display: swap;
-    }
-    @font-face {
-      font-family: 'Cairo';
-      src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
-      font-weight: 700; font-style: normal; font-display: swap;
-    }
-    @font-face {
-      font-family: 'Cairo';
-      src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
-      font-weight: 900; font-style: normal; font-display: swap;
+    @font-face { font-family:'Cairo'; src:url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype'); font-weight:400; font-display:swap; }
+    @font-face { font-family:'Cairo'; src:url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype'); font-weight:700; font-display:swap; }
+    @font-face { font-family:'Cairo'; src:url('../../../assets/fonts/Cairo-Black.ttf') format('truetype'); font-weight:900; font-display:swap; }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: "Cairo", system-ui, sans-serif;
+      background: #f1f5f9;
+      height: 100%;
+      overflow: hidden;
     }
 
-    body {
-      font-family: "Cairo", "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
-    }
-
-    /* تعطيل الأنيميشنز للسرعة (ما عدا الإشعارات) */
-    *, *::before, *::after {
-      animation: none !important;
-      transition: none !important;
-    }
-    
-    /* إشعارات Toast احترافية */
-    .toast-container {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
+    /* ── Layout ── */
+    #mainView {
+      height: 100%;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      max-width: 400px;
-    }
-    
-    .toast {
-      padding: 16px 20px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      display: flex;
       align-items: center;
-      gap: 12px;
-      font-weight: 600;
-      font-size: 15px;
-      transform: translateX(120%);
-      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease !important;
-      opacity: 0;
+      justify-content: center;
+      padding: 28px 32px 24px;
+      gap: 0;
     }
-    
-    .toast.show {
-      transform: translateX(0);
-      opacity: 1;
+
+    /* ── Logo ── */
+    .logo-box {
+      width: 56px; height: 56px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 900; font-size: 15px;
+      box-shadow: 0 6px 18px rgba(29,78,216,.32);
+      margin-bottom: 14px;
     }
-    
-    .toast.hide {
-      transform: translateX(120%);
-      opacity: 0;
+
+    /* ── Titles ── */
+    .main-title { font-size: 21px; font-weight: 900; color: #0f172a; }
+    .main-sub   { font-size: 12px; color: #64748b; margin-top: 3px; }
+
+    /* ── Divider ── */
+    .divider { width: 100%; height: 1px; background: #e2e8f0; margin: 18px 0; }
+
+    /* ── Input ── */
+    .field-label { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; display: block; }
+    .field-input {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #e2e8f0; border-radius: 9px;
+      font-family: inherit; font-size: 14px; color: #1e293b;
+      background: #fff; outline: none;
+      transition: border-color .15s, box-shadow .15s !important;
     }
-    
-    .toast-success {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-      border: 2px solid #047857;
+    .field-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%; padding: 11px 0;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff; border: none; border-radius: 10px;
+      font-family: inherit; font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s, transform .15s !important;
     }
-    
-    .toast-error {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      color: white;
-      border: 2px solid #b91c1c;
+    .btn-primary:hover { opacity: .91; transform: translateY(-1px); }
+
+    .btn-outline-blue {
+      width: 100%; padding: 10px 0;
+      background: #fff; color: #2563eb;
+      border: 1.5px solid #bfdbfe; border-radius: 10px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, border-color .15s !important;
     }
-    
-    .toast-icon {
-      font-size: 24px;
+    .btn-outline-blue:hover { background: #eff6ff; border-color: #93c5fd; }
+
+    .btn-ghost {
+      background: none; border: none;
+      color: #94a3b8; font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; padding: 6px 12px; border-radius: 7px;
+      transition: color .15s, background .15s !important;
+    }
+    .btn-ghost:hover { color: #ef4444; background: #fef2f2; }
+
+    /* ── Warning ── */
+    .warn-box {
+      width: 100%; padding: 10px 14px;
+      background: #fff7ed; border: 1px solid #fed7aa; border-radius: 9px;
+      font-size: 11px; color: #92400e; font-weight: 600; text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 8px; min-width: 260px;
+    }
+    .toast {
+      padding: 11px 16px; border-radius: 9px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.13);
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 600; font-size: 13px;
+      opacity: 0; transform: translateY(-8px);
+      transition: opacity .3s ease, transform .3s ease !important;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.hide { opacity: 0; transform: translateY(-8px); }
+    .toast-success { background: #10b981; color: #fff; }
+    .toast-error   { background: #ef4444; color: #fff; }
+
+    /* ══════════════════════════════════════════════
+       MODAL — Branches Management
+    ══════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(15,23,42,.45);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      width: 100%; max-width: 600px;
+      max-height: 80vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
       flex-shrink: 0;
     }
+    .modal-title { font-size: 15px; font-weight: 900; color: #1e293b; }
 
-    /* تحسينات بسيطة */
-    .gradient-bg {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .card-glass {
-      background: rgba(255, 255, 255, 0.98);
-      backdrop-filter: blur(10px);
-    }
-    
-    .logo-gradient {
-      background: linear-gradient(135deg, #0057FF, #4C85FF);
-    }
-    
-    .btn-primary {
-      background: linear-gradient(135deg, #0057FF, #4C85FF);
-    }
-    
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #003DC7, #0057FF);
-    }
-    
-    .input-focus:focus {
-      border-color: #0057FF;
-      box-shadow: 0 0 0 3px rgba(0, 87, 255, 0.1);
+    .modal-body {
+      flex: 1; overflow-y: auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 16px;
+      scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
     }
 
-    /* تحسين Modal */
-    .modal-overlay {
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(4px);
+    .modal-footer {
+      display: flex; gap: 10px; padding: 14px 20px;
+      border-top: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0;
     }
+
+    /* ── Branches section header ── */
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .section-label { font-size: 13px; font-weight: 800; color: #1e293b; }
+
+    .btn-add-branch {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 8px;
+      background: #10b981; color: #fff; border: none;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s !important;
+    }
+    .btn-add-branch:hover { opacity: .88; }
+
+    /* ── Branch item ── */
+    .branch-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px; background: #f8fafc;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+    }
+    .branch-row-name { font-size: 13.5px; font-weight: 700; color: #1e293b; }
+    .branch-row-info { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+    .branch-row-actions { display: flex; gap: 6px; }
+
+    .btn-edit {
+      padding: 5px 12px; border-radius: 7px;
+      background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;
+      font-family: inherit; font-size: 11.5px; font-weight: 700;
+      cursor: pointer; transition: background .15s !important;
+    }
+    .btn-edit:hover { background: #dbeafe; }
+
+    .btn-delete {
+      padding: 5px 12px; border-radius: 7px;
+      background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+      font-family: inherit; font-size: 11.5px; font-weight: 700;
+      cursor: pointer; transition: background .15s !important;
+    }
+    .btn-delete:hover { background: #fee2e2; }
+
+    /* ── Branch form ── */
+    #branchForm {
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 11px;
+      padding: 16px; display: none; flex-direction: column; gap: 12px;
+    }
+    #branchForm.visible { display: flex; }
+    .form-title { font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn-save-branch {
+      flex: 1; padding: 9px 0;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff; border: none; border-radius: 8px;
+      font-family: inherit; font-size: 12.5px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s !important;
+    }
+    .btn-save-branch:hover { opacity: .9; }
+
+    .btn-cancel-branch {
+      padding: 9px 16px;
+      background: #f1f5f9; color: #475569;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      font-family: inherit; font-size: 12.5px; font-weight: 700;
+      cursor: pointer; transition: background .15s !important;
+    }
+    .btn-cancel-branch:hover { background: #e2e8f0; }
+
+    /* ── Notice box ── */
+    .notice-box {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 9px;
+      padding: 12px 14px; font-size: 11.5px; color: #78350f; line-height: 1.7;
+    }
+    .notice-box strong { font-weight: 800; }
+    .notice-title { font-weight: 800; margin-bottom: 4px; font-size: 12px; }
+
+    /* ── Modal footer buttons ── */
+    .btn-test {
+      flex: 1; padding: 10px 0;
+      background: #10b981; color: #fff; border: none; border-radius: 9px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s !important;
+    }
+    .btn-test:hover:not(:disabled) { opacity: .88; }
+    .btn-test:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-save-all {
+      flex: 1; padding: 10px 0;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff; border: none; border-radius: 9px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s !important;
+    }
+    .btn-save-all:hover:not(:disabled) { opacity: .9; }
+    .btn-save-all:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-modal-close {
+      padding: 7px 16px;
+      background: #f1f5f9; color: #475569;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background .15s !important;
+    }
+    .btn-modal-close:hover { background: #e2e8f0; }
+
+    #connMsg {
+      padding: 8px 12px; border-radius: 8px; font-size: 12px;
+      font-weight: 600; text-align: center; display: none;
+    }
+    #connMsg.ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    #connMsg.err { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
   </style>
 </head>
-<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+<body>
 
-  <!-- Toast Notifications Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <!-- اتصال IP Modal -->
-  <div id="connModal" class="fixed inset-0 hidden items-center justify-center modal-overlay z-50">
-    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border-2 border-blue-100">
-      <div class="flex items-center justify-between p-5 border-b-2 border-blue-50 bg-gradient-to-r from-blue-50 to-blue-25">
-        <div class="font-black text-lg text-blue-600">⚙️ إعدادات المزامنة مع الجهاز الرئيسي</div>
-        <button id="connClose" class="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700">✕ إغلاق</button>
+  <!-- ══ MAIN VIEW ══ -->
+  <div id="mainView">
+
+    <div class="logo-box">POS</div>
+
+    <div style="text-align:center; margin-bottom:18px;">
+      <div class="main-title">إعداد البرنامج</div>
+      <div class="main-sub">نظام نقاط البيع — مؤسسة تعلم التقنيات</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Activation Section -->
+    <div id="activationSection" style="width:100%; display:none; flex-direction:column; gap:10px; margin-bottom:14px;">
+      <label class="field-label" for="code">كود التفعيل (للجهاز الرئيسي فقط)</label>
+      <input id="code" type="password" placeholder="أدخل كود التفعيل المرسل من الدعم"
+             autocomplete="off" class="field-input" />
+      <button id="activateBtn" class="btn-primary">تفعيل الآن</button>
+      <div class="divider" style="margin:6px 0;"></div>
+    </div>
+
+    <!-- Connect Button -->
+    <div style="width:100%; display:flex; flex-direction:column; gap:9px; margin-bottom:18px;">
+      <button id="openConnDialog" class="btn-outline-blue">⚙️ إعداد الاتصال بالجهاز الرئيسي</button>
+    </div>
+
+    <!-- Warning -->
+    <div class="warn-box">
+      ⚠️ مُرخص حصرياً لمؤسسة تعلم التقنيات — أي استخدام غير مصرح انتهاك لحقوق الملكية الفكرية
+    </div>
+
+    <div class="divider" style="margin:14px 0 8px;"></div>
+
+    <button id="quitBtn" class="btn-ghost">خروج من البرنامج</button>
+
+  </div>
+
+  <!-- ══ MODAL: Branches Management ══ -->
+  <div id="connModal" class="modal-overlay">
+    <div class="modal-box">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <span class="modal-title">⚙️ إعدادات المزامنة مع الجهاز الرئيسي</span>
+        <button id="connClose" class="btn-modal-close">✕ إغلاق</button>
       </div>
-      <div class="p-6 max-h-[70vh] overflow-y-auto">
-        <!-- IP Address -->
-        <div class="mb-4">
-          <label class="block mb-2 font-bold text-sm text-gray-700">🌐 عنوان IP للجهاز الرئيسي</label>
-          <input id="serverIp" placeholder="مثال: 192.168.1.100" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base input-focus outline-none" />
-          <div class="mt-2 text-xs text-gray-500">اترك فارغاً إذا كان هذا هو الجهاز الرئيسي</div>
+
+      <!-- Body -->
+      <div class="modal-body">
+
+        <!-- Branches List -->
+        <div>
+          <div class="section-head">
+            <span class="section-label">الفروع المضافة</span>
+            <button id="addBranchBtn" class="btn-add-branch">
+              <span style="font-size:15px;">+</span> إضافة فرع جديد
+            </button>
+          </div>
+          <div id="branchesContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-        
-        <!-- Warning Box -->
-        <div class="mb-5 p-4 bg-gradient-to-r from-orange-50 to-orange-25 border-2 border-orange-200 rounded-xl">
-          <p class="font-bold text-gray-800 mb-2 text-sm">⚠️ ملاحظة هامة:</p>
-          <ul class="m-0 pr-5 text-gray-700 leading-relaxed text-xs">
-            <li>عند إدخال IP للجهاز الرئيسي، سيصبح هذا الجهاز <strong>فرعياً</strong> تلقائياً</li>
+
+        <!-- Add/Edit Form -->
+        <div id="branchForm">
+          <div class="form-title">إضافة / تعديل فرع</div>
+          <input type="hidden" id="branchId" />
+          <div class="form-grid">
+            <div>
+              <label class="field-label">اسم الفرع</label>
+              <input id="branchName" placeholder="مثال: الفرع الرئيسي" class="field-input" />
+            </div>
+            <div>
+              <label class="field-label">عنوان IP للجهاز الرئيسي</label>
+              <input id="branchHost" placeholder="192.168.1.100" class="field-input" />
+            </div>
+            <div>
+              <label class="field-label">منفذ قاعدة البيانات</label>
+              <input id="branchPort" type="number" placeholder="3306" value="3306" class="field-input" />
+            </div>
+            <div>
+              <label class="field-label">منفذ API</label>
+              <input id="branchApiPort" type="number" placeholder="4310" value="4310" class="field-input" />
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="saveBranchBtn" class="btn-save-branch">💾 حفظ الفرع</button>
+            <button id="cancelBranchBtn" class="btn-cancel-branch">إلغاء</button>
+          </div>
+        </div>
+
+        <!-- Notice -->
+        <div class="notice-box">
+          <div class="notice-title">⚠️ ملاحظة هامة:</div>
+          <ul style="padding-right:16px; list-style:disc;">
+            <li>يمكنك إضافة عدة فروع للاتصال بها</li>
+            <li>عند حفظ الفروع، سيظهر شاشة اختيار الفرع عند بدء التشغيل</li>
             <li>الجهاز الفرعي <strong>لا يحتاج</strong> إلى كود تفعيل</li>
             <li>يجب <strong>إعادة تشغيل البرنامج</strong> بعد الحفظ لتفعيل التغييرات</li>
           </ul>
         </div>
-        
-        <!-- Action Buttons -->
-        <div class="flex gap-3">
-          <button id="testIpBtn" class="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-green-700">اختبار الاتصال</button>
-          <button id="saveIpBtn" class="flex-1 px-4 py-3 btn-primary text-white rounded-xl font-bold">💾 حفظ الإعدادات</button>
-        </div>
-        <div id="ipMsg" class="hidden mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold"></div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Main Card -->
-  <div class="w-full max-w-md">
-    <div class="card-glass rounded-3xl shadow-2xl p-8 border-2 border-white/30">
-      
-      <!-- Brand -->
-      <div class="flex items-center justify-center gap-5 mb-4">
-        <div class="w-20 h-20 logo-gradient rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl">
-          POS
-        </div>
-        <h1 class="text-4xl font-black text-gray-800">إعداد البرنامج</h1>
+        <div id="connMsg"></div>
+
       </div>
 
-      <!-- Company Badge -->
-      <div class="text-center mb-6">
-        <div class="inline-block px-6 py-3 bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-200 rounded-full">
-          <span class="text-red-600 font-black text-base">🏢 مؤسسة تعلم التقنيات</span>
-        </div>
-      </div>
-
-      <!-- Quit Button -->
-      <div class="flex justify-center mb-6">
-        <button id="quitBtn" class="px-8 py-3 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300">
-          خروج
-        </button>
-      </div>
-
-      <!-- Activation Section -->
-      <div id="activationSection" style="display:none;">
-        <div class="mb-6">
-          <label for="code" class="block mb-3 font-bold text-sm text-gray-700 uppercase tracking-wide">
-            كود التفعيل (للجهاز الرئيسي فقط)
-          </label>
-          <div class="relative">
-            <input 
-              id="code" 
-              type="password" 
-              placeholder="• أدخل كود التفعيل المرسل من الدعم" 
-              autocomplete="off"
-              class="w-full px-5 pr-12 py-4 border-2 border-gray-200 rounded-2xl text-base input-focus outline-none bg-white shadow-sm"
-            />
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-xl opacity-70">🔐</div>
-          </div>
-        </div>
-
-        <button id="activateBtn" class="w-full px-6 py-4 btn-primary text-white rounded-2xl font-bold text-lg shadow-lg">
-          تفعيل الآن
-        </button>
-
-        <div class="mt-6 p-5 bg-gray-50 border border-gray-100 rounded-2xl text-center">
-          <p class="text-gray-600 text-sm font-medium leading-relaxed">
-            للحصول على كود التفعيل يرجى التواصل مع الدعم الفني.
-          </p>
-        </div>
-      </div>
-
-      <!-- Connection Settings Button -->
-      <div class="mt-6 flex justify-center">
-        <button id="openConnDialog" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 shadow-md">
-          ⚙️ إعداد الاتصال بالجهاز الرئيسي
-        </button>
-      </div>
-
-      <!-- Warning -->
-      <div class="mt-6 p-5 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl">
-        <p class="text-red-600 text-xs font-semibold leading-relaxed text-center">
-          ⚠️ تحذير: هذا البرنامج مُرخص حصرياً لمؤسسة تعلم التقنيات. أي استخدام غير مصرح به يُعتبر انتهاكاً لحقوق الملكية الفكرية.
-        </p>
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button id="testAllBtn" class="btn-test">اختبار جميع الاتصالات</button>
+        <button id="saveAllBtn" class="btn-save-all">💾 حفظ الإعدادات</button>
       </div>
 
     </div>
@@ -236,213 +390,248 @@
 
   <script>
     (async function(){
-      // إذا كان مُفعلاً بالفعل، الانتقال مباشرة لشاشة الدخول (fallback safety check)
-      try{
-        const r = await window.api.license_check();
-        if(r && r.ok){ location.replace('../login/index.html'); return; }
-      }catch(_){ /* تجاهل */ }
+      window.scrollTo(0, 0);
 
-      // فحص إذا كان متصل بجهاز بعيد (غير localhost)
-      try{
+      try { await window.api.window_set_size({ width: 460, height: 520, resizable: false }); } catch(_){}
+
+      const params = new URLSearchParams(window.location.search);
+      const fromBranchSelection = params.get('from') === 'branch-selection';
+
+      try {
         const cfg = await window.api.db_get_config();
-        if(cfg && cfg.ok && cfg.config){
-          const h = String(cfg.config.host||'').toLowerCase();
+        if (cfg && cfg.ok && cfg.config) {
+          const h = String(cfg.config.host || '').toLowerCase();
           const isRemote = h && h !== '127.0.0.1' && h !== 'localhost';
-          if(isRemote){
-            // جهاز فرعي متصل بجهاز رئيسي - اذهب لشاشة الدخول
+          if (isRemote && !fromBranchSelection) {
             location.replace('../login/index.html');
             return;
+          }
+          if (fromBranchSelection) {
+            showActivation();
           } else {
-            // جهاز رئيسي (localhost) - اعرض قسم التفعيل
-            document.getElementById('activationSection').style.display = '';
+            const r = await window.api.license_check();
+            if (r && r.ok) {
+              document.getElementById('activationSection').style.display = 'none';
+            } else {
+              showActivation();
+            }
           }
         }
-      }catch(_){ }
+      } catch(_){}
+
+      function showActivation() {
+        const s = document.getElementById('activationSection');
+        s.style.display = 'flex';
+        try { window.api.window_set_size({ width: 460, height: 600, resizable: false }); } catch(_){}
+      }
 
       const toastContainer = document.getElementById('toastContainer');
-      
       function showToast(message, type = 'error', duration = 5000) {
-        // إنشاء عنصر Toast
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        
-        const icon = type === 'success' ? '✓' : '✕';
-        toast.innerHTML = `
-          <span class="toast-icon">${icon}</span>
-          <span style="flex: 1;">${message}</span>
-        `;
-        
-        toastContainer.appendChild(toast);
-        
-        // إظهار Toast بعد delay صغير للأنيميشن
-        setTimeout(() => {
-          toast.classList.add('show');
-        }, 10);
-        
-        // إخفاء وإزالة Toast بعد المدة المحددة
-        if(duration > 0) {
-          setTimeout(() => {
-            toast.classList.remove('show');
-            toast.classList.add('hide');
-            setTimeout(() => {
-              if(toast.parentNode) {
-                toastContainer.removeChild(toast);
-              }
-            }, 400);
-          }, duration);
-        }
-        
-        return toast;
+        const t = document.createElement('div');
+        t.className = `toast toast-${type}`;
+        t.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${message}</span>`;
+        toastContainer.appendChild(t);
+        setTimeout(() => t.classList.add('show'), 10);
+        if (duration > 0) setTimeout(() => {
+          t.classList.remove('show'); t.classList.add('hide');
+          setTimeout(() => { if (t.parentNode) toastContainer.removeChild(t); }, 350);
+        }, duration);
+        return t;
       }
-      
-      function showError(message, duration = 5000) {
-        if(message) showToast(message, 'error', duration);
-      }
-      
-      function showSuccess(message, duration = 4000) {
-        if(message) showToast(message, 'success', duration);
-      }
+      const showError   = (m, d=5000) => showToast(m, 'error', d);
+      const showSuccess = (m, d=4000) => showToast(m, 'success', d);
 
-      function normalize(code){
-        // إزالة المسافات والشرطات وتحويل لأحرف كبيرة
-        return String(code||'').replace(/\s|-/g,'').toUpperCase();
-      }
+      function normalize(code) { return String(code||'').replace(/\s|-/g,'').toUpperCase(); }
 
       document.getElementById('activateBtn').addEventListener('click', async () => {
-        const raw = document.getElementById('code').value;
-        const code = normalize(raw);
-        if(!code){ 
-          showError('⚠️ يرجى إدخال كود التفعيل');
-          return;
-        }
-        
+        const code = normalize(document.getElementById('code').value);
+        if (!code) { showError('يرجى إدخال كود التفعيل'); return; }
         const res = await window.api.license_activate(code);
-        if(!res || !res.ok){ 
-          showError('❌ ' + (res && res.error ? res.error : 'فشل التفعيل'));
-          return;
-        }
-        
-        // نجاح — عرض الرسالة لمدة ثانيتين ثم الانتقال
-        showSuccess('✅ تم تفعيل البرنامج بنجاح! جاري الانتقال للدخول...', 2500);
-        setTimeout(() => {
+        if (!res || !res.ok) { showError(res && res.error ? res.error : 'فشل التفعيل'); return; }
+        showSuccess('تم تفعيل البرنامج بنجاح! جاري الانتقال...', 2500);
+        setTimeout(async () => {
+          try { await window.api.window_set_size({ width: 1200, height: 760, resizable: true, center: false }); } catch(_){}
           location.replace('../login/index.html');
         }, 2000);
       });
 
+      document.getElementById('code').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('activateBtn').click();
+      });
+
       document.getElementById('quitBtn').addEventListener('click', () => {
-        try{ window.api.app_quit(); }catch(_){ }
+        try { window.api.app_quit(); } catch(_){}
       });
 
-      // إدخال بالإنتر
-      document.getElementById('code').addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('activateBtn').click(); });
+      /* ═══════════════════════════════════
+         MODAL Logic
+      ═══════════════════════════════════ */
+      const connModal      = document.getElementById('connModal');
+      const openConnBtn    = document.getElementById('openConnDialog');
+      const connCloseBtn   = document.getElementById('connClose');
+      const addBranchBtn   = document.getElementById('addBranchBtn');
+      const saveBranchBtn  = document.getElementById('saveBranchBtn');
+      const cancelBranchBtn= document.getElementById('cancelBranchBtn');
+      const testAllBtn     = document.getElementById('testAllBtn');
+      const saveAllBtn     = document.getElementById('saveAllBtn');
+      const connMsg        = document.getElementById('connMsg');
+      const branchesContainer = document.getElementById('branchesContainer');
+      const branchForm     = document.getElementById('branchForm');
 
-      // ═══════════════════════════════════════════════════════════════
-      // Connection Settings Modal Logic
-      // ═══════════════════════════════════════════════════════════════
-      const connModal = document.getElementById('connModal');
-      const openConnBtn = document.getElementById('openConnDialog');
-      const connCloseBtn = document.getElementById('connClose');
-      const testIpBtn = document.getElementById('testIpBtn');
-      const saveIpBtn = document.getElementById('saveIpBtn');
-      const ipMsg = document.getElementById('ipMsg');
+      let branches = [];
 
-      openConnBtn.addEventListener('click', () => {
-        connModal.classList.remove('hidden');
-        connModal.classList.add('flex');
-      });
+      function loadBranches() {
+        window.api.branches_get().then(result => {
+          if (result && result.ok) {
+            branches = result.branches || [];
+            renderBranches();
+          }
+        });
+      }
 
-      connCloseBtn.addEventListener('click', () => {
-        connModal.classList.remove('flex');
-        connModal.classList.add('hidden');
-      });
-
-      testIpBtn.addEventListener('click', async () => {
-        const ip = document.getElementById('serverIp').value.trim();
-        const port = 3306;
-
-        if(!ip){
-          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
-          ipMsg.textContent = '⚠️ يرجى إدخال IP الجهاز الرئيسي';
-          ipMsg.classList.remove('hidden');
+      function renderBranches() {
+        branchesContainer.innerHTML = '';
+        if (branches.length === 0) {
+          branchesContainer.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:16px 0;font-size:13px;">لا توجد فروع مضافة</p>';
           return;
         }
+        branches.forEach(branch => {
+          const el = document.createElement('div');
+          el.className = 'branch-row';
+          el.innerHTML = `
+            <div>
+              <div class="branch-row-name">${branch.name}</div>
+              <div class="branch-row-info">${branch.host}:${branch.port} &nbsp;·&nbsp; API: ${branch.api_port}</div>
+            </div>
+            <div class="branch-row-actions">
+              <button class="btn-edit edit-branch" data-id="${branch.id}">تعديل</button>
+              <button class="btn-delete delete-branch" data-id="${branch.id}">حذف</button>
+            </div>
+          `;
+          branchesContainer.appendChild(el);
+        });
 
-        testIpBtn.textContent = 'جاري الاختبار...';
-        testIpBtn.disabled = true;
-
-        try {
-          const result = await window.api.db_test({ host: ip, port: port });
-          if(result && result.ok){
-            ipMsg.className = 'mt-3 px-4 py-3 bg-green-50 border-2 border-green-200 rounded-xl text-green-600 text-center font-semibold';
-            ipMsg.textContent = '✅ تم الاتصال بنجاح بالجهاز الرئيسي';
-            ipMsg.classList.remove('hidden');
-            showSuccess('✅ تم الاتصال بنجاح بالجهاز الرئيسي');
-          } else {
-            ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
-            ipMsg.textContent = '❌ فشل الاتصال: ' + (result.error || 'خطأ غير معروف');
-            ipMsg.classList.remove('hidden');
-            showError('❌ فشل الاتصال: ' + (result.error || 'خطأ غير معروف'));
-          }
-        } catch(err) {
-          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
-          ipMsg.textContent = '❌ خطأ في الاتصال: ' + String(err);
-          ipMsg.classList.remove('hidden');
-          showError('❌ خطأ في الاتصال');
-        } finally {
-          testIpBtn.textContent = 'اختبار الاتصال';
-          testIpBtn.disabled = false;
-        }
-      });
-
-      saveIpBtn.addEventListener('click', async () => {
-        const ip = document.getElementById('serverIp').value.trim();
-        const port = 3306;
-
-        if(!ip){
-          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
-          ipMsg.textContent = '⚠️ يرجى إدخال IP الجهاز الرئيسي';
-          ipMsg.classList.remove('hidden');
-          return;
-        }
-
-        saveIpBtn.textContent = 'جاري الحفظ...';
-        saveIpBtn.disabled = true;
-
-        try {
-          // Apply DB config
-          const applyResult = await window.api.db_apply({ host: ip, port: port });
-          if(!applyResult || !applyResult.ok){
-            throw new Error(applyResult.error || 'فشل حفظ إعدادات قاعدة البيانات');
-          }
-
-          // Set device mode to secondary
-          const modeResult = await window.api.device_set_mode({
-            mode: 'secondary',
-            api_host: ip,
-            api_port: 4310
+        document.querySelectorAll('.edit-branch').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const branch = branches.find(b => b.id == e.currentTarget.dataset.id);
+            if (branch) editBranch(branch);
           });
-          if(!modeResult || !modeResult.ok){
-            throw new Error(modeResult.error || 'فشل حفظ إعدادات الجهاز');
-          }
+        });
+        document.querySelectorAll('.delete-branch').forEach(btn => {
+          btn.addEventListener('click', (e) => deleteBranch(e.currentTarget.dataset.id));
+        });
+      }
 
-          // Success
-          ipMsg.className = 'mt-3 px-4 py-3 bg-green-50 border-2 border-green-200 rounded-xl text-green-600 text-center font-semibold';
-          ipMsg.textContent = '✅ تم حفظ الإعدادات بنجاح. سيتم تحويلك لشاشة الدخول...';
-          ipMsg.classList.remove('hidden');
-          showSuccess('✅ تم حفظ الإعدادات بنجاح. جاري الانتقال...', 2500);
+      function showBranchForm() {
+        branchForm.classList.add('visible');
+        document.getElementById('branchName').focus();
+      }
+      function hideBranchForm() {
+        branchForm.classList.remove('visible');
+        document.getElementById('branchId').value = '';
+        document.getElementById('branchName').value = '';
+        document.getElementById('branchHost').value = '';
+        document.getElementById('branchPort').value = '3306';
+        document.getElementById('branchApiPort').value = '4310';
+      }
+      function editBranch(branch) {
+        document.getElementById('branchId').value = branch.id;
+        document.getElementById('branchName').value = branch.name;
+        document.getElementById('branchHost').value = branch.host;
+        document.getElementById('branchPort').value = branch.port;
+        document.getElementById('branchApiPort').value = branch.api_port;
+        showBranchForm();
+      }
+      function deleteBranch(id) {
+        if (confirm('هل أنت متأكد من حذف هذا الفرع؟')) {
+          window.api.branches_delete({ id: parseInt(id) }).then(result => {
+            if (result && result.ok) { showSuccess('تم حذف الفرع بنجاح'); loadBranches(); }
+            else showError('فشل في حذف الفرع');
+          });
+        }
+      }
 
-          setTimeout(() => {
-            location.replace('../login/index.html');
-          }, 2000);
+      async function openModal() {
+        try { await window.api.window_set_size({ width: 720, height: 680, resizable: false }); } catch(_){}
+        connModal.classList.add('open');
+        loadBranches();
+        hideBranchForm();
+        connMsg.style.display = 'none';
+      }
+      async function closeModal() {
+        connModal.classList.remove('open');
+        const activSection = document.getElementById('activationSection');
+        const isActivVisible = activSection && activSection.style.display !== 'none';
+        const h = isActivVisible ? 600 : 520;
+        try { await window.api.window_set_size({ width: 460, height: h, resizable: false }); } catch(_){}
+      }
 
-        } catch(err) {
-          ipMsg.className = 'mt-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-center font-semibold';
-          ipMsg.textContent = '❌ فشل الحفظ: ' + String(err.message || err);
-          ipMsg.classList.remove('hidden');
-          showError('❌ فشل الحفظ: ' + String(err.message || err));
+      openConnBtn.addEventListener('click', () => openModal());
+      connCloseBtn.addEventListener('click', () => closeModal());
+
+      if (fromBranchSelection) {
+        setTimeout(() => openModal(), 120);
+      }
+
+      addBranchBtn.addEventListener('click', () => { hideBranchForm(); showBranchForm(); });
+      cancelBranchBtn.addEventListener('click', () => hideBranchForm());
+
+      saveBranchBtn.addEventListener('click', async () => {
+        const id      = document.getElementById('branchId').value;
+        const name    = document.getElementById('branchName').value.trim();
+        const host    = document.getElementById('branchHost').value.trim();
+        const port    = parseInt(document.getElementById('branchPort').value) || 3306;
+        const apiPort = parseInt(document.getElementById('branchApiPort').value) || 4310;
+
+        if (!name || !host) { showError('يرجى إدخال اسم الفرع وعنوان IP'); return; }
+
+        const result = await window.api.branches_save({
+          id: id ? parseInt(id) : null, name, host, port, api_port: apiPort
+        });
+        if (result && result.ok) {
+          showSuccess(id ? 'تم تحديث الفرع بنجاح' : 'تم إضافة الفرع بنجاح');
+          loadBranches(); hideBranchForm();
+        } else {
+          showError('فشل في حفظ الفرع: ' + (result.error || 'خطأ غير معروف'));
+        }
+      });
+
+      testAllBtn.addEventListener('click', async () => {
+        if (branches.length === 0) { showError('لا توجد فروع للاختبار'); return; }
+        testAllBtn.textContent = 'جاري الاختبار...';
+        testAllBtn.disabled = true;
+        const results = [];
+        for (const branch of branches) {
+          try {
+            const r = await window.api.branches_test_connection({ host: branch.host, port: branch.port });
+            results.push({ branch: branch.name, success: r && r.ok, error: r && r.error });
+          } catch (e) { results.push({ branch: branch.name, success: false, error: String(e) }); }
+        }
+        const ok = results.filter(r => r.success).length;
+        if (ok === branches.length) showSuccess(`تم اختبار جميع الاتصالات بنجاح (${ok}/${branches.length})`);
+        else showError(`فشل في ${branches.length - ok} من ${branches.length} اتصال`);
+        testAllBtn.textContent = 'اختبار جميع الاتصالات';
+        testAllBtn.disabled = false;
+      });
+
+      saveAllBtn.addEventListener('click', async () => {
+        if (branches.length === 0) { showError('يرجى إضافة فرع واحد على الأقل'); return; }
+        saveAllBtn.textContent = 'جاري الحفظ...';
+        saveAllBtn.disabled = true;
+        try {
+          connMsg.className = 'ok';
+          connMsg.textContent = '✅ تم حفظ الإعدادات بنجاح. جاري إعادة التشغيل...';
+          connMsg.style.display = 'block';
+          showSuccess('تم حفظ الإعدادات بنجاح. جاري إعادة التشغيل...', 2500);
+          setTimeout(() => window.api.app_restart(), 2000);
+        } catch (err) {
+          connMsg.className = 'err';
+          connMsg.textContent = 'فشل الحفظ: ' + String(err.message || err);
+          connMsg.style.display = 'block';
+          showError('فشل الحفظ: ' + String(err.message || err));
         } finally {
-          saveIpBtn.textContent = '💾 حفظ الإعدادات';
-          saveIpBtn.disabled = false;
+          saveAllBtn.textContent = '💾 حفظ الإعدادات';
+          saveAllBtn.disabled = false;
         }
       });
 

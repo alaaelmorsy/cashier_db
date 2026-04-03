@@ -1,6 +1,7 @@
 // Vouchers IPC module - سندات القبض والصرف
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerVouchersIPC() {
   // Ensure vouchers table exists
@@ -149,6 +150,18 @@ function registerVouchersIPC() {
 
   // Get all vouchers with filters
   ipcMain.handle('vouchers:list', async (event, filters = {}) => {
+    if (isSecondaryDevice()) {
+      try {
+        const p = {};
+        if (filters.voucher_type) p.voucher_type = filters.voucher_type;
+        if (filters.entity_type) p.entity_type = filters.entity_type;
+        if (filters.from) p.from = filters.from;
+        if (filters.to) p.to = filters.to;
+        const r = await fetchFromAPI('/vouchers', p);
+        if (r && r.ok) return { ok: true, vouchers: r.items || [], total: r.total || 0 };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     const conn = await dbAdapter.getConnection();
     try {
       await ensureTable(conn);

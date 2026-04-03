@@ -32,13 +32,15 @@ let __cursors = {};
 // default print format from settings (thermal | a4)
 let __defPrintFormat = 'thermal';
 let __zatcaEnabled = false;
-// Load settings once — store the Promise so load() can await it on first call
+// Batch screen-init: settings + total in ONE request (faster on remote/VPN)
 const __settingsReady = (async()=>{
   try{
-    const r = await window.api.settings_get();
-    if(r && r.ok && r.item){
-      __defPrintFormat = (r.item.default_print_format === 'a4') ? 'a4' : 'thermal';
-      __zatcaEnabled = !!(r.item.zatca_enabled);
+    const r = await (window.api.screen_init_invoices ? window.api.screen_init_invoices() : window.api.settings_get());
+    if(r && r.ok){
+      const s = r.settings || r.item || {};
+      __defPrintFormat = (s.default_print_format === 'a4') ? 'a4' : 'thermal';
+      __zatcaEnabled = !!(s.zatca_enabled);
+      if(r.total_invoices != null){ __totalInvoices = Number(r.total_invoices || 0); renderInvPager(); }
     }
   }catch(_){ /* ignore */ }
 })();

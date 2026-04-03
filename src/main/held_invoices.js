@@ -1,6 +1,7 @@
 
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI, postToAPI, deleteFromAPI } = require('./api-client');
 
 function registerHeldInvoicesIPC(){
   async function ensureTables(conn){
@@ -14,6 +15,13 @@ function registerHeldInvoicesIPC(){
   }
 
   ipcMain.handle('held_invoices:list', async () => {
+    if (isSecondaryDevice()) {
+      try {
+        const r = await fetchFromAPI('/held-invoices');
+        if (r && r.ok) return { ok: true, items: r.items || [] };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -32,6 +40,13 @@ function registerHeldInvoicesIPC(){
   });
 
   ipcMain.handle('held_invoices:add', async (_e, payload) => {
+    if (isSecondaryDevice()) {
+      try {
+        const r = await postToAPI('/held-invoices', payload);
+        if (r && r.ok) return { ok: true, id: r.id };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try{
       if(!payload || !payload.cart || payload.cart.length === 0){
         return { ok: false, error: 'السلة فارغة' };
@@ -47,6 +62,13 @@ function registerHeldInvoicesIPC(){
   });
 
   ipcMain.handle('held_invoices:delete', async (_e, { db_id }) => {
+    if (isSecondaryDevice()) {
+      try {
+        const r = await deleteFromAPI(`/held-invoices/${db_id}`);
+        if (r && r.ok) return { ok: true };
+        return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
+      } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

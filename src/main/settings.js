@@ -1,7 +1,29 @@
 // App Settings IPC: read/save settings like company info, VAT, pricing mode, location, payment methods, currency
-const { ipcMain } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { ipcMain, app } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
-const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
+const { isSecondaryDevice, fetchFromAPI, postToAPI } = require('./api-client');
+
+const BRANCHES_PATH = path.join(app.getPath('userData'), 'branches.json');
+
+function safeReadJSON(p){
+  try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (_){ return null; }
+}
+function safeWriteJSON(p, obj){
+  try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2), 'utf-8'); } catch (_){ /* ignore */ }
+}
+
+function readBranches(){
+  const data = safeReadJSON(BRANCHES_PATH);
+  if(!Array.isArray(data)) return [];
+  return data;
+}
+
+function writeBranches(branches){
+  if(!Array.isArray(branches)) branches = [];
+  safeWriteJSON(BRANCHES_PATH, branches);
+}
 
 function registerSettingsIPC(){
   async function ensureTable(conn){
@@ -17,6 +39,21 @@ function registerSettingsIPC(){
         vat_percent DECIMAL(5,2) NOT NULL DEFAULT 15.00,
         prices_include_vat TINYINT NOT NULL DEFAULT 1,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Branches table for multi-branch support
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS branches (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        host VARCHAR(255) NOT NULL,
+        port INT NOT NULL DEFAULT 3306,
+        api_port INT NOT NULL DEFAULT 4310,
+        is_active TINYINT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_branch_host (host, port)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -439,7 +476,16 @@ function registerSettingsIPC(){
     if(isSecondaryDevice()){
       try{
         const result = await fetchFromAPI('/settings');
-        return { ok:true, item: result.settings || {} };
+        const item = result.settings || {};
+        // Normalize payment_methods to array (API may return string or array)
+        try{
+          if(typeof item.payment_methods === 'string'){
+            item.payment_methods = JSON.parse(item.payment_methods);
+          } else if(!Array.isArray(item.payment_methods)){
+            item.payment_methods = [];
+          }
+        }catch(_){ item.payment_methods = []; }
+        return { ok:true, item };
       }catch(e){ return { ok:false, error:e.message }; }
     }
     try{
@@ -650,6 +696,12 @@ function registerSettingsIPC(){
 
   // Save settings. Supports both legacy logo_path and new logo_blob/logo_mime (base64 from renderer)
   ipcMain.handle('settings:save', async (_e, payload) => {
+    if (isSecondaryDevice()) {
+      try {
+        const result = await postToAPI('/settings', payload || {});
+        return { ok: result.ok !== false, error: result.error };
+      } catch (e) { return { ok: false, error: e.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -865,6 +917,78 @@ function registerSettingsIPC(){
         return { ok:true };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'فشل حفظ الإعدادات' }; }
+  });
+
+  // Branches IPC handlers
+  ipcMain.handle('branches:get', async () => {
+    try {
+      const rows = readBranches();
+      const active = rows.filter(r => r.is_active !== 0).sort((a,b) => String(a.name||'').localeCompare(String(b.name||''), 'ar'));
+      return { ok: true, branches: active };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  ipcMain.handle('branches:save', async (_e, payload) => {
+    try {
+      const { id, name, host, port, api_port } = payload || {};
+      if (!name || !host) {
+        return { ok: false, error: 'اسم الفرع وعنوان IP مطلوبان' };
+      }
+
+      let branches = readBranches();
+      if (id) {
+        const idx = branches.findIndex(b => b.id === id);
+        if (idx >= 0) {
+          branches[idx] = { ...branches[idx], name, host, port: port || 3306, api_port: api_port || 4310, is_active: 1, updated_at: new Date().toISOString() };
+        } else {
+          branches.push({ id, name, host, port: port || 3306, api_port: api_port || 4310, is_active: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+        }
+      } else {
+        const maxId = branches.reduce((m, b) => Math.max(m, Number(b.id) || 0), 0);
+        const nextId = maxId + 1;
+        branches.push({ id: nextId, name, host, port: port || 3306, api_port: api_port || 4310, is_active: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      }
+      writeBranches(branches);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  ipcMain.handle('branches:delete', async (_e, payload) => {
+    try {
+      const { id } = payload || {};
+      let branches = readBranches();
+      const idx = branches.findIndex(b => b.id === id || b.id === Number(id));
+      if (idx >= 0) {
+        branches[idx].is_active = 0;
+        branches[idx].updated_at = new Date().toISOString();
+        writeBranches(branches);
+      }
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  ipcMain.handle('branches:test_connection', async (_e, payload) => {
+    try {
+      const { host, port } = payload || {};
+      const mysql = require('mysql2/promise');
+      const conn = await mysql.createConnection({
+        host: host,
+        port: port || 3306,
+        user: 'root',
+        password: 'Db2@dm1n2022',
+        connectTimeout: 5000,
+      });
+      await conn.end();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
   });
 
   // Device Mode IPC for Primary/Secondary linking

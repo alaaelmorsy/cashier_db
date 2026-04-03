@@ -237,7 +237,24 @@ async function loadPerms(){
 }
 function canCust(k){ return __perms.has('customers') && __perms.has(k); }
 function applyTop(){ if(addBtn && !canCust('customers.add')) addBtn.style.display = 'none'; }
-async function initCustomersPage(){ await loadPerms(); applyTop(); await loadCustomers(); }
+async function initCustomersPage(){
+  await loadPerms();
+  applyTop();
+  if (!__custInitUsed) {
+    try {
+      const d = await __custInitPromise;
+      __custInitUsed = true;
+      if (d && d.ok && Array.isArray(d.customers)) {
+        __allCustomers = d.customers;
+        __custTotal = d.total || 0;
+        renderRows(__allCustomers);
+        renderCustPager();
+        return;
+      }
+    } catch (_) {}
+  }
+  await loadCustomers();
+}
 
 function toCsvValue(v){ return '"'+String(v??'').replace(/"/g,'""')+'"'; }
 function buildCsvFromCustomers(list){
@@ -441,6 +458,8 @@ let __allCustomers = [];
 let __custPage = 1;
 let __custPageSize = 20;
 let __custTotal = 0;
+const __custInitPromise = window.api && window.api.screen_init_customers ? window.api.screen_init_customers() : Promise.resolve(null);
+let __custInitUsed = false;
 
 function getPageBtnTitle(action) {
   switch(action) {
@@ -659,10 +678,9 @@ tbody.addEventListener('click', async (e) => {
 
 (async function loadCustomerSettings(){
   try{
-    const r = await window.api.settings_get();
-    if(r && r.ok && r.item){
-      __custSettings.require_phone_min_10 = !!r.item.require_phone_min_10;
-    }
+    const r = await __custInitPromise;
+    const s = r && r.ok ? (r.settings || r.item || {}) : {};
+    __custSettings.require_phone_min_10 = !!s.require_phone_min_10;
   }catch(_){}
 })();
 

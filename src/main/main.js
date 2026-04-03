@@ -12,6 +12,23 @@ try {
 
 dns.setDefaultResultOrder('ipv4first');
 
+// Single instance lock - focus existing window instead of opening a second one
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    try {
+      const wins = require('electron').BrowserWindow.getAllWindows();
+      if (wins.length > 0) {
+        const w = wins[0];
+        if (w.isMinimized()) w.restore();
+        w.focus();
+      }
+    } catch (_) {}
+  });
+}
+
 // Ensure userData/cache paths are writable and set Chromium cache location early
 try {
   const userDataDir = path.join(app.getPath('appData'), 'POS-SA');
@@ -21,16 +38,13 @@ try {
   app.commandLine.appendSwitch('disk-cache-dir', cacheDir);
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
   
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
   app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
   app.commandLine.appendSwitch('disable-background-timer-throttling');
-  app.commandLine.appendSwitch('enable-quic');
-  app.commandLine.appendSwitch('enable-tcp-fast-open');
   app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
   app.commandLine.appendSwitch('disable-dev-shm-usage');
-  app.commandLine.appendSwitch('num-raster-threads', '2');
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
 } catch (_) { /* ignore */ }
 
 const { registerAuthIPC, ensureAdminUser } = require('./auth');
@@ -458,9 +472,23 @@ async function createMainWindow() {
   // Determine which page to load BEFORE creating window
   const activationPage = path.join(__dirname, '../renderer/activation/index.html');
   const loginPage = path.join(__dirname, '../renderer/login/index.html');
+  const branchSelectionPage = path.join(__dirname, '../renderer/branch-selection/index.html');
   const startPagePromise = (async () => {
     let startPage = loginPage;
     try{
+      // إذا تم تكوين فرع واحد أو أكثر، نبدأ بصفحة اختيار الفرع
+      try {
+        const branchesFile = path.join(app.getPath('userData'), 'branches.json');
+        if (fs.existsSync(branchesFile)) {
+          const raw = fs.readFileSync(branchesFile, 'utf-8') || '[]';
+          const branchesData = JSON.parse(raw);
+          const activeBranches = Array.isArray(branchesData) ? branchesData.filter(b => b.is_active !== 0) : [];
+          if (activeBranches.length > 0) {
+            return branchSelectionPage;
+          }
+        }
+      } catch (_){ /* ignore */ }
+
       const cfg = getConfig();
       const isLocalhost = !cfg.host || cfg.host === '127.0.0.1' || cfg.host.toLowerCase() === 'localhost';
       
@@ -479,16 +507,31 @@ async function createMainWindow() {
         try{
           await testPromise;
           
-          // Check license
-          let ok = false;
-          try{
-            ok = await isLicensed();
-          }catch(err){
-            ok = false;
-          }
-          
-          if(!ok){
-            startPage = activationPage;
+          // Check if multiple branches are configured
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const [branchRows] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = 1');
+            const branchCount = branchRows[0].count;
+            
+            if (branchCount > 1) {
+              // Multiple branches configured - show branch selection
+              startPage = branchSelectionPage;
+            } else {
+              // Check license
+              let ok = false;
+              try{
+                ok = await isLicensed();
+              }catch(err){
+                ok = false;
+              }
+              
+              if(!ok){
+                startPage = activationPage;
+              }
+            }
+          } finally {
+            conn.release();
           }
         }catch(dbErr){
           // DB connection failed - show activation page
@@ -538,21 +581,34 @@ async function createMainWindow() {
   });
 
   win.loadFile(loginPage);
-  
-  win.once('ready-to-show', () => {
-    win.show();
-    setupAutoUpdater(win);
-    
-    try {
-      win.webContents.setFrameRate(60);
-      win.webContents.setBackgroundThrottling(false);
-    } catch (_) { }
-  });
+
+  let _shown = false;
+  function _showWin() {
+    if (_shown || win.isDestroyed()) return;
+    _shown = true;
+    try { win.show(); } catch (_) {}
+    try { setupAutoUpdater(win); } catch (_) {}
+    try { win.webContents.setFrameRate(60); } catch (_) {}
+    try { win.webContents.setBackgroundThrottling(false); } catch (_) {}
+  }
+
+  win.once('ready-to-show', _showWin);
+
+  setTimeout(() => { _showWin(); }, 6000);
 
   startPagePromise
     .then((page) => {
       try{
         if(!win.isDestroyed() && page && page !== loginPage){
+          if(page === branchSelectionPage){
+            win.setSize(460, 560);
+            win.center();
+            win.setResizable(false);
+          } else if(page === activationPage){
+            win.setSize(460, 520);
+            win.center();
+            win.setResizable(false);
+          }
           win.loadFile(page);
         }
       }catch(_){ }
@@ -596,6 +652,7 @@ async function createMainWindow() {
   // App-level IPC
   ipcMain.handle('app:quit', () => { app.quit(); });
   ipcMain.handle('app:relaunch', () => { app.relaunch(); app.quit(); });
+  ipcMain.handle('app:restart', () => { app.relaunch(); app.quit(); });
 
   // Register Backup IPC (email DB dump)
   try{ registerBackupIPC && registerBackupIPC(); }catch(_){ }
@@ -604,6 +661,17 @@ async function createMainWindow() {
   try{ registerUpdateIPC && registerUpdateIPC(); }catch(_){ }
 
   // Window controls (fullscreen toggle, back)
+  ipcMain.handle('window:set_size', async (event, { width, height, center, resizable } = {}) => {
+    try {
+      const { BrowserWindow } = require('electron');
+      const w = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+      if (!w) return { ok: false, error: 'no-window' };
+      if (resizable !== undefined) w.setResizable(resizable);
+      if (width && height) w.setSize(Math.round(width), Math.round(height));
+      if (center !== false) w.center();
+      return { ok: true };
+    } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+  });
   ipcMain.handle('window:toggle_fullscreen', async (event) => {
     try{
       const { BrowserWindow } = require('electron');
@@ -1472,6 +1540,76 @@ app.whenReady().then(async () => {
               products_total: null,
               global_offer: (globalOfferRows && globalOfferRows[0]) || null,
             };
+          } finally { conn.release(); }
+        } catch(e) { return { ok: false, error: e.message }; }
+      });
+
+      // ─── screen:init batch IPC handlers — reduce round-trips on all screens ───
+      ipcMain.handle('screen:init:invoices', async () => {
+        try {
+          if (isSecondaryDevice()) { return await fetchFromAPI('/init/invoices-screen'); }
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const [[settingsRow], [cntRow]] = await Promise.all([
+              conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+              conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
+            ]);
+            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+          } finally { conn.release(); }
+        } catch(e) { return { ok: false, error: e.message }; }
+      });
+
+      ipcMain.handle('screen:init:customers', async () => {
+        try {
+          if (isSecondaryDevice()) { return await fetchFromAPI('/init/customers-screen'); }
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const [[settingsRow], [customers], [cntRow]] = await Promise.all([
+              conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+              conn.query('SELECT id, name, phone, email, vat_number, is_active, created_at FROM customers ORDER BY id DESC LIMIT 100'),
+              conn.query('SELECT COUNT(*) AS total FROM customers'),
+            ]);
+            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+          } finally { conn.release(); }
+        } catch(e) { return { ok: false, error: e.message }; }
+      });
+
+      ipcMain.handle('screen:init:products', async () => {
+        try {
+          if (isSecondaryDevice()) { return await fetchFromAPI('/init/products-screen'); }
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const [[settingsRow], [products], [types], [operations], [cntRow]] = await Promise.all([
+              conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+              conn.query('SELECT id, name, name_en, barcode, price, cost, stock, category, is_tobacco, is_active, sort_order FROM products ORDER BY sort_order ASC, name ASC LIMIT 100'),
+              conn.query('SELECT * FROM main_types WHERE is_active=1 ORDER BY sort_order ASC, name ASC'),
+              conn.query('SELECT * FROM operations ORDER BY id'),
+              conn.query('SELECT COUNT(*) AS total FROM products'),
+            ]);
+            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+          } finally { conn.release(); }
+        } catch(e) { return { ok: false, error: e.message }; }
+      });
+
+      ipcMain.handle('screen:init:shifts', async (_e, params) => {
+        try {
+          if (isSecondaryDevice()) { return await fetchFromAPI('/init/shifts-screen', params || {}); }
+          const { dbAdapter } = require('../db/db-adapter');
+          const conn = await dbAdapter.getConnection();
+          try {
+            const userId = params && params.user_id ? Number(params.user_id) : null;
+            const lim = Math.min(Number((params && params.limit) || 20), 200);
+            const shiftWhere = userId ? 'WHERE user_id=?' : '';
+            const shiftParams = userId ? [userId] : [];
+            const [[settingsRow], [shifts], [openShift]] = await Promise.all([
+              conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
+              conn.query(`SELECT * FROM shifts ${shiftWhere} ORDER BY id DESC LIMIT ?`, [...shiftParams, lim]),
+              conn.query(`SELECT * FROM shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1`),
+            ]);
+            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, shifts, open_shift: openShift[0] || null };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });
