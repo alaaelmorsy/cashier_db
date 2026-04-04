@@ -1586,6 +1586,50 @@ function registerSalesIPC(){
     }catch(e){ console.error(e); return { ok:false, error:'تعذر جلب تفصيل الأصناف' }; }
   });
 
+  // Inventory report: active products with sold qty in period and current stock
+  ipcMain.handle('reports:inventory', async (_e, query) => {
+    const q = query || {};
+    const from = q.date_from ? q.date_from.replace('T', ' ').substring(0, 16) + ':00' : null;
+    const to   = q.date_to   ? q.date_to.replace('T', ' ').substring(0, 16) + ':59' : null;
+    const reportType = q.report_type || 'sold';
+    const params = [];
+    let salesSubquery = `SELECT id FROM sales WHERE (doc_type IS NULL OR doc_type IN ('invoice','credit_note'))`;
+    if(from){ salesSubquery += ' AND created_at >= ?'; params.push(from); }
+    if(to){ salesSubquery += ' AND created_at <= ?'; params.push(to); }
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        let sql;
+        if(reportType === 'not_sold'){
+          sql = `
+            SELECT p.id, p.name, COALESCE(p.category,'') AS category,
+                   COALESCE(p.stock, 0) AS stock_qty,
+                   0 AS qty_sold
+            FROM products p
+            WHERE p.is_active = 1
+              AND p.id NOT IN (
+                SELECT DISTINCT si.product_id FROM sales_items si
+                WHERE si.sale_id IN (${salesSubquery})
+              )
+            ORDER BY p.name ASC`;
+        } else {
+          sql = `
+            SELECT p.id, p.name, COALESCE(p.category,'') AS category,
+                   COALESCE(p.stock, 0) AS stock_qty,
+                   COALESCE(SUM(si.qty), 0) AS qty_sold
+            FROM products p
+            INNER JOIN sales_items si ON si.product_id = p.id
+              AND si.sale_id IN (${salesSubquery})
+            WHERE p.is_active = 1
+            GROUP BY p.id, p.name, p.category, p.stock
+            ORDER BY p.name ASC`;
+        }
+        const [rows] = await conn.query(sql, params);
+        return { ok:true, items: rows };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'تعذر جلب بيانات الجرد' }; }
+  });
+
   // Refund full invoice: restock and create negative sale entry (credit note)
   ipcMain.handle('sales:refund_full', async (_e, payload) => {
     const p = payload || {}; const id = Number(p.sale_id||0);

@@ -729,6 +729,7 @@ contextBridge.exposeInMainWorld('api', {
   sales_reset_all: (options) => ipcRenderer.invoke('sales:reset_all', options),
   sales_items_summary: (q) => ipcRenderer.invoke('sales:items_summary', q),
   sales_items_detailed: (q) => ipcRenderer.invoke('sales:items_detailed', q),
+  reports_inventory: (q) => ipcRenderer.invoke('reports:inventory', q),
   sales_list_by_user: (q) => ipcRenderer.invoke('sales:list_by_user', q),
   sales_employee_report: (q) => ipcRenderer.invoke('sales:employee_report', q),
 

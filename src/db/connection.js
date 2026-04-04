@@ -322,6 +322,7 @@ async function getPool() {
           ('reports.view_customer_statement','كشف حساب عميل'),
           ('reports.view_supplier_statement','كشف حساب مورد'),
           ('reports.view_expiry','تقرير المنتجات المنتهية الصلاحية'),
+          ('reports.view_inventory','تقرير الجرد'),
           -- payments
           ('payments.settle_full','سداد كامل'),
           ('payments.view_invoice','عرض الفاتورة'),
@@ -369,7 +370,7 @@ async function getPool() {
           ['offers.add_offer','إضافة عرض'],['offers.add_global_offer','إضافة عرض عام'],['offers.edit_offer','تعديل عرض'],['offers.toggle_offer','تفعيل/إيقاف عرض'],['offers.delete_offer','حذف عرض'],['offers.add_qty_offer','إضافة عرض كمي'],['offers.edit_qty_offer','تعديل عرض كمي'],['offers.toggle_qty_offer','تفعيل/إيقاف عرض كمي'],['offers.delete_qty_offer','حذف عرض كمي'],['offers.add_coupon','إضافة كوبون'],['offers.edit_coupon','تعديل كوبون'],['offers.toggle_coupon','تفعيل/إيقاف كوبون'],['offers.delete_coupon','حذف كوبون'],
           ['drivers.add','إضافة'],['drivers.edit','حفظ'],['drivers.toggle','تنشيط/إيقاف'],['drivers.delete','حذف'],
           ['employees.add','إضافة موظف'],['employees.edit','تعديل موظف'],['employees.delete','حذف موظف'],
-          ['reports.view_daily','تقرير يومي'],['reports.view_period','تقرير فترة'],['reports.view_all_invoices','كل الفواتير'],['reports.view_purchases','تقرير المصروفات'],['reports.view_customer_invoices','فواتير عميل'],['reports.view_credit_invoices','الفواتير الدائنة'],['reports.view_unpaid_invoices','فواتير غير مدفوعة'],['reports.view_purchase_invoices','تقرير فواتير الشراء'],['reports.view_customer_statement','كشف حساب عميل'],['reports.view_supplier_statement','كشف حساب مورد'],
+          ['reports.view_daily','تقرير يومي'],['reports.view_period','تقرير فترة'],['reports.view_all_invoices','كل الفواتير'],['reports.view_purchases','تقرير المصروفات'],['reports.view_customer_invoices','فواتير عميل'],['reports.view_credit_invoices','الفواتير الدائنة'],['reports.view_unpaid_invoices','فواتير غير مدفوعة'],['reports.view_purchase_invoices','تقرير فواتير الشراء'],['reports.view_customer_statement','كشف حساب عميل'],['reports.view_supplier_statement','كشف حساب مورد'],['reports.view_inventory','تقرير الجرد'],
           ['payments.settle_full','سداد كامل'],['payments.view_invoice','عرض الفاتورة'],
           ['credit_notes.view','عرض الإشعار'],['credit_notes.view_base','عرض الفاتورة'],
           ['quotations.save','حفظ عرض سعر'],['quotations.view','عرض'],['quotations.print','طباعة'],['quotations.delete','حذف'],
@@ -388,6 +389,10 @@ async function getPool() {
             AND EXISTS(SELECT 1 FROM user_permissions up WHERE up.user_id=u.id)
             AND NOT EXISTS(SELECT 1 FROM user_permissions up2 WHERE up2.user_id=u.id AND up2.perm_key='reports.view_types')
         `);
+      }catch(_){ /* ignore */ }
+      // Auto-insert reports.view_inventory permission if not present
+      try{
+        await conn.query(`INSERT IGNORE INTO permissions (perm_key, name) VALUES ('reports.view_inventory', 'تقرير الجرد')`);
       }catch(_){ /* ignore */ }
       // Auto-grant the new qty offer permissions to admin users who have explicit saved permissions
       try{

@@ -27,7 +27,9 @@ function translateReportsUI(isAr){
     employeeReportTitle: 'تقرير الموظفين',
     employeeReportDesc: 'فواتير وسندات موظف محدد لفترة من — إلى مع الإجماليات',
     expiryReportTitle: 'تقرير صلاحية المنتجات',
-    expiryReportDesc: 'عرض المنتجات حسب تاريخ الصلاحية المحدد'
+    expiryReportDesc: 'عرض المنتجات حسب تاريخ الصلاحية المحدد',
+    inventoryReportTitle: 'تقرير الجرد',
+    inventoryReportDesc: 'الأصناف مع الكمية المباعة والكمية الحالية للفترة من — إلى'
   } : {
     pageTitle: '📊 Reports',
     backBtn: '⬅ Back',
@@ -56,7 +58,9 @@ function translateReportsUI(isAr){
     employeeReportTitle: 'Employee report',
     employeeReportDesc: 'Invoices and vouchers for a specific employee with totals',
     expiryReportTitle: 'Products expiry report',
-    expiryReportDesc: 'View products by specified expiry date'
+    expiryReportDesc: 'View products by specified expiry date',
+    inventoryReportTitle: 'Inventory report',
+    inventoryReportDesc: 'Products with sold qty and current stock for the selected period'
   };
   
   try{
@@ -89,6 +93,7 @@ function translateReportsUI(isAr){
     updateCard('supplierStatementReport', 'supplierStatementTitle', 'supplierStatementDesc');
     updateCard('employeeReport', 'employeeReportTitle', 'employeeReportDesc');
     updateCard('expiryReport', 'expiryReportTitle', 'expiryReportDesc');
+    updateCard('inventoryReport', 'inventoryReportTitle', 'inventoryReportDesc');
   }catch(_){}
 }
 
@@ -144,6 +149,7 @@ function hide(id){ const el=document.getElementById(id); if(el){ el.classList.ad
   if(!canReport('reports.view_customer_statement')) hide('customerStatementReport');
   if(!canReport('reports.view_supplier_statement')) hide('supplierStatementReport');
   if(!canReport('reports.view_expiry')) hide('expiryReport');
+  if(!canReport('reports.view_inventory')) hide('inventoryReport');
 })();
 
 const dailyCard = document.getElementById('dailyReport');
@@ -184,3 +190,6 @@ if(employeeReportCard){ employeeReportCard.onclick = ()=>{ window.location.href 
 
 const expiryReportCard = document.getElementById('expiryReport');
 if(expiryReportCard){ expiryReportCard.onclick = ()=>{ window.location.href = './expiry_report.html'; } }
+
+const inventoryReportCard = document.getElementById('inventoryReport');
+if(inventoryReportCard){ inventoryReportCard.onclick = ()=>{ window.location.href = './inventory_report.html'; } }
