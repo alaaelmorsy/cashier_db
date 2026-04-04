@@ -57,6 +57,8 @@
       table{width:100%; border-collapse:collapse}
       th,td{padding:10px; border-bottom:1px solid var(--border); text-align:right}
       th{background:#eef2ff; color:var(--brand); font-weight:600}
+      table:has(#soldItemsTbody) thead th:not(:first-child),
+      table:has(#soldItemsTbody) tbody td:not(:first-child){ text-align:center }
       .grid{display:grid; gap:10px}
       .summary-list{display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px}
       .summary-item{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px}
@@ -407,7 +409,10 @@
                 <tr>
                   <th>المنتج</th>
                   <th>الكمية</th>
-                  <th>الإجمالي</th>
+                  <th>سعر الشراء</th>
+                  <th>سعر البيع</th>
+                  <th>الربح</th>
+                  <th>الكمية المتوفرة</th>
                 </tr>
               </thead>
               <tbody id="soldItemsTbody"></tbody>

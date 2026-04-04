@@ -1540,10 +1540,13 @@ function registerSalesIPC(){
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
-        const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total
+        const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
+                            COALESCE(p.cost, 0) AS cost_price, COALESCE(p.price, 0) AS sale_price,
+                            COALESCE(p.stock, 0) AS stock_qty
                      FROM sales_items si INNER JOIN sales s ON s.id = si.sale_id
+                     LEFT JOIN products p ON p.id = si.product_id
                      ${where}
-                     GROUP BY si.product_id, si.name
+                     GROUP BY si.product_id, si.name, p.cost, p.price, p.stock
                      ORDER BY SUM(si.qty) DESC`;
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows };

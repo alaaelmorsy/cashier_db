@@ -54,6 +54,10 @@ function translateDailyUI(isAr){
     soldProducts: 'المنتجات المباعة',
     product: 'المنتج',
     quantity: 'الكمية',
+    costPrice: 'سعر الشراء',
+    salePrice: 'سعر البيع',
+    profit: 'الربح',
+    availableQty: 'الكمية المتوفرة',
     purchasesDetail: 'المصروفات',
     statement: 'البيان',
     date: 'التاريخ',
@@ -102,6 +106,10 @@ function translateDailyUI(isAr){
     soldProducts: 'Sold products',
     product: 'Product',
     quantity: 'Quantity',
+    costPrice: 'Purchase price',
+    salePrice: 'Sale price',
+    profit: 'Profit',
+    availableQty: 'Available qty',
     purchasesDetail: 'Purchases',
     statement: 'Description',
     date: 'Date',
@@ -226,10 +234,13 @@ function translateDailyUI(isAr){
       const table = soldProductsTable.closest('table');
       if(table){
         const headers = table.querySelectorAll('thead th');
-        if(headers.length >= 3){
+        if(headers.length >= 6){
           headers[0].textContent = t.product;
           headers[1].textContent = t.quantity;
-          headers[2].textContent = t.total;
+          headers[2].textContent = t.costPrice;
+          headers[3].textContent = t.salePrice;
+          headers[4].textContent = t.profit;
+          headers[5].textContent = t.availableQty;
         }
       }
     }
@@ -758,10 +769,13 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
             font-size: 9px;
           }
 
-          /* المنتجات المباعة: المنتج | الكمية | الإجمالي */
-          .tbl-sold th:nth-child(1), .tbl-sold td:nth-child(1){ width:60%; }
-          .tbl-sold th:nth-child(2), .tbl-sold td:nth-child(2){ width:20%; font-size:9.3px; }
-          .tbl-sold th:nth-child(3), .tbl-sold td:nth-child(3){ width:20%; }
+          /* المنتجات المباعة: المنتج | الكمية | سعر الشراء | سعر البيع | الربح | الكمية المتوفرة */
+          .tbl-sold th:nth-child(1), .tbl-sold td:nth-child(1){ width:30%; }
+          .tbl-sold th:nth-child(2), .tbl-sold td:nth-child(2){ width:12%; font-size:9.3px; }
+          .tbl-sold th:nth-child(3), .tbl-sold td:nth-child(3){ width:14%; }
+          .tbl-sold th:nth-child(4), .tbl-sold td:nth-child(4){ width:14%; }
+          .tbl-sold th:nth-child(5), .tbl-sold td:nth-child(5){ width:14%; }
+          .tbl-sold th:nth-child(6), .tbl-sold td:nth-child(6){ width:16%; }
 
           /* المصروفات: البيان | التاريخ | الإجمالي | ملاحظات */
           .tbl-pur th:nth-child(1), .tbl-pur td:nth-child(1){ width:30%; }
@@ -1311,9 +1325,18 @@ async function load(){
     // Fill sold items table (products sold)
     try{
       const tbody = document.getElementById('soldItemsTbody');
-      const rows = soldItems.map(it => `<tr><td>${it.name||''}</td><td>${Number(it.qty_total||0)}</td><td>${fmt(it.amount_total)}</td></tr>`).join('');
+      const rows = soldItems.map(it => {
+        const qty = Number(it.qty_total||0);
+        const costPrice = Number(it.cost_price||0);
+        const salePrice = Number(it.sale_price||0);
+        const totalCost = costPrice * qty;
+        const totalSale = salePrice * qty;
+        const profit = totalSale - totalCost;
+        const stockQty = Number(it.stock_qty||0);
+        return `<tr><td>${it.name||''}</td><td>${qty}</td><td>${fmt(totalCost)}</td><td>${fmt(totalSale)}</td><td>${fmt(profit)}</td><td>${stockQty}</td></tr>`;
+      }).join('');
       const noDataText = __currentLang === 'ar' ? 'لا توجد بيانات' : 'No data';
-      tbody.innerHTML = rows || `<tr><td colspan="3" class="muted">${noDataText}</td></tr>`;
+      tbody.innerHTML = rows || `<tr><td colspan="6" class="muted">${noDataText}</td></tr>`;
     }catch(_){ }
 
     const stSalesBefore = document.getElementById('stSalesBefore');

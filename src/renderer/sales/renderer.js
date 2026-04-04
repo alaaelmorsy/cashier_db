@@ -54,8 +54,8 @@ function translateUI(isAr){
     discountPercent: 'خصم %',
     discountAmount: 'خصم نقدي',
     notesPlaceholder: 'ملاحظاتك...',
-    holdBtn: '⏸️ تعليق',
-    holdBtnTitle: 'تعليق الفاتورة',
+    holdBtn: '⏸️ تعليق (F5)',
+    holdBtnTitle: 'تعليق الفاتورة (F5)',
     heldInvoicesBtn: '📋 المعلقة',
     heldInvoicesBtnTitle: 'عرض الفواتير المعلقة',
     heldInvoicesSearchPlaceholder: '🔍 ابحث برقم أو اسم العميل',
@@ -117,8 +117,8 @@ function translateUI(isAr){
     discountPercent: 'Discount %',
     discountAmount: 'Cash discount',
     notesPlaceholder: 'Your notes...',
-    holdBtn: '⏸️ Hold',
-    holdBtnTitle: 'Hold invoice',
+    holdBtn: '⏸️ Hold (F5)',
+    holdBtnTitle: 'Hold invoice (F5)',
     heldInvoicesBtn: '📋 Held',
     heldInvoicesBtnTitle: 'Show held invoices',
     heldInvoicesSearchPlaceholder: '🔍 Search by customer ID or name',
@@ -278,13 +278,13 @@ function translateUI(isAr){
     const btnPayTop = document.getElementById('btnPayTop');
     if(btnPayTop){
       const span = btnPayTop.querySelector('span:last-child');
-      if(span) span.textContent = isAr ? 'طباعة الفاتورة' : 'Print invoice';
+      if(span) span.textContent = isAr ? 'طباعة الفاتورة (F1)' : 'Print invoice (F1)';
     }
     
     const btnQuotation = document.getElementById('btnQuotation');
     if(btnQuotation){
       const span = btnQuotation.querySelector('span:last-child');
-      if(span) span.textContent = isAr ? 'عرض السعر' : 'Quotation';
+      if(span) span.textContent = isAr ? 'عرض السعر (F3)' : 'Quotation (F3)';
     }
     
     // Translate Add Customer Modal
@@ -884,7 +884,7 @@ window.zatcaSendByInvoiceNo = async function(invoiceNo){
 
 if(btnClearTop){ if(!__perms.includes('sales.clear')) btnClearTop.style.display='none'; btnClearTop.addEventListener('click', ()=>{ document.getElementById('btnClear')?.click(); }); btnClearTop.title = 'اختصار: F2'; }
 
-// اختصارات لوحة المفاتيح: F1 للطباعة، F2 لتفريغ السلة، F3 لطباعة عرض السعر
+// اختصارات لوحة المفاتيح: F1 للطباعة، F2 لتفريغ السلة، F3 لطباعة عرض السعر، F5 لتعليق الفاتورة
 window.addEventListener('keydown', (e) => {
   if(e.key === 'F1'){
     e.preventDefault();
@@ -895,6 +895,9 @@ window.addEventListener('keydown', (e) => {
   } else if(e.key === 'F3'){
     e.preventDefault();
     document.getElementById('btnQuotation')?.click();
+  } else if(e.key === 'F5'){
+    e.preventDefault();
+    document.getElementById('btnHoldInvoice')?.click();
   }
 });
 
