@@ -147,7 +147,7 @@ function registerShiftsIPC() {
             COUNT(CASE WHEN doc_type = 'credit_note' THEN 1 END) as total_refunds,
             COALESCE(SUM(CASE WHEN (doc_type IS NULL OR doc_type = 'invoice') THEN grand_total ELSE 0 END), 0) as total_sales,
             COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN grand_total ELSE 0 END), 0) as cash_sales,
-            COALESCE(SUM(CASE WHEN payment_method IN ('card','tamara','tabby') THEN grand_total ELSE 0 END), 0) as card_sales,
+            COALESCE(SUM(CASE WHEN payment_method IN ('card','tamara','tabby','bank_transfer') THEN grand_total ELSE 0 END), 0) as card_sales,
             COALESCE(SUM(CASE WHEN payment_method = 'mixed' THEN COALESCE(pay_cash_amount, 0) ELSE 0 END), 0) as mixed_cash,
             COALESCE(SUM(CASE WHEN payment_method = 'mixed' THEN COALESCE(pay_card_amount, 0) ELSE 0 END), 0) as mixed_card,
             COALESCE(SUM(CASE WHEN payment_method = 'split' THEN grand_total ELSE 0 END), 0) as split_sales,

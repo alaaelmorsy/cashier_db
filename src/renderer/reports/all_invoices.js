@@ -35,6 +35,7 @@ function labelPaymentMethod(method){
   if(m==='credit') return isAr ? 'آجل' : 'Credit';
   if(m==='tamara') return isAr ? 'تمارا' : 'Tamara';
   if(m==='tabby') return isAr ? 'تابي' : 'Tabby';
+  if(m==='bank_transfer') return isAr ? 'تحويل بنكي' : 'Bank Transfer';
   if(m==='mixed') return isAr ? 'مختلط' : 'Mixed';
   return method||'';
 }
@@ -331,7 +332,7 @@ async function exportAllInvoicesPDF() {
       const settledCash = Number(s.settled_cash || 0);
       const cashPart = Number(s.pay_cash_amount || 0);
       addAmt('cash', settledCash > 0 ? settledCash : (cashPart > 0 ? cashPart : grand));
-    } else if (pm === 'card' || pm === 'network' || pm === 'tamara' || pm === 'tabby') {
+    } else if (pm === 'card' || pm === 'network' || pm === 'tamara' || pm === 'tabby' || pm === 'bank_transfer') {
       const cardPart = Number(s.pay_card_amount || 0);
       addAmt(pm, cardPart > 0 ? cardPart : grand);
     } else if (pm) {
@@ -900,7 +901,7 @@ async function loadRange(startStr, endStr, page = 1){
         const settledCash = Number(s.settled_cash || 0);
         const cashPart = Number(s.pay_cash_amount || 0);
         addAmt('cash', settledCash>0 ? settledCash : (cashPart>0 ? cashPart : grand));
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby'){
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         const cardPart = Number(s.pay_card_amount || 0);
         addAmt(pm, cardPart>0 ? cardPart : grand);
       } else if(pm){

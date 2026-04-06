@@ -1021,7 +1021,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
           const grandTotal = Number(p.grand_total || 0);
           let cashAmount = 0, cardAmount = 0;
           if (p.payment_method === 'cash') cashAmount = grandTotal;
-          else if (['card','tamara','tabby'].includes(p.payment_method)) cardAmount = grandTotal;
+          else if (['card','tamara','tabby','bank_transfer'].includes(p.payment_method)) cardAmount = grandTotal;
           else if (p.payment_method === 'mixed') { cashAmount = Number(p.pay_cash_amount || 0); cardAmount = Number(p.pay_card_amount || 0); }
           await conn.query(`UPDATE shifts SET total_invoices=total_invoices+1,total_sales=total_sales+?,cash_sales=cash_sales+?,card_sales=card_sales+? WHERE id=?`, [grandTotal, cashAmount, cardAmount, shiftId]);
         } catch (_) { }

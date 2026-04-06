@@ -14,6 +14,7 @@ function labelPaymentMethod(method){
   if(m==='credit') return isAr ? 'آجل' : 'Credit';
   if(m==='tamara') return isAr ? 'تمارا' : 'Tamara';
   if(m==='tabby') return isAr ? 'تابي' : 'Tabby';
+  if(m==='bank_transfer') return isAr ? 'تحويل بنكي' : 'Bank Transfer';
   if(m==='mixed') return isAr ? 'مختلط' : 'Mixed';
   return method||'';
 }
@@ -934,7 +935,7 @@ async function load(){
       } else if(pm==='cash'){
         const settledCash = Number(sale.settled_cash || 0);
         add('cash', (settledCash>0 ? settledCash : (payCashPart>0?payCashPart:grand)));
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby'){
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         add(pm==='network' ? 'card' : pm, (payCardPart>0 ? payCardPart : grand));
       } else {
         // include any other custom method as full grand_total
@@ -967,7 +968,7 @@ async function load(){
         sub('card', cCard);
       } else if(pm==='cash'){
         sub('cash', (cCash>0 ? cCash : Math.abs(grand)));
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby'){
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         sub(pm==='network' ? 'card' : pm, (cCard>0 ? cCard : Math.abs(grand)));
       } else if(pm){
         sub(pm, Math.abs(grand));

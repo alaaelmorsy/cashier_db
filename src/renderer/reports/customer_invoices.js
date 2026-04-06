@@ -431,7 +431,7 @@ async function loadRange(startStr, endStr, page = 1){
       const grand = Number(s.grand_total||0);
       sumPre += pre; sumVat += vat; sumGrand += grand;
       const pm = String(s.payment_method || '').toLowerCase();
-      const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='mixed'?'مختلط': m)));
+      const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='tamara'?'تمارا':(m==='tabby'?'تابي':(m==='bank_transfer'?'تحويل بنكي':(m==='mixed'?'مختلط': m))))));
       // totals by payment
       const addAmt = (key, amount)=>{
         if(!key) return; const k=(key==='network'?'card':key); const prev=Number(payTotals.get(k)||0); payTotals.set(k, prev + Number(amount||0)); };
@@ -440,7 +440,7 @@ async function loadRange(startStr, endStr, page = 1){
         addAmt('card', Number(s.pay_card_amount||0) || grand/2);
       } else if(pm==='cash'){
         addAmt('cash', Number(s.settled_cash||0) || Number(s.pay_cash_amount||0) || grand);
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby'){
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         addAmt(pm, Number(s.pay_card_amount||0) || grand);
       } else if(pm){ addAmt(pm, grand); }
       const viewBtn = `<button data-view="${s.id}">عرض</button>`;

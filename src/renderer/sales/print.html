@@ -667,7 +667,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           const pay = params.get('pay') || '';
           const cash = Number(params.get('cash')||0);
           // خريطة عربية لطرق الدفع
-          const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', refund:'إشعار دائن' };
+          const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي', refund:'إشعار دائن' };
           const payKey = pay || (s.sale?.payment_method || '');
           document.getElementById('invPay').textContent = payLabels[payKey] || payKey;
           // Show cashier name from URL param if present; otherwise fallback to localStorage
@@ -1585,7 +1585,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                     change = 0;
                   }
                 }
-              } else if(pm === 'card' || pm === 'tamara' || pm === 'tabby'){
+              } else if(pm === 'card' || pm === 'tamara' || pm === 'tabby' || pm === 'bank_transfer'){
                 if(entered > 0){
                   paid = entered;
                   if(entered >= grand){

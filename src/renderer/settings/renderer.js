@@ -142,6 +142,7 @@ function translateUI(isAr){
   __lblFor('pm_mixed', isAr ? 'مختلط' : 'Mixed');
   __lblFor('pm_tamara', isAr ? 'تمارا' : 'Tamara');
   __lblFor('pm_tabby', isAr ? 'تابي' : 'Tabby');
+  __lblFor('pm_bank_transfer', isAr ? 'تحويل بنكي' : 'Bank Transfer');
   __lbl('f_default_payment', isAr ? 'طريقة الدفع الافتراضية' : 'Default Payment Method');
   __opt('f_default_payment', '', isAr ? 'بدون افتراضي' : 'No default');
   __opt('f_default_payment', 'cash', isAr ? 'كاش' : 'Cash');
@@ -150,6 +151,7 @@ function translateUI(isAr){
   __opt('f_default_payment', 'mixed', isAr ? 'مختلط' : 'Mixed');
   __opt('f_default_payment', 'tamara', isAr ? 'تمارا' : 'Tamara');
   __opt('f_default_payment', 'tabby', isAr ? 'تابي' : 'Tabby');
+  __opt('f_default_payment', 'bank_transfer', isAr ? 'تحويل بنكي' : 'Bank Transfer');
 
   __txt('sTitle-currency', isAr ? 'إعدادات العملة' : 'Currency Settings');
   __txt('sDesc-currency', isAr ? 'رمز العملة وموقعه في المبالغ' : 'Currency symbol and its position in amounts');
@@ -508,8 +510,8 @@ function updatePmDropdownText() {
     pmDropdownText.textContent = __t('اختر طرق الدفع', 'Select payment methods');
   } else if (checkedPm.length === 1) {
     const labels = __isAr
-      ? { 'cash': 'كاش', 'card': 'شبكة (مدى)', 'credit': 'آجل', 'mixed': 'مختلط', 'tamara': 'تمارا', 'tabby': 'تابي' }
-      : { 'cash': 'Cash', 'card': 'Card (Mada)', 'credit': 'Credit', 'mixed': 'Mixed', 'tamara': 'Tamara', 'tabby': 'Tabby' };
+      ? { 'cash': 'كاش', 'card': 'شبكة (مدى)', 'credit': 'آجل', 'mixed': 'مختلط', 'tamara': 'تمارا', 'tabby': 'تابي', 'bank_transfer': 'تحويل بنكي' }
+      : { 'cash': 'Cash', 'card': 'Card (Mada)', 'credit': 'Credit', 'mixed': 'Mixed', 'tamara': 'Tamara', 'tabby': 'Tabby', 'bank_transfer': 'Bank Transfer' };
     pmDropdownText.textContent = labels[checkedPm[0].value] || checkedPm[0].value;
   } else {
     pmDropdownText.textContent = __isAr ? `${checkedPm.length} طرق محددة` : `${checkedPm.length} methods selected`;

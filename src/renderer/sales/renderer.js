@@ -10,7 +10,8 @@ function getPaymentMethodLabel(method, isAr){
     credit: isAr ? 'آجل' : 'Credit',
     mixed: isAr ? 'مختلط' : 'Mixed',
     tamara: isAr ? 'تمارا' : 'Tamara',
-    tabby: isAr ? 'تابي' : 'Tabby'
+    tabby: isAr ? 'تابي' : 'Tabby',
+    bank_transfer: isAr ? 'تحويل بنكي' : 'Bank Transfer'
   };
   return labels[method] || method;
 }
@@ -2326,7 +2327,7 @@ async function loadSettings(prefetchedSettings){
   // payment methods into select
   paymentMethod.innerHTML = '';
   const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
-  const labels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي' };
+  const labels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي' };
   methods.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m; opt.textContent = labels[m] || m;
@@ -4367,7 +4368,8 @@ async function showPaymentMethodModal(){
       'credit': '📝 آجل',
       'mixed': '💰 مختلط',
       'tamara': '🛍️ تمارا',
-      'tabby': '🛒 تابي'
+      'tabby': '🛒 تابي',
+      'bank_transfer': '🏦 تحويل بنكي'
     };
     
     const methodIcons = {
@@ -4376,7 +4378,8 @@ async function showPaymentMethodModal(){
       'credit': '📝',
       'mixed': '💰',
       'tamara': '🛍️',
-      'tabby': '🛒'
+      'tabby': '🛒',
+      'bank_transfer': '🏦'
     };
     
     const methodNames = {
@@ -4385,7 +4388,8 @@ async function showPaymentMethodModal(){
       'credit': 'آجل',
       'mixed': 'مختلط',
       'tamara': 'تمارا',
-      'tabby': 'تابي'
+      'tabby': 'تابي',
+      'bank_transfer': 'تحويل بنكي'
     };
     
     optionsContainer.innerHTML = '';

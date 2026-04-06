@@ -688,7 +688,7 @@
             }
           }catch(_){ }
           // خريطة عربية لطرق الدفع
-          const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', refund:'إشعار دائن' };
+          const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي', refund:'إشعار دائن' };
           const payKey = pay || sale.payment_method || '';
           document.getElementById('invPay').textContent = payLabels[payKey] || payKey;
           // Show cashier (logged-in user) full name from localStorage if available
@@ -836,7 +836,7 @@
             try{ if(Number(settings?.vat_percent||0) === 0){ typeEl.style.display = 'none'; } }catch(_){ /* ignore */ }
           }catch(_){ /* ignore */ }
           // خريطة عربية لطرق الدفع
-          const payLabels2 = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي' };
+          const payLabels2 = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي' };
           const payKey2 = pay || sale.payment_method || '';
           document.getElementById('invPay').textContent = payLabels2[payKey2] || payKey2;
 
@@ -1150,7 +1150,7 @@
                   change = 0;
                 }
               }
-            } else if(pm === 'card' || pm === 'tamara' || pm === 'tabby'){
+            } else if(pm === 'card' || pm === 'tamara' || pm === 'tabby' || pm === 'bank_transfer'){
               const entered = (cash>0) ? Number(cash) : 0;
               if(entered > 0){
                 paid = entered;

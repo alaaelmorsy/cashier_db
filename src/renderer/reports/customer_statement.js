@@ -742,13 +742,13 @@ async function loadRange(startStr, endStr){
         creditsPre += pre; creditsVat += vat; creditsGrand += grand;
       } else {
         // إجمالي فواتير البيع: فقط المدفوعة (نقداً، شبكة، إلخ) - بدون الآجلة
-        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='mixed'){
+        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer' || pm==='mixed'){
           invoicesPre += pre; invoicesVat += vat; invoicesGrand += grand;
         }
       }
       
       if(!isCreditNote){
-        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='mixed'){
+        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer' || pm==='mixed'){
           collectedCount++; collectedPre += pre; collectedVat += vat; collectedGrand += grand;
         }
         // إجمالي الفواتير الآجلة: الفواتير بطريقة دفع "آجل" - المبلغ الكامل بدون خصم سندات القبض
@@ -760,7 +760,7 @@ async function loadRange(startStr, endStr){
         }
       } else {
         // إشعار دائن (مرتجع) - يُخصم من الفواتير المدفوعة (القيم سالبة في قاعدة البيانات)
-        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='mixed'){
+        if(pm==='cash' || pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer' || pm==='mixed'){
           collectedCount--; collectedPre += pre; collectedVat += vat; collectedGrand += grand;
         }
       }
@@ -771,7 +771,7 @@ async function loadRange(startStr, endStr){
         addAmt('card', Number(s.pay_card_amount||0) || grand/2);
       } else if(pm==='cash'){
         addAmt('cash', Number(s.settled_cash||0) || Number(s.pay_cash_amount||0) || grand);
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby'){
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         addAmt(pm, Number(s.pay_card_amount||0) || grand);
       } else if(pm){ addAmt(pm, grand); }
       const viewBtn = `<button class="view-btn" data-view="${s.id}">عرض</button>`;
@@ -839,7 +839,7 @@ async function loadRange(startStr, endStr){
             const datePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit'}).format(created);
             const timePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
             const pm = String(v.payment_method||'').toLowerCase();
-            const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='tamara'?'تمارا':(m==='tabby'?'تابي': (m||'-')))));
+            const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='tamara'?'تمارا':(m==='tabby'?'تابي':(m==='bank_transfer'?'تحويل بنكي': (m||'-'))))));
             const viewBtn = `<button class="view-btn" data-view="${v.id}">عرض</button>`;
             return `<tr><td>${v.voucher_no||''}</td><td>${datePart}<br>${timePart}</td><td>${v.invoice_no||''}</td><td>${payLabel(pm)}</td><td>${fmt(v.amount||0)}</td><td>${v.user_name||''}</td><td>${viewBtn}</td></tr>`;
           }).join('');

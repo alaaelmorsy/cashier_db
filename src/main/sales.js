@@ -766,7 +766,7 @@ function registerSalesIPC(){
             
             if(p.payment_method === 'cash'){
               cashAmount = grandTotal;
-            } else if(p.payment_method === 'card' || p.payment_method === 'tamara' || p.payment_method === 'tabby'){
+            } else if(p.payment_method === 'card' || p.payment_method === 'tamara' || p.payment_method === 'tabby' || p.payment_method === 'bank_transfer'){
               cardAmount = grandTotal;
             } else if(p.payment_method === 'mixed'){
               cashAmount = Number(p.pay_cash_amount || 0);
@@ -1276,7 +1276,7 @@ function registerSalesIPC(){
           // تحديث حقول الدفع المنفصلة (للتقارير)
           if(method==='cash'){
             await conn.query('UPDATE sales SET pay_cash_amount = grand_total, pay_card_amount = NULL WHERE id=?', [id]);
-          } else if(method==='card' || method==='tamara' || method==='tabby'){
+          } else if(method==='card' || method==='tamara' || method==='tabby' || method==='bank_transfer'){
             await conn.query('UPDATE sales SET pay_cash_amount = NULL, pay_card_amount = grand_total WHERE id=?', [id]);
           }
         }
@@ -1349,7 +1349,7 @@ function registerSalesIPC(){
     try{
       const p = payload || {}; const id = Number(p.sale_id||0);
       const method = String(p.method||'').toLowerCase();
-      const okMethod = ['cash','card','tamara','tabby'].includes(method);
+      const okMethod = ['cash','card','tamara','tabby','bank_transfer'].includes(method);
       if(!id){ return { ok:false, error:'رقم الفاتورة مفقود' }; }
       if(!okMethod){ return { ok:false, error:'طريقة سداد غير صالحة' }; }
       const cash = (method==='cash') ? Math.max(0, Number(p.cash||0)) : null;

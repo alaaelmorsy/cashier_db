@@ -335,6 +335,7 @@ function getPaymentMethodLabel(method) {
     'cash': '💵 نقدي',
     'card': '💳 بطاقة',
     'transfer': '🏦 تحويل',
+    'bank_transfer': '🏦 تحويل بنكي',
     'other': '📝 أخرى'
   };
   return labels[method] || method || '-';

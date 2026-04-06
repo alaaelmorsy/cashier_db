@@ -248,6 +248,7 @@ function labelPaymentMethod(method){
   if(m==='credit') return 'آجل';
   if(m==='tamara') return 'تمارا';
   if(m==='tabby') return 'تابي';
+  if(m==='bank_transfer') return 'تحويل بنكي';
   if(m==='mixed') return 'مختلط';
   return method||'';
 }

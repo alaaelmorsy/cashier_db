@@ -425,7 +425,7 @@
           document.getElementById('invDate').textContent = __fmtDate(it.invoice_at);
           // عرض طريقة الدفع باللغة العربية
           try{
-            const payMap = { cash:'كاش', card:'شبكة', network:'شبكة', credit:'آجل' };
+            const payMap = { cash:'كاش', card:'شبكة', network:'شبكة', credit:'آجل', bank_transfer:'تحويل بنكي' };
             const key = String(it.payment_method||'').toLowerCase();
             document.getElementById('payment').textContent = payMap[key] || key;
           }catch(_){ document.getElementById('payment').textContent = it.payment_method || ''; }
