@@ -318,6 +318,7 @@ const fVat = document.getElementById('f_vat');
 const fPricesInc = document.getElementById('f_prices_inc');
 const fCostIncVat = document.getElementById('f_cost_inc_vat');
 const fOpPriceManual = document.getElementById('f_op_price_manual');
+const fUpdateProductPriceOnEdit = document.getElementById('f_update_product_price_on_edit');
 const fAllowZeroStock = document.getElementById('f_allow_zero_stock');
 
 
@@ -562,6 +563,7 @@ async function loadSettings(){
   if(fPrintMarginRight) fPrintMarginRight.value = (s.print_margin_right_mm ?? '');
   if(fPrintMarginLeft) fPrintMarginLeft.value = (s.print_margin_left_mm ?? '');
   fOpPriceManual.checked = !!s.op_price_manual;
+  if (fUpdateProductPriceOnEdit) fUpdateProductPriceOnEdit.checked = !!s.update_product_price_on_edit;
   fAllowZeroStock.checked = !!s.allow_sell_zero_stock;
   if (fHideProductImages) fHideProductImages.checked = !!s.hide_product_images;
   if (fShowQuotationButton) fShowQuotationButton.checked = (typeof s.show_quotation_button === 'undefined') ? true : !!s.show_quotation_button;
@@ -1003,6 +1005,7 @@ saveBtn.addEventListener('click', async () => {
     logo_width_px: Math.max(24, Math.min(512, Number((fLogoW?.value)||120))) || 120,
     logo_height_px: Math.max(24, Math.min(512, Number((fLogoH?.value)||120))) || 120,
     op_price_manual: !!fOpPriceManual.checked,
+    update_product_price_on_edit: !!(fUpdateProductPriceOnEdit?.checked),
     allow_sell_zero_stock: !!fAllowZeroStock.checked,
     invoice_footer_note: (fInvoiceFooterNote?.value || '').trim(),
     hide_product_images: !!(fHideProductImages?.checked),
@@ -1119,6 +1122,10 @@ saveBtn.addEventListener('click', async () => {
     const quotationBtn = { show_quotation_button: !!payload.show_quotation_button };
     localStorage.setItem('pos_settings_quotation', JSON.stringify(quotationBtn));
     window.dispatchEvent(new StorageEvent('storage', { key: 'pos_settings_quotation', newValue: JSON.stringify(quotationBtn) }));
+    // بث إعداد تحديث سعر المنتج عند تعديله في السلة
+    const updatePriceOnEdit = { update_product_price_on_edit: !!payload.update_product_price_on_edit };
+    localStorage.setItem('pos_settings_update_price_on_edit', JSON.stringify(updatePriceOnEdit));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pos_settings_update_price_on_edit', newValue: JSON.stringify(updatePriceOnEdit) }));
     // بث إعداد الثيم
     const themeSettings = { app_theme: payload.app_theme || 'light' };
     localStorage.setItem('pos_settings_theme', JSON.stringify(themeSettings));

@@ -1232,6 +1232,13 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
           renderCart(); // أعد رسم الحقول لتتحول بين كمية/مبلغ
         }catch(_){ }
       }
+      // التقط تحديث إعداد تحديث سعر المنتج عند تعديله في السلة
+      if(e && e.key === 'pos_settings_update_price_on_edit' && e.newValue){
+        try{
+          const uv = JSON.parse(e.newValue||'{}');
+          if(typeof uv.update_product_price_on_edit !== 'undefined') settings.update_product_price_on_edit = !!uv.update_product_price_on_edit;
+        }catch(_){ }
+      }
     });
   }catch(_){ }
 })();
@@ -1275,7 +1282,7 @@ allowOnlyNumbersSales(acmPhone);
 allowOnlyNumbersSales(acmVat);
 allowOnlyNumbersSales(acmCr);
 
-let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: ['cash','card','mixed'], op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false };
+let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: ['cash','card','mixed'], op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false, update_product_price_on_edit: false };
 let cart = []; // {id, name, price, qty, image_path}
 let customerDisplayEnabled = false;
 let currencyCodeForDisplay = 'SAR';
@@ -3275,7 +3282,8 @@ async function addToCart(p){
     __opsLoaded: false,
     __ops: [],
     __pending: true,
-    product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
+    product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null,
+    cost: (p.cost!=null && p.cost!=='') ? Number(p.cost) : null
   };
   cart.unshift(it);
   renderCart(); // ← يظهر في السلة فوراً
@@ -3534,6 +3542,37 @@ function __adjustStockCacheAfterSale(items){
       }
     }
   }catch(_){ }
+}
+
+async function __applyManualPriceUpdates(cartItems){
+  if(!settings.update_product_price_on_edit) return;
+  const seen = new Map(); // id -> price
+  for(const it of cartItems){
+    if(it.manualPriceEdit && it.id && !seen.has(it.id)){
+      seen.set(it.id, Number(it.price||0));
+    }
+  }
+  if(!seen.size) return;
+  for(const [id, price] of seen){
+    try{ await window.api.products_update_price(id, price); }catch(_){ }
+    // تحديث الكاش الداخلي فوراً
+    try{
+      if(loadCatalog.__productsCache && loadCatalog.__productsCache.has(id)){
+        const cached = loadCatalog.__productsCache.get(id);
+        cached.price = price;
+        loadCatalog.__productsCache.set(id, cached);
+      }
+    }catch(_){ }
+    // تحديث بطاقة المنتج في DOM فوراً
+    try{
+      const card = catalog.querySelector(`.p-card[data-pid="${id}"]`);
+      if(card){
+        const priceEl = card.querySelector('.price-under');
+        if(priceEl){ priceEl.textContent = price.toFixed(2); }
+      }
+    }catch(_){ }
+  }
+  try{ window.api.emit_products_changed({ action: 'price-updated' }); }catch(_){ }
 }
 
 function showLowStockBanner(items){
@@ -3887,6 +3926,15 @@ tbody.addEventListener('change', async (e) => {
         renderCart();
         return; // لا تعتمد القيمة الأقل المدخلة؛ اعتمد الحد الأدنى
       }
+      // التحقق من أن سعر البيع لا يقل عن سعر الشراء (التكلفة)
+      const costVal = (it.cost!=null && !isNaN(Number(it.cost))) ? Number(it.cost) : null;
+      if(costVal!=null && costVal > 0 && p < costVal){
+        const prevPrice = Number(it.price||0);
+        priceInp.value = String(prevPrice.toFixed(2));
+        __showSalesToast(`سعر البيع (${p.toFixed(2)}) أقل من سعر الشراء (${costVal.toFixed(2)})`, { icon:'🚫', danger:true, ms:4000 });
+        renderCart();
+        return;
+      }
       it.price = p;
       it.manualPriceEdit = true;
       // If in weight mode, recompute based on last edited source
@@ -4146,6 +4194,7 @@ btnPay.addEventListener('click', async () => {
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
   if(__oneTimeBarcodeMode){ try{ await window.api.products_mark_barcode_used(itemsPayload.map(it => ({ product_id: it.product_id, variant_id: it.variant_id || null }))); }catch(_){ } }
+  try{ await __applyManualPriceUpdates(cart); }catch(_){ }
 
   cdTotal(payload.grand_total);
   setTimeout(() => { cdThankYou(); }, 1500);
@@ -4544,6 +4593,7 @@ async function processPrint(){
   try{ __adjustStockCacheAfterSale(itemsPayload); }catch(_){ }
   try{ window.api.emit_sales_changed({ action: 'created', sale_id: r.sale_id, invoice_no: r.invoice_no }); }catch(_){ }
   if(__oneTimeBarcodeMode){ try{ await window.api.products_mark_barcode_used(itemsPayload.map(it => ({ product_id: it.product_id, variant_id: it.variant_id || null }))); }catch(_){ } }
+  try{ await __applyManualPriceUpdates(cart); }catch(_){ }
 
   cdTotal(payload.grand_total);
   setTimeout(() => { cdThankYou(); }, 1500);

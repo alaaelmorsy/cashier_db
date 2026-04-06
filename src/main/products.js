@@ -814,6 +814,21 @@ function registerProductsIPC(){
     }
   });
 
+  // update price only (lightweight, used when cart price is edited manually)
+  ipcMain.handle('products:update_price', async (_e, { id, price }) => {
+    if(!id) return { ok:false, error:'معرّف مفقود' };
+    const p = Number(price);
+    if(isNaN(p) || p < 0) return { ok:false, error:'سعر غير صالح' };
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTable(conn);
+        await conn.query('UPDATE products SET price=? WHERE id=?', [p, id]);
+        return { ok:true };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'فشل تحديث السعر' }; }
+  });
+
   // toggle
   ipcMain.handle('products:toggle', async (_e, id) => {
     const pid = (id && id.id) ? id.id : id;

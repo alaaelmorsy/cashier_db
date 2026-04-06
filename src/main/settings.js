@@ -172,6 +172,9 @@ function registerSettingsIPC(){
     if(await missing('allow_sell_zero_stock')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN allow_sell_zero_stock TINYINT NOT NULL DEFAULT 0 AFTER op_price_manual");
     }
+    if(await missing('update_product_price_on_edit')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN update_product_price_on_edit TINYINT NOT NULL DEFAULT 0 AFTER allow_sell_zero_stock");
+    }
     if(await missing('allow_negative_inventory')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN allow_negative_inventory TINYINT NOT NULL DEFAULT 0 AFTER allow_sell_zero_stock");
     }
@@ -739,7 +742,7 @@ function registerSettingsIPC(){
           seller_legal_name=?, seller_legal_name_en=?, seller_vat_number=?, company_site=?, company_location=?, company_location_en=?, mobile=?, email=?, show_email_in_invoice=?, logo_path=?, 
           vat_percent=?, prices_include_vat=?, payment_methods=?, default_payment_method=?,
           currency_code=?, currency_symbol=?, currency_symbol_position=?, app_locale=?,
-          default_print_format=?, print_copies=?, silent_print=?, print_show_change=?, show_barcode_in_a4=?, unit_price_label=?, quantity_label=?, op_price_manual=?, allow_sell_zero_stock=?, allow_negative_inventory=?, cart_separate_duplicate_lines=?,
+          default_print_format=?, print_copies=?, silent_print=?, print_show_change=?, show_barcode_in_a4=?, unit_price_label=?, quantity_label=?, op_price_manual=?, allow_sell_zero_stock=?, update_product_price_on_edit=?, allow_negative_inventory=?, cart_separate_duplicate_lines=?,
           logo_width_px=?, logo_height_px=?, invoice_footer_note=?, hide_product_images=?, closing_hour=?, zatca_enabled=?, recovery_unlocked=?, 
           tobacco_fee_percent=?, tobacco_min_fee_amount=?,
           daily_email_enabled=?, daily_email_time=?, db_backup_enabled=?, db_backup_time=?, db_backup_local_enabled=?, db_backup_local_time=?, db_backup_local_path=?, smtp_host=?, smtp_port=?, smtp_secure=?, smtp_user=?, smtp_pass=?,
@@ -818,6 +821,7 @@ function registerSettingsIPC(){
           (p.quantity_label || 'عدد'),
           (p.op_price_manual ? 1 : 0),
           (p.allow_sell_zero_stock ? 1 : 0),
+          (p.update_product_price_on_edit ? 1 : 0),
           (p.allow_negative_inventory ? 1 : 0),
           (p.cart_separate_duplicate_lines ? 1 : 0),
           (Number(p.logo_width_px) || null),
