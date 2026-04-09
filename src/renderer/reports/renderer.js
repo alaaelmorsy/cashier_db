@@ -29,7 +29,9 @@ function translateReportsUI(isAr){
     expiryReportTitle: 'تقرير صلاحية المنتجات',
     expiryReportDesc: 'عرض المنتجات حسب تاريخ الصلاحية المحدد',
     inventoryReportTitle: 'تقرير الجرد',
-    inventoryReportDesc: 'الأصناف مع الكمية المباعة والكمية الحالية للفترة من — إلى'
+    inventoryReportDesc: 'الأصناف مع الكمية المباعة والكمية الحالية للفترة من — إلى',
+    zatcaReportTitle: 'تقرير هيئة الزكاة',
+    zatcaReportDesc: 'الفواتير والمرتجعات والمصروفات لفترة محددة مع الإجماليات'
   } : {
     pageTitle: '📊 Reports',
     backBtn: '⬅ Back',
@@ -60,7 +62,9 @@ function translateReportsUI(isAr){
     expiryReportTitle: 'Products expiry report',
     expiryReportDesc: 'View products by specified expiry date',
     inventoryReportTitle: 'Inventory report',
-    inventoryReportDesc: 'Products with sold qty and current stock for the selected period'
+    inventoryReportDesc: 'Products with sold qty and current stock for the selected period',
+    zatcaReportTitle: 'ZATCA report',
+    zatcaReportDesc: 'Invoices, returns and expenses for a period with totals'
   };
   
   try{
@@ -94,6 +98,7 @@ function translateReportsUI(isAr){
     updateCard('employeeReport', 'employeeReportTitle', 'employeeReportDesc');
     updateCard('expiryReport', 'expiryReportTitle', 'expiryReportDesc');
     updateCard('inventoryReport', 'inventoryReportTitle', 'inventoryReportDesc');
+    updateCard('zatcaReport', 'zatcaReportTitle', 'zatcaReportDesc');
   }catch(_){}
 }
 
@@ -193,3 +198,6 @@ if(expiryReportCard){ expiryReportCard.onclick = ()=>{ window.location.href = '.
 
 const inventoryReportCard = document.getElementById('inventoryReport');
 if(inventoryReportCard){ inventoryReportCard.onclick = ()=>{ window.location.href = './inventory_report.html'; } }
+
+const zatcaReportCard = document.getElementById('zatcaReport');
+if(zatcaReportCard){ zatcaReportCard.onclick = ()=>{ window.location.href = './zatca_report.html'; } }

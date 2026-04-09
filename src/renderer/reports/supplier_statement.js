@@ -311,6 +311,11 @@ async function loadSupplierInfo(supplierId){
             font-weight: bold !important;
             font-size: 9px !important;
           }
+          
+          .summary-section tbody tr:nth-child(3) {
+            background: #eff6ff !important;
+            font-weight: bold !important;
+          }
         `;
         clone.querySelector('head')?.appendChild(style);
         
@@ -384,6 +389,18 @@ async function loadSupplierInfo(supplierId){
           const invVat = document.getElementById('invoicesVat')?.textContent || '0.00';
           const invGrand = document.getElementById('invoicesGrand')?.textContent || '0.00';
           lines.push([esc('إجمالي فواتير الشراء'), esc(invCount), esc(invPre), esc(invVat), esc(invGrand)].join(','));
+          
+          const retCount = document.getElementById('returnCount')?.textContent || '0';
+          const retPre = document.getElementById('returnsPre')?.textContent || '0.00';
+          const retVat = document.getElementById('returnsVat')?.textContent || '0.00';
+          const retGrand = document.getElementById('returnsGrand')?.textContent || '0.00';
+          lines.push([esc('إجمالي الفواتير المرتجعة'), esc(retCount), esc(retPre), esc(retVat), esc(retGrand)].join(','));
+          
+          const netInvCount = document.getElementById('netInvoiceCount')?.textContent || '0';
+          const netInvPre = document.getElementById('netInvoicesPre')?.textContent || '0.00';
+          const netInvVat = document.getElementById('netInvoicesVat')?.textContent || '0.00';
+          const netInvGrand = document.getElementById('netInvoicesGrand')?.textContent || '0.00';
+          lines.push([esc('صافي فواتير الشراء (بعد خصم المرتجعات)'), esc(netInvCount), esc(netInvPre), esc(netInvVat), esc(netInvGrand)].join(','));
           
           const paidCount = document.getElementById('paidCount')?.textContent || '0';
           const paidPre = document.getElementById('paidPre')?.textContent || '0.00';
@@ -559,9 +576,22 @@ async function loadRange(startStr, endStr){
   const invoicesSection = document.getElementById('invoicesSection');
   if(invoicesSection) invoicesSection.classList.add('loading');
   try{
-    const query = { date_from: startStr, date_to: endStr, supplier_id: supId };
-    const res = await window.api.purchase_invoices_list(query);
-    const items = (res && res.ok) ? (res.items||[]) : [];
+    // Fetch both invoices and returns
+    const invoiceQuery = { date_from: startStr, date_to: endStr, supplier_id: supId, doc_type: 'invoice' };
+    const invoiceRes = await window.api.purchase_invoices_list(invoiceQuery);
+    const invoices = (invoiceRes && invoiceRes.ok) ? (invoiceRes.items||[]) : [];
+
+    // Fetch return invoices
+    const returnQuery = { date_from: startStr, date_to: endStr, supplier_id: supId, doc_type: 'return' };
+    const returnRes = await window.api.purchase_invoices_list(returnQuery);
+    const returns = (returnRes && returnRes.ok) ? (returnRes.items||[]) : [];
+
+    // Combine and sort by date
+    const allItems = [
+      ...invoices.map(inv => ({...inv, _docType: 'invoice'})),
+      ...returns.map(ret => ({...ret, _docType: 'return'}))
+    ];
+    allItems.sort((a, b) => new Date(b.invoice_at) - new Date(a.invoice_at));
 
     let vouchers = [];
     try{
@@ -580,52 +610,119 @@ async function loadRange(startStr, endStr){
     let invoiceCount = 0;
     const payTotals = new Map();
     
+    // Total purchase invoices (without returns)
+    let totalInvoicePre = 0, totalInvoiceVat = 0, totalInvoiceGrand = 0;
+    
     let paidCount = 0, paidPre = 0, paidVat = 0, paidGrand = 0;
     let creditCount = 0, creditPre = 0, creditVat = 0, creditGrand = 0;
+    
+    // Return invoices totals
+    let returnCount = 0, returnPre = 0, returnVat = 0, returnGrand = 0;
+    
+    // Paid returns (to deduct from paid invoices)
+    let returnPaidPre = 0, returnPaidVat = 0, returnPaidGrand = 0;
+    
+    // Net totals (purchase invoices - returns)
+    let netInvoiceCount = 0, netInvoicePre = 0, netInvoiceVat = 0, netInvoiceGrand = 0;
+    
+    // IMPORTANT: creditCount/Pre/Vat/Grand track ONLY credit (deferred) invoices
+    // These values are NEVER deducted from anything and always show the full total
 
     const vouchersTbody = document.getElementById('vouchersTbody');
     const vouchersSection = document.getElementById('vouchersSection');
     let vouchersTotal = 0; let vouchersCount = 0;
 
-    const rows = items.map((pi, index)=>{
-      invoiceCount++;
+    const rows = allItems.map((pi, index)=>{
+      const isReturn = pi._docType === 'return';
+      
+      if(isReturn){
+        returnCount++;
+      } else {
+        invoiceCount++;
+      }
       
       let created = pi.invoice_at ? new Date(pi.invoice_at) : null;
       if(!created || isNaN(created.getTime())){ try{ created = new Date(String(pi.invoice_at).replace(' ', 'T')); }catch(_){ created = new Date(); } }
       const datePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit'}).format(created);
       const timePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
       
-      const pre = Number(pi.sub_total||0);
-      // For zero_vat invoices: recalculate with 0% VAT
+      let pre = Number(pi.sub_total||0);
       const priceMode = String(pi.price_mode||'inclusive');
-      const vat = (priceMode === 'zero_vat') ? 0 : Number(pi.vat_total||0);
-      const grand = (priceMode === 'zero_vat') ? pre : Number(pi.grand_total||0);
+      let vat = (priceMode === 'zero_vat') ? 0 : Number(pi.vat_total||0);
+      let grand = (priceMode === 'zero_vat') ? pre : Number(pi.grand_total||0);
       
-      sumPre += pre; sumVat += vat; sumGrand += grand;
-      
-      const pm = String(pi.payment_method || '').toLowerCase();
-      const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : m));
-      const addAmt = (key, amount)=>{
-        if(!key) return; const k=(key==='network'?'card':key); const prev=Number(payTotals.get(k)||0); payTotals.set(k, prev + Number(amount||0)); };
-      if(pm==='cash'){
-        addAmt('cash', grand);
-        paidCount++; paidPre += pre; paidVat += vat; paidGrand += grand;
-      } else if(pm==='card' || pm==='network'){
-        addAmt(pm, grand);
-        paidCount++; paidPre += pre; paidVat += vat; paidGrand += grand;
-      } else if(pm==='credit'){
-        addAmt('credit', grand);
-        creditCount++; creditPre += pre; creditVat += vat; creditGrand += grand;
-      } else if(pm){ 
-        addAmt(pm, grand); 
+      // For returns, use absolute values for calculation but display as negative
+      if(isReturn){
+        pre = Math.abs(pre);
+        vat = Math.abs(vat);
+        grand = Math.abs(grand);
       }
+      
+      sumPre += (isReturn ? -pre : pre);
+      sumVat += (isReturn ? -vat : vat);
+      sumGrand += (isReturn ? -grand : grand);
+      
+      // Track purchase invoice totals separately (without returns)
+      if(!isReturn){
+        totalInvoicePre += pre;
+        totalInvoiceVat += vat;
+        totalInvoiceGrand += grand;
+      }
+      
+      // Track return invoice totals separately
+      if(isReturn){
+        returnPre += pre;
+        returnVat += vat;
+        returnGrand += grand;
+            
+        // Track paid returns separately to deduct from paid invoices
+        const pm = String(pi.original_payment_method || pi.payment_method || '').toLowerCase();
+        if(pm === 'cash' || pm === 'card' || pm === 'network'){
+          returnPaidPre += pre;
+          returnPaidVat += vat;
+          returnPaidGrand += grand;
+        }
+      } else {
+        // Track payment methods only for regular invoices
+        const pm = String(pi.payment_method || '').toLowerCase();
+        const addAmt = (key, amount)=>{
+          if(!key) return; const k=(key==='network'?'card':key); const prev=Number(payTotals.get(k)||0); payTotals.set(k, prev + Number(amount||0)); };
+        if(pm==='cash'){
+          addAmt('cash', grand);
+          paidCount++; paidPre += pre; paidVat += vat; paidGrand += grand;
+        } else if(pm==='card' || pm==='network'){
+          addAmt(pm, grand);
+          paidCount++; paidPre += pre; paidVat += vat; paidGrand += grand;
+        } else if(pm==='credit'){
+          addAmt('credit', grand);
+          // Credit (deferred) invoices - these are NEVER deducted from anything
+          // They always show the full total in the summary
+          creditCount++; creditPre += pre; creditVat += vat; creditGrand += grand;
+        } else if(pm){ 
+          addAmt(pm, grand); 
+        }
+      }
+      
       const viewBtn = `<button class="view-btn" data-view="${pi.id}">عرض</button>`;
       
       const inv = String(pi.invoice_no||'');
       const m = inv.match(/^PI-\d{6}-(\d+)$/);
       const displayInvNo = m ? String(Number(m[1])) : (inv || String(pi.id||''));
       
-      return `<tr><td>${displayInvNo}</td><td>${datePart}<br>${timePart}</td><td>${payLabel(pm)}</td><td>${fmt(pre)}</td><td>${fmt(vat)}</td><td><b>${fmt(grand)}</b></td><td>${viewBtn}</td></tr>`;
+      // Document type badge
+      const docTypeBadge = isReturn 
+        ? '<span style="background:#fee2e2; color:#dc2626; padding:3px 8px; border-radius:4px; font-weight:700; font-size:11px">مرتجع</span>'
+        : '<span style="background:#dbeafe; color:#2563eb; padding:3px 8px; border-radius:4px; font-weight:700; font-size:11px">فاتورة شراء</span>';
+      
+      // Row styling for returns
+      const rowStyle = isReturn ? 'style="background:#fef2f2"' : '';
+      const displayPre = isReturn ? `-${pre.toFixed(2)}` : pre.toFixed(2);
+      const displayVat = isReturn ? `-${vat.toFixed(2)}` : vat.toFixed(2);
+      const displayGrand = isReturn ? `-${grand.toFixed(2)}` : grand.toFixed(2);
+      const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : m));
+      const displayPayment = isReturn ? '-' : payLabel(String(pi.payment_method || '').toLowerCase());
+      
+      return `<tr ${rowStyle}><td>${docTypeBadge}</td><td>${displayInvNo}</td><td>${datePart}<br>${timePart}</td><td>${displayPayment}</td><td>${displayPre}</td><td>${displayVat}</td><td><b>${displayGrand}</b></td><td>${viewBtn}</td></tr>`;
     }).join('');
 
     if(invTbody){ 
@@ -634,26 +731,52 @@ async function loadRange(startStr, endStr){
         if(invTbody.parentElement) invTbody.parentElement.classList.add('fade-in');
       });
     }
-    const set = (id, v)=>{ const el = document.getElementById(id); if(!el) return; const asCount = ['sumCount','summaryCount','invoiceCount','voucherCount','paidCount','creditCount']; el.textContent = asCount.includes(id) ? String(v) : fmt(v); };
+    const set = (id, v)=>{ const el = document.getElementById(id); if(!el) return; const asCount = ['sumCount','summaryCount','invoiceCount','returnCount','netInvoiceCount','voucherCount','paidCount','creditCount']; el.textContent = asCount.includes(id) ? String(v) : fmt(v); };
     set('sumPre', sumPre); set('sumVat', sumVat); set('sumGrand', sumGrand); 
     set('sumCount', invoiceCount);
     
+    // Set total purchase invoices (without returns)
     set('invoiceCount', invoiceCount); 
-    set('invoicesPre', sumPre); 
-    set('invoicesVat', sumVat); 
-    set('invoicesGrand', sumGrand);
+    set('invoicesPre', totalInvoicePre); 
+    set('invoicesVat', totalInvoiceVat); 
+    set('invoicesGrand', totalInvoiceGrand);
     
-    set('paidCount', paidCount);
-    set('paidPre', paidPre);
-    set('paidVat', paidVat);
-    set('paidGrand', paidGrand);
+    set('returnCount', returnCount);
+    set('returnsPre', returnPre);
+    set('returnsVat', returnVat);
+    set('returnsGrand', returnGrand);
+    
+    // Calculate net values (purchase invoices - returns)
+    netInvoiceCount = invoiceCount - returnCount;
+    netInvoicePre = totalInvoicePre - returnPre;
+    netInvoiceVat = totalInvoiceVat - returnVat;
+    netInvoiceGrand = totalInvoiceGrand - returnGrand;
+    
+    set('netInvoiceCount', netInvoiceCount);
+    set('netInvoicesPre', netInvoicePre);
+    set('netInvoicesVat', netInvoiceVat);
+    set('netInvoicesGrand', netInvoiceGrand);
+    
+    // Calculate net paid invoices (paid - paid returns)
+    const netPaidCount = Math.max(0, paidCount - returnCount);
+    const netPaidPre = Math.max(0, paidPre - returnPaidPre);
+    const netPaidVat = Math.max(0, paidVat - returnPaidVat);
+    const netPaidGrand = Math.max(0, paidGrand - returnPaidGrand);
+    
+    set('paidCount', netPaidCount);
+    set('paidPre', netPaidPre);
+    set('paidVat', netPaidVat);
+    set('paidGrand', netPaidGrand);
     
     set('creditCount', creditCount);
     set('creditPre', creditPre);
     set('creditVat', creditVat);
     set('creditGrand', creditGrand);
     
-    set('summaryCount', items.length||0); 
+    // Total deferred invoices - always shows the full total without any deductions
+    // This represents all credit invoices in the report period
+    
+    set('summaryCount', allItems.length||0); 
     set('summaryPre', sumPre); 
     set('summaryVat', sumVat); 
     set('summaryGrand', sumGrand);

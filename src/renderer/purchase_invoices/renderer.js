@@ -414,6 +414,19 @@ const btnFilterSearch = document.getElementById('btnFilterSearch');
 const btnFilterClear = document.getElementById('btnFilterClear');
 const tbodySaved = document.getElementById('tbodySaved');
 
+// Returns tab elements
+const tabBtnReturns = document.getElementById('tabBtnReturns');
+const tabReturns = document.getElementById('tab_returns');
+const returnInvNo = document.getElementById('return_inv_no');
+const btnProcessReturn = document.getElementById('btnProcessReturn');
+const returnItemsSection = document.getElementById('returnItemsSection');
+const returnItemsBody = document.getElementById('returnItemsBody');
+const returnReason = document.getElementById('return_reason');
+const returnGrandTotal = document.getElementById('returnGrandTotal');
+const btnSaveReturn = document.getElementById('btnSaveReturn');
+const tbodyReturns = document.getElementById('tbodyReturns');
+const btnFilterReturns = document.getElementById('btnFilterReturns');
+
 let lines = []; // { product_id, code, name, qty, unit_cost, discount_line, line_total, line_total_display, unit_cost_exclusive, discount_exclusive }
 let editingId = null; // if set, Save will update existing invoice
 let originalPaymentMethod = null; // preserve saved payment method during edit
@@ -603,16 +616,24 @@ btnBack?.addEventListener('click', async ()=>{ try{ await window.api.app_set_loc
 // Tabs switching
 function switchTab(which){
   if(which==='make'){
-    tabMake.classList.add('active'); tabSaved.classList.remove('active');
-    tabBtnMake.classList.add('active'); tabBtnSaved.classList.remove('active');
-  }else{
-    tabMake.classList.remove('active'); tabSaved.classList.add('active');
-    tabBtnMake.classList.remove('active'); tabBtnSaved.classList.add('active');
+    tabMake.classList.add('active'); tabSaved.classList.remove('active'); tabReturns?.classList.remove('active');
+    tabBtnMake.classList.add('active'); tabBtnSaved.classList.remove('active'); tabBtnReturns?.classList.remove('active');
+  }else if(which==='saved'){
+    tabMake.classList.remove('active'); tabSaved.classList.add('active'); tabReturns?.classList.remove('active');
+    tabBtnMake.classList.remove('active'); tabBtnSaved.classList.add('active'); tabBtnReturns?.classList.remove('active');
+  }else if(which==='returns'){
+    tabMake.classList.remove('active'); tabSaved.classList.remove('active'); tabReturns?.classList.add('active');
+    tabBtnMake.classList.remove('active'); tabBtnSaved.classList.remove('active'); tabBtnReturns?.classList.add('active');
   }
 }
 
 tabBtnMake?.addEventListener('click', ()=> switchTab('make'));
 tabBtnSaved?.addEventListener('click', ()=> switchTab('saved'));
+tabBtnReturns?.addEventListener('click', ()=> switchTab('returns'));
+
+// Returns functionality
+let currentReturnInvoice = null;
+let returnItems = [];
 
 // Live suggestions: type to search by name, Enter searches barcode fallback
 let suggestTimer = null;
@@ -874,18 +895,16 @@ function dateToDbRange(d, end){
 }
 
 async function loadSaved(){
-  const q = {};
+  const q = { doc_type: 'invoice' }; // Only show purchase invoices, exclude returns
   if(filterFrom.value) q.from = dateToDbRange(filterFrom.value, false);
   if(filterTo.value) q.to = dateToDbRange(filterTo.value, true);
   if(filterSupplier.value) q.supplier_id = Number(filterSupplier.value);
   if(filterInvNo.value){
     const rawInv = String(filterInvNo.value).trim();
     if(rawInv){
-      if(/^[0-9]+$/.test(rawInv)){
-        q.invoice_no = '-' + String(rawInv).padStart(5,'0');
-      } else {
-        q.invoice_no = rawInv;
-      }
+      // Invoice numbers are stored as plain sequential numbers (1, 2, 3...)
+      // Use LIKE search to match partial or full invoice numbers
+      q.invoice_no = rawInv;
     }
   }
   
@@ -944,11 +963,7 @@ function renderCurrentPage(suppliersCache){
   const endIndex = Math.min(startIndex + itemsPerPage, totalInvoices);
   const currentItems = allInvoices.slice(startIndex, endIndex);
   
-  const paginationText = document.getElementById('paginationText');
-  const paginationTextTop = document.getElementById('paginationTextTop');
-  const textContent = `عرض ${startIndex + 1}-${endIndex} من ${totalInvoices} فاتورة`;
-  if(paginationText) paginationText.textContent = textContent;
-  if(paginationTextTop) paginationTextTop.textContent = textContent;
+
   
   for(const it of currentItems){
     const tr = document.createElement('tr');
@@ -994,14 +1009,12 @@ function renderCurrentPage(suppliersCache){
       <td style="text-align:center">
         <div class="flex flex-wrap gap-2 justify-center">
           <button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium btn-view">👁 عرض</button>
-          <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium btn-edit">✏️ تعديل</button>
           <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium btn-del">🗑️ حذف</button>
         </div>
       </td>
     `;
     
     const btnV=tr.querySelector('.btn-view');
-    const btnE=tr.querySelector('.btn-edit');
     const btnD=tr.querySelector('.btn-del');
     
     btnV.addEventListener('click', async ()=>{
@@ -1021,17 +1034,6 @@ function renderCurrentPage(suppliersCache){
       }catch(e){ alert('تعذر فتح العرض: ' + (e?.message||String(e))); }
     });
     
-    btnE.addEventListener('click', async ()=>{
-      const g = await window.api.purchase_invoices_get(it.id); 
-      if(!g||!g.ok){ 
-        showToast('تعذر جلب بيانات الفاتورة', 'error');
-        return; 
-      }
-      await fillFormFromInvoice(it, g.items||[]);
-      switchTab('make');
-      showToast('تم تحميل الفاتورة للتعديل', 'success');
-    });
-
     btnD.addEventListener('click', async ()=>{
       // Use modern custom confirm dialog
       const proceed = await customConfirm(
@@ -1252,6 +1254,401 @@ itemsPerPageSelect?.addEventListener('change', (e) => {
 itemsPerPageSelectTop?.addEventListener('change', (e) => {
   handleItemsPerPageChange(e.target.value);
 });
+
+// === RETURNS TAB LOGIC ===
+
+// Process return - fetch invoice
+btnProcessReturn?.addEventListener('click', async ()=>{
+  const invNo = String(returnInvNo.value||'').trim();
+  if(!invNo){
+    showToast('يرجى إدخال رقم الفاتورة', 'warning');
+    return;
+  }
+  
+  btnProcessReturn.disabled = true;
+  btnProcessReturn.innerHTML = '⏳ جاري المعالجة...';
+  
+  try{
+    const result = await window.api.purchase_invoices_get_for_return(invNo);
+    
+    if(!result || !result.ok){
+      showToast(result?.error || 'الفاتورة غير موجودة', 'error');
+      returnItemsSection.style.display = 'none';
+      return;
+    }
+    
+    currentReturnInvoice = result.invoice;
+    returnItems = result.items;
+    
+    // Render items
+    returnItemsBody.innerHTML = '';
+    returnItems.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center;">
+          <input type="checkbox" class="return-select" data-idx="${idx}" />
+        </td>
+        <td>${item.name}</td>
+        <td style="text-align: center;">${item.original_qty}</td>
+        <td style="text-align: center;">${item.returned_qty}</td>
+        <td style="text-align: center; color: #0ea5e9; font-weight: 700;">${item.available_qty}</td>
+        <td style="text-align: center;">
+          <input type="number" class="return-qty" data-idx="${idx}" 
+                 min="0" max="${item.available_qty}" step="0.001" 
+                 value="0" style="width: 100px; text-align: center;" 
+                 disabled />
+        </td>
+        <td style="text-align: center;">${item.ui_unit_cost.toFixed(2)}</td>
+        <td style="text-align: center;" class="return-line-total">0.00</td>
+      `;
+      returnItemsBody.appendChild(tr);
+    });
+    
+    if(returnItems.length === 0){
+      showToast('لا توجد أصناف متاحة للإرجاع', 'warning');
+      returnItemsSection.style.display = 'none';
+      return;
+    }
+    
+    // Bind checkbox events
+    returnItemsBody.querySelectorAll('.return-select').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const idx = Number(e.target.dataset.idx);
+        const item = returnItems[idx];
+        const qtyInput = returnItemsBody.querySelector(`.return-qty[data-idx="${idx}"]`);
+        qtyInput.disabled = !e.target.checked;
+        if(e.target.checked){
+          qtyInput.value = item.available_qty;
+          qtyInput.focus();
+        } else {
+          qtyInput.value = 0;
+        }
+        updateReturnTotals();
+      });
+    });
+    
+    // Bind quantity input events
+    returnItemsBody.querySelectorAll('.return-qty').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const idx = Number(e.target.dataset.idx);
+        const item = returnItems[idx];
+        const qty = Math.min(Number(e.target.value||0), item.available_qty);
+        e.target.value = qty;
+        
+        const lineTotal = qty * item.ui_unit_cost;
+        const lineTotalCell = returnItemsBody.querySelectorAll('tr')[idx]?.querySelector('.return-line-total');
+        if(lineTotalCell) lineTotalCell.textContent = lineTotal.toFixed(2);
+        
+        updateReturnTotals();
+      });
+    });
+    
+    returnItemsSection.style.display = 'block';
+    showToast('تم جلب بيانات الفاتورة بنجاح', 'success');
+    
+  }catch(e){
+    console.error(e);
+    showToast('حدث خطأ أثناء جلب البيانات', 'error');
+  }finally{
+    btnProcessReturn.disabled = false;
+    btnProcessReturn.innerHTML = '<span>⚙️</span> معالجة';
+  }
+});
+
+function updateReturnTotals(){
+  let total = 0;
+  returnItemsBody.querySelectorAll('.return-qty').forEach(input => {
+    const idx = Number(input.dataset.idx);
+    const item = returnItems[idx];
+    const qty = Number(input.value||0);
+    total += qty * item.ui_unit_cost;
+  });
+  returnGrandTotal.textContent = total.toFixed(2) + ' ﷼';
+}
+
+// Save return
+btnSaveReturn?.addEventListener('click', async ()=>{
+  // Collect selected items
+  const selectedItems = [];
+  returnItemsBody.querySelectorAll('.return-qty').forEach(input => {
+    const qty = Number(input.value||0);
+    if(qty > 0){
+      const idx = Number(input.dataset.idx);
+      const item = returnItems[idx];
+      selectedItems.push({
+        product_id: item.product_id,
+        qty: qty
+      });
+    }
+  });
+  
+  if(!selectedItems.length){
+    showToast('يرجى تحديد أصناف للإرجاع', 'warning');
+    return;
+  }
+  
+  btnSaveReturn.disabled = true;
+  btnSaveReturn.innerHTML = '⏳ جاري الحفظ...';
+  
+  try{
+    const payload = {
+      original_invoice_id: currentReturnInvoice.id,
+      items: selectedItems,
+      reason: String(returnReason.value||'').trim(),
+      return_dt: new Date().toISOString()
+    };
+    
+    const result = await window.api.purchase_invoices_create_return(payload);
+    
+    if(!result || !result.ok){
+      showToast(result?.error || 'فشل حفظ المرتجع', 'error');
+      return;
+    }
+    
+    showToast('تم إنشاء فاتورة المرتجع بنجاح', 'success');
+    
+    // Open print window
+    try{
+      const w = 900, h = 1000;
+      const view = window.open(
+        `./print-a4.html?id=${encodeURIComponent(result.id)}`,
+        'PURCHASE_RETURN_PRINT',
+        `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`
+      );
+      let tries = 0;
+      const t = setInterval(()=>{
+        tries++;
+        try{
+          if(view && view.sessionStorage){
+            view.sessionStorage.setItem('purchase_invoice_id', String(result.id));
+            clearInterval(t);
+          }
+        }catch(_){}
+        if(tries>30) clearInterval(t);
+      }, 100);
+    }catch(e){
+      console.error('تعذر فتح المعاينة:', e);
+    }
+    
+    // Reset form
+    returnInvNo.value = '';
+    returnReason.value = '';
+    returnItemsSection.style.display = 'none';
+    returnItemsBody.innerHTML = '';
+    currentReturnInvoice = null;
+    returnItems = [];
+    
+    // Load returns list
+    await loadReturns();
+    
+  }catch(e){
+    console.error(e);
+    showToast('حدث خطأ أثناء الحفظ', 'error');
+  }finally{
+    btnSaveReturn.disabled = false;
+    btnSaveReturn.innerHTML = '<span>💾</span> حفظ وطباعة المرتجع';
+  }
+});
+
+// Returns pagination state
+let returnsCurrentPage = 1;
+let returnsItemsPerPage = 10;
+let allReturns = [];
+let returnsSuppliers = {};
+
+// Load saved returns
+async function loadReturns(){
+  const q = { doc_type: 'return' };
+  
+  if(return_filter_from?.value) q.from = dateToDbRange(return_filter_from.value, false);
+  if(return_filter_to?.value) q.to = dateToDbRange(return_filter_to.value, true);
+  if(return_filter_no?.value) q.invoice_no = String(return_filter_no.value).trim();
+  
+  tbodyReturns.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;">⏳ جاري التحميل...</td></tr>';
+  
+  const r = await window.api.purchase_invoices_list(q);
+  tbodyReturns.innerHTML = '';
+
+  const pTop = document.getElementById('returnsPaginationControlsTop');
+  const pBot = document.getElementById('returnsPaginationControls');
+  
+  if(!r || !r.ok || !r.items.length){
+    tbodyReturns.innerHTML = `
+      <tr><td colspan="6">
+        <div class="empty-state">
+          <div class="icon">↩️</div>
+          <div class="message">لا توجد مرتجعات</div>
+          <div class="hint">أنشئ مرتجع جديد من الأعلى</div>
+        </div>
+      </td></tr>
+    `;
+    if(pTop) pTop.style.display = 'none';
+    if(pBot) pBot.style.display = 'none';
+    return;
+  }
+  
+  returnsSuppliers = {};
+  try{
+    const suppResult = await window.api.suppliers_list?.();
+    if(suppResult && suppResult.ok && suppResult.items){
+      for(const s of suppResult.items) returnsSuppliers[s.id] = s.name;
+    }
+  }catch(e){}
+
+  allReturns = r.items;
+  returnsCurrentPage = 1;
+
+  if(pTop) pTop.style.display = 'flex';
+  if(pBot) pBot.style.display = 'flex';
+
+  renderReturnsPage();
+  renderReturnsPagination();
+}
+
+function renderReturnsPage(){
+  tbodyReturns.innerHTML = '';
+
+  const formatDateWithTime = (dateStr) => {
+    const d = new Date(dateStr);
+    if(isNaN(d)) return String(dateStr);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${month}/${day}/${year}, ${hours}:${minutesStr} ${ampm}`;
+  };
+
+  const startIndex = (returnsCurrentPage - 1) * returnsItemsPerPage;
+  const pageItems = allReturns.slice(startIndex, startIndex + returnsItemsPerPage);
+
+  for(const ret of pageItems){
+    const tr = document.createElement('tr');
+    const supplierName = returnsSuppliers[ret.supplier_id] || `#${ret.supplier_id}`;
+    
+    tr.innerHTML = `
+      <td>${formatDateWithTime(ret.invoice_at)}</td>
+      <td><span class="invoice-number">↩️ ${ret.invoice_no}</span></td>
+      <td>${ret.ref_base_invoice_no || '-'}</td>
+      <td>${supplierName}</td>
+      <td><span class="total-amount">${Math.abs(Number(ret.grand_total||0)).toFixed(2)} \ue900</span></td>
+      <td style="text-align:center">
+        <button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium btn-view-return">👁 عرض</button>
+      </td>
+    `;
+    
+    tr.querySelector('.btn-view-return').addEventListener('click', async ()=>{
+      try{
+        const w = 900, h = 1000;
+        const view = window.open(
+          `./print-a4.html?id=${encodeURIComponent(ret.id)}`,
+          'PURCHASE_RETURN_PRINT',
+          `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`
+        );
+        let tries = 0;
+        const t = setInterval(()=>{
+          tries++;
+          try{
+            if(view && view.sessionStorage){
+              view.sessionStorage.setItem('purchase_invoice_id', String(ret.id));
+              clearInterval(t);
+            }
+          }catch(_){}
+          if(tries>30) clearInterval(t);
+        }, 100);
+      }catch(e){
+        alert('تعذر فتح العرض: ' + (e?.message||String(e)));
+      }
+    });
+    
+    tbodyReturns.appendChild(tr);
+  }
+}
+
+function renderReturnsPagination(){
+  const pButtons = document.getElementById('returnsPaginationButtons');
+  const pButtonsTop = document.getElementById('returnsPaginationButtonsTop');
+  const totalPages = Math.ceil(allReturns.length / returnsItemsPerPage);
+
+  if(totalPages <= 1){
+    if(pButtons) pButtons.style.display = 'none';
+    if(pButtonsTop) pButtonsTop.style.display = 'none';
+    return;
+  }
+
+  const createBtn = (text, page, isActive=false, isDisabled=false, isEllipsis=false) => {
+    const btn = document.createElement('button');
+    btn.className = 'pagination-btn';
+    btn.textContent = text;
+    if(isActive) btn.classList.add('active');
+    if(isDisabled) btn.disabled = true;
+    if(isEllipsis) btn.classList.add('ellipsis');
+    if(!isDisabled && !isEllipsis){
+      btn.addEventListener('click', () => goToReturnsPage(page));
+    }
+    return btn;
+  };
+
+  const renderButtons = (container) => {
+    if(!container) return;
+    container.innerHTML = '';
+    container.style.display = 'flex';
+
+    container.appendChild(createBtn('السابق', returnsCurrentPage - 1, false, returnsCurrentPage === 1));
+
+    const maxButtons = 7;
+    let startPage = Math.max(1, returnsCurrentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    if(endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+
+    if(startPage > 1){
+      container.appendChild(createBtn('1', 1));
+      if(startPage > 2) container.appendChild(createBtn('...', null, false, false, true));
+    }
+
+    for(let i = startPage; i <= endPage; i++){
+      container.appendChild(createBtn(String(i), i, i === returnsCurrentPage));
+    }
+
+    if(endPage < totalPages){
+      if(endPage < totalPages - 1) container.appendChild(createBtn('...', null, false, false, true));
+      container.appendChild(createBtn(String(totalPages), totalPages));
+    }
+
+    container.appendChild(createBtn('التالي', returnsCurrentPage + 1, false, returnsCurrentPage === totalPages));
+  };
+
+  renderButtons(pButtons);
+  renderButtons(pButtonsTop);
+}
+
+function goToReturnsPage(page){
+  if(page < 1 || page > Math.ceil(allReturns.length / returnsItemsPerPage)) return;
+  returnsCurrentPage = page;
+  renderReturnsPage();
+  renderReturnsPagination();
+}
+
+(function(){
+  const selBot = document.getElementById('returnsItemsPerPageSelect');
+  const selTop = document.getElementById('returnsItemsPerPageSelectTop');
+  const onChange = (e) => {
+    returnsItemsPerPage = parseInt(e.target.value, 10);
+    if(selBot) selBot.value = e.target.value;
+    if(selTop) selTop.value = e.target.value;
+    returnsCurrentPage = 1;
+    renderReturnsPage();
+    renderReturnsPagination();
+  };
+  selBot?.addEventListener('change', onChange);
+  selTop?.addEventListener('change', onChange);
+})();
+
+btnFilterReturns?.addEventListener('click', ()=> loadReturns());
 
 (async function init(){
   setNow();

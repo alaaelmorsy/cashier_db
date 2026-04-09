@@ -116,6 +116,29 @@ function registerPurchaseInvoicesIPC(){
         await conn.query("ALTER TABLE purchase_invoice_details ADD COLUMN ui_line_total DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER line_total");
       }
     }catch(_){ /* ignore */ }
+    
+    // Add doc_type column for returns support
+    try{
+      const [colDocType] = await conn.query("SHOW COLUMNS FROM purchase_invoices LIKE 'doc_type'");
+      if(!colDocType || colDocType.length===0){
+        await conn.query("ALTER TABLE purchase_invoices ADD COLUMN doc_type ENUM('invoice','return') NOT NULL DEFAULT 'invoice' AFTER invoice_no");
+      }
+    }catch(_){ /* ignore */ }
+    
+    // Add reference columns for linking returns to original invoices
+    try{
+      const [colRefId] = await conn.query("SHOW COLUMNS FROM purchase_invoices LIKE 'ref_base_purchase_id'");
+      if(!colRefId || colRefId.length===0){
+        await conn.query("ALTER TABLE purchase_invoices ADD COLUMN ref_base_purchase_id INT NULL AFTER doc_type");
+      }
+    }catch(_){ /* ignore */ }
+    
+    try{
+      const [colRefNo] = await conn.query("SHOW COLUMNS FROM purchase_invoices LIKE 'ref_base_invoice_no'");
+      if(!colRefNo || colRefNo.length===0){
+        await conn.query("ALTER TABLE purchase_invoices ADD COLUMN ref_base_invoice_no VARCHAR(32) NULL AFTER ref_base_purchase_id");
+      }
+    }catch(_){ /* ignore */ }
     // Ensure description column exists in details
     try{
       const [colsDesc] = await conn.query("SHOW COLUMNS FROM purchase_invoice_details LIKE 'description'");
@@ -142,7 +165,11 @@ function registerPurchaseInvoicesIPC(){
                  COUNT(*)
                )
         FROM purchase_invoices
+        WHERE doc_type='invoice'
       `);
+      
+      // Initialize return sequence counter
+      await conn.query(`INSERT IGNORE INTO app_counters (name, value) VALUES ('purchase_return_seq', 0)`);
     }catch(_){ /* ignore */ }
     // Payments table for partial settlements of purchase invoices
     try{
@@ -320,9 +347,9 @@ function registerPurchaseInvoicesIPC(){
         const invNo = await nextInvoiceNo(conn);
         const discountGeneralUi = Number(p.discount_general||0);
         const [res] = await conn.query(
-          `INSERT INTO purchase_invoices (invoice_no, invoice_at, supplier_id, payment_method, price_mode, reference_no, notes, sub_total, discount_general, discount_general_ui, vat_percent, vat_total, grand_total, amount_paid, amount_due)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [invNo, atStr, supplierId, header.method, String(p.price_mode||'exclusive'), referenceNo, notes, header.sub, header.discountGeneral, discountGeneralUi, header.vatPercent, header.vatTotal, header.grand, header.amountPaid, header.amountDue]
+          `INSERT INTO purchase_invoices (invoice_no, doc_type, invoice_at, supplier_id, payment_method, price_mode, reference_no, notes, sub_total, discount_general, discount_general_ui, vat_percent, vat_total, grand_total, amount_paid, amount_due)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [invNo, 'invoice', atStr, supplierId, header.method, String(p.price_mode||'exclusive'), referenceNo, notes, header.sub, header.discountGeneral, discountGeneralUi, header.vatPercent, header.vatTotal, header.grand, header.amountPaid, header.amountDue]
         );
         const purchaseId = res.insertId;
         for(const ln of lines){
@@ -376,6 +403,7 @@ function registerPurchaseInvoicesIPC(){
     if(query.to){ where.push('invoice_at <= ?'); params.push(String(query.to)); }
     if(query.supplier_id){ where.push('supplier_id = ?'); params.push(Number(query.supplier_id)); }
     if(query.invoice_no){ where.push('invoice_no LIKE ?'); params.push(`%${String(query.invoice_no).trim()}%`); }
+    if(query.doc_type){ where.push('doc_type = ?'); params.push(String(query.doc_type)); }
     const whereSql = where.length ? ('WHERE ' + where.join(' AND ')) : '';
     const page = Math.max(1, Number(query.page) || 1);
     let pageSize = Number(query.pageSize) || 100;
@@ -507,6 +535,209 @@ function registerPurchaseInvoicesIPC(){
     }catch(e){ console.error(e); return { ok:false, error:'فشل الاتصال بقاعدة البيانات' }; }
   });
 
+  // --- Get invoice for return ---
+  ipcMain.handle('purchase_invoices:get_for_return', async (_e, invoiceNo) => {
+    if(!invoiceNo) return { ok:false, error:'رقم الفاتورة مطلوب' };
+    
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        
+        // Find invoice by invoice_no
+        const [[inv]] = await conn.query('SELECT * FROM purchase_invoices WHERE invoice_no=? AND doc_type=?', [String(invoiceNo), 'invoice']);
+        if(!inv) return { ok:false, error:'الفاتورة غير موجودة' };
+        
+        // Get original items
+        const [items] = await conn.query('SELECT * FROM purchase_invoice_details WHERE purchase_id=?', [inv.id]);
+        
+        // Calculate already-returned quantities
+        const [existingReturns] = await conn.query(
+          'SELECT id FROM purchase_invoices WHERE ref_base_purchase_id=? AND doc_type=?',
+          [inv.id, 'return']
+        );
+        
+        const availableItems = [];
+        for(const item of items){
+          let returnedQty = 0;
+          if(existingReturns.length > 0){
+            const returnIds = existingReturns.map(r => r.id);
+            // Sum returned quantities for this product
+            const [returned] = await conn.query(
+              'SELECT SUM(ABS(qty)) as returned FROM purchase_invoice_details WHERE purchase_id IN (?) AND product_id=?',
+              [returnIds, item.product_id]
+            );
+            returnedQty = Number(returned[0]?.returned||0);
+          }
+          
+          // Fetch product name
+          const [[product]] = await conn.query('SELECT name FROM products WHERE id=?', [item.product_id]);
+          
+          const originalQty = Number(item.qty||0);
+          const availQty = originalQty - returnedQty;
+          
+          // Only include items that have available quantity for return
+          if(availQty > 0){
+            availableItems.push({
+              product_id: item.product_id,
+              name: product?.name || `#${item.product_id}`,
+              original_qty: originalQty,
+              returned_qty: returnedQty,
+              available_qty: availQty,
+              unit_cost: Number(item.unit_cost||0),
+              ui_unit_cost: Number(item.ui_unit_cost||0),
+              description: item.description || ''
+            });
+          }
+        }
+        
+        return { ok:true, invoice: inv, items: availableItems };
+      }finally{ conn.release(); }
+    }catch(e){ 
+      console.error(e); 
+      return { ok:false, error:'تعذر جلب بيانات الفاتورة' }; 
+    }
+  });
+
+  // --- Create return invoice ---
+  ipcMain.handle('purchase_invoices:create_return', async (_e, payload) => {
+    const p = payload || {};
+    const originalInvoiceId = Number(p.original_invoice_id||0);
+    if(!originalInvoiceId) return { ok:false, error:'رقم الفاتورة الأصلية مطلوب' };
+    
+    const selectedItems = p.items || [];
+    if(!selectedItems.length) return { ok:false, error:'لا توجد أصناف للإرجاع' };
+    
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        await conn.beginTransaction();
+        
+        // Fetch original invoice
+        const [[original]] = await conn.query('SELECT * FROM purchase_invoices WHERE id=? AND doc_type=?', [originalInvoiceId, 'invoice']);
+        if(!original) { await conn.rollback(); return { ok:false, error:'الفاتورة الأصلية غير موجودة' }; }
+        
+        // Fetch original items
+        const [originalItems] = await conn.query('SELECT * FROM purchase_invoice_details WHERE purchase_id=?', [originalInvoiceId]);
+        
+        // Calculate already-returned quantities per product
+        const [existingReturns] = await conn.query(
+          'SELECT id FROM purchase_invoices WHERE ref_base_purchase_id=? AND doc_type=?',
+          [originalInvoiceId, 'return']
+        );
+        
+        const returnedQty = {};
+        if(existingReturns.length > 0){
+          const returnIds = existingReturns.map(r => r.id);
+          const [returnedItems] = await conn.query(
+            'SELECT product_id, SUM(ABS(qty)) as total_returned FROM purchase_invoice_details WHERE purchase_id IN (?) GROUP BY product_id',
+            [returnIds]
+          );
+          returnedItems.forEach(ri => {
+            returnedQty[ri.product_id] = Number(ri.total_returned||0);
+          });
+        }
+        
+        // Validate return quantities
+        for(const item of selectedItems){
+          const originalItem = originalItems.find(oi => oi.product_id === item.product_id);
+          if(!originalItem) {
+            await conn.rollback();
+            return { ok:false, error:`الصنف ${item.product_id} غير موجود في الفاتورة الأصلية` };
+          }
+          
+          const originalQty = Number(originalItem.qty||0);
+          const alreadyReturned = returnedQty[item.product_id] || 0;
+          const availableForReturn = originalQty - alreadyReturned;
+          
+          if(Number(item.qty||0) > availableForReturn){
+            await conn.rollback();
+            return { ok:false, error:`الكمية المرتجعة للمنتج ${item.product_id} (${item.qty}) تتجاوز الكمية المتاحة للإرجاع (${availableForReturn})` };
+          }
+        }
+        
+        // Generate return invoice number
+        await conn.query(
+          `UPDATE app_counters SET value = LAST_INSERT_ID(value + 1) WHERE name = 'purchase_return_seq'`
+        );
+        const [[row]] = await conn.query(`SELECT LAST_INSERT_ID() AS seq`);
+        const returnNo = 'PR-' + String(row.seq).padStart(5, '0');
+        
+        // Compute return totals (negative values)
+        let subTotal = 0;
+        const returnLines = selectedItems.map(item => {
+          const originalItem = originalItems.find(oi => oi.product_id === item.product_id);
+          const qty = Number(item.qty||0);
+          const unitCost = Number(originalItem.unit_cost||0);
+          const lineTotal = qty * unitCost;
+          subTotal += lineTotal;
+          
+          return {
+            product_id: item.product_id,
+            description: originalItem.description,
+            qty: qty,
+            unit_cost: unitCost,
+            discount_line: 0,
+            line_total: lineTotal,
+            ui_unit_cost: Number(originalItem.ui_unit_cost||0),
+            ui_line_total: Number(originalItem.ui_line_total||0)
+          };
+        });
+        
+        subTotal = Number(subTotal.toFixed(2));
+        const vatPercent = Number(original.vat_percent||0);
+        const vatTotal = Number((subTotal * (vatPercent/100)).toFixed(2));
+        const grandTotal = Number((subTotal + vatTotal).toFixed(2));
+        
+        // Create return invoice
+        const atStr = toAtString(p.return_dt);
+        const [res] = await conn.query(
+          `INSERT INTO purchase_invoices (invoice_no, doc_type, ref_base_purchase_id, ref_base_invoice_no, invoice_at, supplier_id, payment_method, price_mode, reference_no, notes, sub_total, discount_general, discount_general_ui, vat_percent, vat_total, grand_total, amount_paid, amount_due)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [returnNo, 'return', originalInvoiceId, original.invoice_no, atStr, original.supplier_id, original.payment_method, original.price_mode, null, p.reason||null, -subTotal, 0, 0, vatPercent, -vatTotal, -grandTotal, 0, 0]
+        );
+        
+        const returnId = res.insertId;
+        
+        // Insert return details (negative quantities)
+        for(const ln of returnLines){
+          await conn.query(
+            `INSERT INTO purchase_invoice_details (purchase_id, product_id, description, qty, unit_cost, discount_line, line_total, ui_unit_cost, ui_line_total) VALUES (?,?,?,?,?,?,?,?,?)`,
+            [returnId, ln.product_id, ln.description, -ln.qty, ln.unit_cost, ln.discount_line, -ln.line_total, ln.ui_unit_cost, ln.ui_line_total]
+          );
+          
+          // Decrease stock immediately
+          await conn.query(`UPDATE products SET stock = stock - ? WHERE id = ?`, [ln.qty, ln.product_id]);
+        }
+        
+        // Adjust supplier balance (reverse credit if original was credit)
+        const origMethod = String(original.payment_method).toLowerCase();
+        if(origMethod === 'credit' || origMethod === 'آجل' || origMethod === 'اجل'){
+          await conn.query(`UPDATE suppliers SET balance = balance - ? WHERE id = ?`, [grandTotal, original.supplier_id]);
+        }
+        
+        await conn.commit();
+        
+        // Notify other windows
+        try{ 
+          const { BrowserWindow } = require('electron'); 
+          BrowserWindow.getAllWindows().forEach(w => w.webContents.send('products:changed', { action:'stock-decreased', return_id: returnId })); 
+        }catch(_){ }
+        
+        return { ok:true, id: returnId, invoice_no: returnNo };
+      }catch(e){ 
+        try{ await conn.rollback(); }catch(_){ } 
+        console.error('purchase_invoices:create_return failed', e); 
+        return { ok:false, error:'فشل إنشاء فاتورة المرتجع' }; 
+      }
+      finally{ conn.release(); }
+    }catch(e){ 
+      console.error(e); 
+      return { ok:false, error:'فشل الاتصال بقاعدة البيانات' }; 
+    }
+  });
+
   // --- Payments: record a payment against a single purchase invoice ---
   ipcMain.handle('purchase_invoices:pay', async (_e, payload) => {
     const p = payload || {};
@@ -534,13 +765,12 @@ function registerPurchaseInvoicesIPC(){
         const newPaid = Number(inv.amount_paid||0) + payAmt;
         const newDue = Number((Number(inv.grand_total||0) - newPaid).toFixed(2));
         await conn.query('UPDATE purchase_invoices SET amount_paid=?, amount_due=? WHERE id=?', [newPaid, newDue, purchaseId]);
-        // If fully paid and was credit, convert invoice to cash (requested behavior)
-        const payMethod = String(inv.payment_method||'').toLowerCase();
-        if(newDue <= 0 && (payMethod === 'credit' || payMethod === 'آجل' || payMethod === 'اجل')){
-          await conn.query('UPDATE purchase_invoices SET payment_method=?, amount_due=0 WHERE id=?', ['cash', purchaseId]);
-        }
+        // Keep payment_method as 'credit' for reporting purposes - do NOT change to cash
+        // This ensures the supplier statement shows the full deferred invoices amount
+        // The payment is tracked via vouchers and amount_paid field
         // Adjust supplier balance downwards (since this was a credit purchase originally)
         // Check Arabic variants ('آجل'/'اجل') and English 'credit'
+        const payMethod = String(inv.payment_method||'').toLowerCase();
         if(payMethod === 'credit' || payMethod === 'آجل' || payMethod === 'اجل'){
           await conn.query('UPDATE suppliers SET balance = GREATEST(0, balance - ?) WHERE id=?', [payAmt, supplierId]);
         }

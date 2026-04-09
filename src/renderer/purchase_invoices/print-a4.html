@@ -101,12 +101,13 @@
       }
       
       /* ضبط عرض أعمدة جدول الشراء عند وجود ضريبة */
-      #itemsTable thead th:nth-child(1), #itemsTable tbody td:nth-child(1){ width:30%; }
-      #itemsTable thead th:nth-child(2), #itemsTable tbody td:nth-child(2){ width:10%; }
-      #itemsTable thead th:nth-child(3), #itemsTable tbody td:nth-child(3){ width:12%; }
-      #itemsTable thead th:nth-child(4), #itemsTable tbody td:nth-child(4){ width:15%; }
-      #itemsTable thead th:nth-child(5), #itemsTable tbody td:nth-child(5){ width:13%; }
-      #itemsTable thead th:nth-child(6), #itemsTable tbody td:nth-child(6){ width:20%; }
+      #itemsTable thead th:nth-child(1), #itemsTable tbody td:nth-child(1){ width:4%; text-align:center; }
+      #itemsTable thead th:nth-child(2), #itemsTable tbody td:nth-child(2){ width:26%; }
+      #itemsTable thead th:nth-child(3), #itemsTable tbody td:nth-child(3){ width:10%; }
+      #itemsTable thead th:nth-child(4), #itemsTable tbody td:nth-child(4){ width:12%; }
+      #itemsTable thead th:nth-child(5), #itemsTable tbody td:nth-child(5){ width:15%; }
+      #itemsTable thead th:nth-child(6), #itemsTable tbody td:nth-child(6){ width:13%; }
+      #itemsTable thead th:nth-child(7), #itemsTable tbody td:nth-child(7){ width:20%; }
       
       .totals{ margin-top:6px; width:320px; margin-left:auto; border:2px solid #334155; border-radius:6px; overflow:hidden; }
       .totals td{ padding:4px 8px; font-weight:900; font-size:14px; white-space:nowrap; }
@@ -271,7 +272,7 @@
         <thead>
           <!-- مربع رقم الفاتورة في أعلى الصفحات التالية -->
           <tr class="invoice-number-row">
-            <td colspan="6" style="border:none; padding:0 0 10px 0; text-align:center; background:transparent;">
+            <td colspan="7" style="border:none; padding:0 0 10px 0; text-align:center; background:transparent;">
               <div class="invoice-number-box">
                 فاتورة شراء رقم: <span id="topInvNo"></span>
               </div>
@@ -279,9 +280,10 @@
           </tr>
           <!-- رأس استمرار الفاتورة - يظهر في الصفحات التالية فقط -->
           <tr class="continuation-header-row first-page-hide">
-            <td colspan="6">تابع فاتورة شراء رقم: <span id="contInvNo"></span></td>
+            <td colspan="7">تابع فاتورة شراء رقم: <span id="contInvNo"></span></td>
           </tr>
           <tr>
+            <th>م</th>
             <th>الصنف</th>
             <th>الكمية</th>
             <th>سعر الشراء</th>
@@ -322,6 +324,76 @@
           const g = await window.opener?.api?.purchase_invoices_get(Number(pid));
           if(!g || !g.ok){ document.body.innerHTML = '<div style="padding:12px">تعذر جلب الفاتورة</div>'; return; }
           const it = g.item; const details = g.items||[];
+
+          // Detect if this is a return invoice
+          const isReturn = String(it.doc_type||'') === 'return' || String(it.invoice_no||'').startsWith('PR-');
+          
+          if(isReturn){
+            document.title = 'مرتجع مشتريات A4';
+            
+            // Style the invoice type badge for returns
+            const invKindAr = document.querySelector('.invKind .ar');
+            if(invKindAr){
+              invKindAr.textContent = 'مرتجع مشتريات';
+              invKindAr.style.cssText = 'display:inline-block; background:#fef2f2; border:2px solid #dc2626; border-radius:8px; padding:4px 28px; color:#dc2626; font-size:20px;';
+            }
+
+            // Fix continuation headers text
+            const contInvNoEl = document.getElementById('contInvNo');
+            const contRow = document.querySelector('.continuation-header-row td');
+            if(contRow && contInvNoEl){
+              contRow.innerHTML = 'تابع مرتجع مشتريات رقم: <span id="contInvNo"></span>';
+            }
+            const invNumBox = document.querySelector('.invoice-number-box');
+            if(invNumBox){
+              invNumBox.innerHTML = 'مرتجع مشتريات رقم: <span id="topInvNo"></span>';
+            }
+
+            // Rebuild meta as a proper collapsed-border table for clean professional lines
+            const metaGrid = document.querySelector('.meta');
+            if(metaGrid){
+              metaGrid.style.cssText = 'border:none; border-radius:0; overflow:visible; display:block; margin-top:6px;';
+              const _td = 'style="border:1.5px solid #0f172a; padding:5px 8px; font-size:11px; font-weight:900; background:#f8fafc; vertical-align:middle;"';
+              metaGrid.innerHTML = `
+                <table style="width:100%; border-collapse:collapse; border:2px solid #0f172a; border-radius:6px; font-size:11px; font-weight:900; overflow:hidden;">
+                  <tr>
+                    <td ${_td}>رقم المرتجع: <span id="invNo"></span></td>
+                    <td ${_td}>التاريخ: <span id="invDate"></span></td>
+                    <td ${_td}>طريقة الدفع: <span id="payment"></span></td>
+                    <td id="metaVatTd" ${_td}>نسبة الضريبة: <span id="vatPct"></span>%</td>
+                  </tr>
+                  <tr>
+                    <td ${_td}>المورد: <span id="suppName"></span></td>
+                    <td ${_td}>جوال المورد: <span id="suppPhone"></span></td>
+                    <td ${_td}>الرقم الضريبي للمورد: <span id="suppVat"></span></td>
+                    <td ${_td}>رقم فاتورة المورد: <span id="refNo"></span></td>
+                  </tr>
+                  <tr>
+                    <td colspan="4" style="border:1.5px solid #0f172a; padding:5px 8px; font-size:11px; font-weight:900; background:#fef9f9; vertical-align:middle;">الفاتورة الأصلية: <strong style="color:#dc2626;">${it.ref_base_invoice_no || '-'}</strong></td>
+                  </tr>
+                </table>
+              `;
+            }
+            
+            // Convert negative values to positive for display
+            // Returns are stored as negative in DB but should display as positive
+            if(it.sub_total < 0) it.sub_total = Math.abs(it.sub_total);
+            if(it.vat_total < 0) it.vat_total = Math.abs(it.vat_total);
+            if(it.grand_total < 0) it.grand_total = Math.abs(it.grand_total);
+            if(it.discount_general < 0) it.discount_general = Math.abs(it.discount_general);
+            
+            // Fix details array
+            if(details && details.length){
+              details.forEach(d => {
+                if(d.qty < 0) d.qty = Math.abs(d.qty);
+                if(d.unit_cost < 0) d.unit_cost = Math.abs(d.unit_cost);
+                if(d.line_total < 0) d.line_total = Math.abs(d.line_total);
+                if(d.discount_line < 0) d.discount_line = Math.abs(d.discount_line);
+                if(d.ui_unit_cost != null && d.ui_unit_cost < 0) d.ui_unit_cost = Math.abs(d.ui_unit_cost);
+                if(d.ui_line_total != null && d.ui_line_total < 0) d.ui_line_total = Math.abs(d.ui_line_total);
+              });
+            }
+          }
 
           // Load supplier
           let supplier = null;
@@ -436,26 +508,28 @@
           document.getElementById('suppName').textContent = supplier?.name || it.supplier_id;
           document.getElementById('suppPhone').textContent = supplier?.phone || '';
           document.getElementById('suppVat').textContent = supplier?.vat_number || '';
-
+          
           // Hide VAT-related elements if VAT is zero
           const hideVat = (vatPct === 0);
           if(hideVat){
-            // Hide VAT percentage row in meta
-            const metaCells = document.querySelectorAll('.meta .cell');
-            if(metaCells[3]) metaCells[3].style.display = 'none';
+            // Hide VAT percentage cell in meta (works for both grid and table layouts)
+            const metaVatTd = document.getElementById('metaVatTd');
+            if(metaVatTd){ metaVatTd.style.display = 'none'; }
+            else { const metaCells = document.querySelectorAll('.meta .cell'); if(metaCells[3]) metaCells[3].style.display = 'none'; }
             
             // Update table header - replace with non-VAT columns (الصف الثاني فقط، نحافظ على رأس الاستمرار)
             const table = document.getElementById('itemsTable');
             const thead = table.querySelector('thead');
             const headerRows = thead.querySelectorAll('tr');
-            // تحديث colspan لرأس الاستمرار ومربع رقم الفاتورة ليناسب 4 أعمدة بدلاً من 6
+            // تحديث colspan لرأس الاستمرار ومربع رقم الفاتورة ليناسب 5 أعمدة بدلاً من 7
             const contRow = thead.querySelector('.continuation-header-row td');
-            if(contRow) contRow.setAttribute('colspan', '4');
+            if(contRow) contRow.setAttribute('colspan', '5');
             const invNumRow = thead.querySelector('.invoice-number-row td');
-            if(invNumRow) invNumRow.setAttribute('colspan', '4');
+            if(invNumRow) invNumRow.setAttribute('colspan', '5');
             // تحديث صف الترويسة (الصف الثالث بعد إضافة صف رقم الفاتورة)
             if(headerRows[2]){
               headerRows[2].innerHTML = `
+                <th>م</th>
                 <th>الصنف</th>
                 <th>الكمية</th>
                 <th>سعر الشراء</th>
@@ -481,7 +555,9 @@
             if(productCache[id]) return productCache[id];
             try{ const pr = await window.opener?.api?.products_get(id); const nm = (pr && pr.ok && pr.item) ? (pr.item.name || pr.item.name_en || ('#'+id)) : ('#'+id); productCache[id]=nm; return nm; }catch(_){ return '#'+id; }
           };
+          let rowNum = 0;
           for(const x of details){
+            rowNum++;
             const tr = document.createElement('tr');
             const qty = Number(x.qty||0);
             const uiUnit = (x.ui_unit_cost!=null) ? Number(x.ui_unit_cost) : (Number(x.unit_cost||0) * divisor);
@@ -495,6 +571,7 @@
             const description = x.description ? `<div style="font-size: 0.85em; color: #000; font-weight: 900; margin-top: 2px;">${x.description}</div>` : '';
             if(hideVat){
               tr.innerHTML = `
+                <td class="num" style="text-align:center;">${rowNum}</td>
                 <td>${prodName}${description}</td>
                 <td class="num" style="text-align:center;">${qty}</td>
                 <td class="num" style="text-align:center;">${uiUnit.toFixed(2)}</td>
@@ -502,6 +579,7 @@
               `;
             } else {
               tr.innerHTML = `
+                <td class="num" style="text-align:center;">${rowNum}</td>
                 <td>${prodName}${description}</td>
                 <td class="num" style="text-align:center;">${qty}</td>
                 <td class="num" style="text-align:center;">${uiUnit.toFixed(2)}</td>
@@ -545,8 +623,22 @@
           }
           document.getElementById('vat').textContent = vatTotal.toFixed(2) + ' \ue900';
           document.getElementById('grand').textContent = grandInclusive.toFixed(2) + ' \ue900';
-          document.getElementById('paid').textContent = paidVal.toFixed(2) + ' \ue900';
-          document.getElementById('due').textContent = dueVal.toFixed(2) + ' \ue900';
+          // Determine if payment is credit or partial (show paid/due rows only in these cases)
+          const _pmRaw = String(it.payment_method||'').toLowerCase();
+          const _isCredit = (_pmRaw === 'credit' || _pmRaw === 'آجل' || _pmRaw === 'اجل');
+          const _isPartial = !_isCredit && paidVal > 0 && paidVal < grandInclusive;
+          const _showPaidDue = _isCredit || _isPartial;
+
+          // For returns or cash/network, hide paid/due rows
+          if(isReturn || !_showPaidDue){
+            const paidRow = document.getElementById('paidRow');
+            const dueRow = document.getElementById('dueRow');
+            if(paidRow) paidRow.style.display = 'none';
+            if(dueRow) dueRow.style.display = 'none';
+          } else {
+            document.getElementById('paid').textContent = paidVal.toFixed(2) + ' \ue900';
+            document.getElementById('due').textContent = dueVal.toFixed(2) + ' \ue900';
+          }
 
           // Autosize numeric cells to fit width (shrink large, enlarge small)
           function __adjustNumCells(){

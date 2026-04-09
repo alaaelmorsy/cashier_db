@@ -1267,7 +1267,9 @@ async function load(){
     if(purTbody){
       purTbody.innerHTML = purchases.map(p=>{
         const purchaseInvoicePrefix = __currentLang === 'ar' ? 'فاتورة شراء' : 'Purchase invoice';
-        const name = p.invoice_no ? (()=>{ const m = String(p.invoice_no||'').match(/^PI-\d{6}-(\d+)$/); const printed = m ? String(Number(m[1])) : (p.invoice_no||''); return `${purchaseInvoicePrefix} ${printed}`; })() : (p.title || p.name || '');
+        const purchaseReturnPrefix = __currentLang === 'ar' ? 'مرتجع مشتريات' : 'Purchase return';
+        const isReturn = p.doc_type === 'return' || String(p.invoice_no||'').startsWith('PR-');
+        const name = p.invoice_no ? (()=>{ if(isReturn){ const rm = String(p.invoice_no||'').match(/^PR-(\d+)$/); const printed = rm ? String(Number(rm[1])) : (p.invoice_no||''); return `${purchaseReturnPrefix} ${printed}`; } const m = String(p.invoice_no||'').match(/^PI-\d{6}-(\d+)$/); const printed = m ? String(Number(m[1])) : (p.invoice_no||''); return `${purchaseInvoicePrefix} ${printed}`; })() : (p.title || p.name || '');
         let d = null;
         try{ if(p.purchase_at){ d = new Date(p.purchase_at); } }catch(_){ }
         if(!d){ try{ if(p.invoice_at){ d = new Date(p.invoice_at); } }catch(_){ }

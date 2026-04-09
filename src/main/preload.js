@@ -756,6 +756,8 @@ contextBridge.exposeInMainWorld('api', {
   purchase_invoices_update: (id, payload) => ipcRenderer.invoke('purchase_invoices:update', { id }, payload),
   purchase_invoices_delete: (id) => ipcRenderer.invoke('purchase_invoices:delete', { id }),
   purchase_invoices_pay: (payload) => ipcRenderer.invoke('purchase_invoices:pay', payload),
+  purchase_invoices_get_for_return: (invoiceNo) => ipcRenderer.invoke('purchase_invoices:get_for_return', invoiceNo),
+  purchase_invoices_create_return: (payload) => ipcRenderer.invoke('purchase_invoices:create_return', payload),
 
   // Customers
   customers_add: (payload) => ipcRenderer.invoke('customers:add', payload),

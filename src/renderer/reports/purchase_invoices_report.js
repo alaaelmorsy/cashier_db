@@ -269,7 +269,8 @@ async function loadRange(startStr, endStr, page = 1){
       const total = (priceMode === 'zero_vat') ? sub : Number(inv.grand_total||0);
       const methodRaw = String(inv.payment_method||'').toLowerCase();
       const isCredit = (methodRaw === 'credit' || methodRaw === 'آجل' || methodRaw === 'اجل');
-      const paid = (priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(inv.amount_paid||0);
+      const isReturn = inv.doc_type === 'return';
+      const paid = isReturn ? (!isCredit ? Math.abs(total) : 0) : ((priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(inv.amount_paid||0));
       const notes = inv.notes || '';
       const invId = inv.id || '';
 

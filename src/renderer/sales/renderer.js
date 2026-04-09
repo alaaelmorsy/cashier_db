@@ -3517,6 +3517,60 @@ if(barcode){
 }
 
 
+// Global barcode scanner: intercept rapid keystrokes from scanner even when barcode field is not focused
+(function(){
+  let __barcodeBuffer = '';
+  let __barcodeLastTime = 0;
+  const __BARCODE_TIMEOUT = 80; // ms between chars — scanners are faster than human typing
+
+  document.addEventListener('keydown', function(e){
+    if(!barcode) return;
+
+    const activeEl = document.activeElement;
+    const tag = activeEl ? activeEl.tagName : '';
+    const isTypingEl = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+    const isBarcodeField = (activeEl === barcode);
+
+    // If already in the barcode field, let the existing listener handle it
+    if(isBarcodeField) return;
+
+    // If user is typing in another input/textarea, don't intercept
+    if(isTypingEl) return;
+
+    // Ignore modifier-key combos (Ctrl+S, Alt+F4, etc.)
+    if(e.ctrlKey || e.altKey || e.metaKey) return;
+
+    const now = Date.now();
+
+    if(e.key === 'Enter'){
+      const elapsed = now - __barcodeLastTime;
+      const code = __barcodeBuffer.trim();
+      __barcodeBuffer = '';
+      __barcodeLastTime = 0;
+
+      // Only act if we collected chars recently (within scanner speed window)
+      if(code && elapsed < __BARCODE_TIMEOUT + 200){
+        e.preventDefault();
+        e.stopPropagation();
+        barcode.value = code;
+        barcode.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      }
+      return;
+    }
+
+    // Accumulate printable single characters
+    if(e.key && e.key.length === 1){
+      const elapsed = now - __barcodeLastTime;
+      // Reset buffer if too much time passed since last char (user typed manually earlier)
+      if(__barcodeLastTime > 0 && elapsed > __BARCODE_TIMEOUT){
+        __barcodeBuffer = '';
+      }
+      __barcodeBuffer += e.key;
+      __barcodeLastTime = now;
+    }
+  }, true);
+})();
+
 // Low-stock: cache to reduce IPC calls in session
 const __productStockCache = new Map(); // product_id -> { stock, name }
 let __lowStockTimer = null;

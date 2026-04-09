@@ -484,6 +484,8 @@ function registerSalesIPC(){
           await conn.query('ALTER TABLE purchase_invoices AUTO_INCREMENT = 1');
           await conn.query('ALTER TABLE purchase_invoice_details AUTO_INCREMENT = 1');
           await conn.query('ALTER TABLE purchase_payments AUTO_INCREMENT = 1');
+          try{ await conn.query(`UPDATE app_counters SET value = 0 WHERE name = 'purchase_invoice_seq'`); }catch(_){}
+          try{ await conn.query(`UPDATE app_counters SET value = 0 WHERE name = 'purchase_return_seq'`); }catch(_){}
           try{ 
             await conn.query(`DELETE FROM vouchers WHERE voucher_type = 'payment'`);
             await conn.query(`DELETE FROM voucher_counters WHERE voucher_type = 'payment'`);

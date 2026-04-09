@@ -69,6 +69,14 @@
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       }
 
+      header nav {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+      }
+
       .page-title {
         font-weight: 600;
         color: #0f172a;
@@ -345,6 +353,21 @@
         background-repeat: no-repeat;
         background-position: left 12px center;
         background-size: 20px;
+        border: 2.5px solid #2563eb !important;
+        border-radius: 12px !important;
+        background-color: #eff6ff !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        color: #1e3a8a !important;
+        box-shadow: 0 0 0 4px rgba(37,99,235,0.12), 0 2px 8px rgba(37,99,235,0.10) !important;
+        transition: box-shadow 0.2s, border-color 0.2s;
+      }
+
+      .search-wrapper input:focus {
+        border-color: #1d4ed8 !important;
+        box-shadow: 0 0 0 5px rgba(37,99,235,0.22), 0 2px 12px rgba(37,99,235,0.16) !important;
+        background-color: #fff !important;
+        outline: none !important;
       }
 
       .suggestions-panel {
@@ -1850,6 +1873,10 @@
               <span>📁</span>
               الفواتير المحفوظة
             </div>
+            <div id="tabBtnReturns" class="tab">
+              <span>↩️</span>
+              المشتريات المرتجعة
+            </div>
           </div>
         </div>
       </div>
@@ -1884,7 +1911,7 @@
                   تاريخ/وقت الفاتورة
                   <span class="required">*</span>
                 </label>
-                <input id="inv_dt" type="datetime-local" required />
+                <input id="inv_dt" type="datetime-local" required onclick="this.showPicker()" />
               </div>
 
               <div class="form-group">
@@ -2052,13 +2079,13 @@
             <div class="form-row">
               <div class="form-group">
                 <label>من</label>
-                <input id="filter_from" type="datetime-local" />
+                <input id="filter_from" type="datetime-local" onclick="this.showPicker()" />
               </div>
 
               <div class="form-group">
                 <label>إلى</label>
                 <div class="inline-date-actions" style="display:flex; align-items:center; gap:8px;">
-                  <input id="filter_to" type="datetime-local" />
+                  <input id="filter_to" type="datetime-local" onclick="this.showPicker()" />
                   <button id="btnFilterSearch" class="btn primary">
                     <span>🔍</span>
                     بحث
@@ -2104,7 +2131,6 @@
             <!-- Pagination Controls - Top -->
             <div id="paginationControlsTop" class="pagination-wrapper">
               <div class="pagination-info">
-                <span id="paginationTextTop">عرض 0-0 من 0 فاتورة</span>
                 <select id="itemsPerPageSelectTop" class="items-per-page-select">
                   <option value="10" selected>10 لكل صفحة</option>
                   <option value="20">20 لكل صفحة</option>
@@ -2139,7 +2165,6 @@
             <!-- Pagination Controls -->
             <div id="paginationControls" class="pagination-wrapper">
               <div class="pagination-info">
-                <span id="paginationText">عرض 0-0 من 0 فاتورة</span>
                 <select id="itemsPerPageSelect" class="items-per-page-select">
                   <option value="10" selected>10 لكل صفحة</option>
                   <option value="20">20 لكل صفحة</option>
@@ -2150,6 +2175,159 @@
               <div id="paginationButtons" class="pagination-buttons">
                 <!-- سيتم ملؤها ديناميكياً -->
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: المشتريات المرتجعة -->
+      <div id="tab_returns" class="tab-content">
+        
+        <!-- إنشاء مرتجع -->
+        <div class="card">
+          <div class="pad">
+            <div class="form-row">
+              <div class="form-group" style="flex: 2;">
+                <label>رقم الفاتورة الأصلية</label>
+                <input id="return_inv_no" type="text" placeholder="أدخل رقم الفاتورة الأصلية" />
+              </div>
+              <div class="form-group" style="flex: 0 0 auto;">
+                <label>&nbsp;</label>
+                <button id="btnProcessReturn" class="btn primary" style="height: 40px;">
+                  <span>⚙️</span> معالجة
+                </button>
+              </div>
+            </div>
+            
+            <!-- Return Items Display (hidden initially) -->
+            <div id="returnItemsSection" style="display:none; margin-top: 20px;">
+              <h3 style="margin-bottom: 12px; font-size: 1rem; font-weight: 700; color: #0f172a;">أصناف الفاتورة الأصلية - حدد الكميات المرتجعة</h3>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 50px; text-align: center;">تحديد</th>
+                      <th>المنتج</th>
+                      <th style="text-align: center;">الكمية الأصلية</th>
+                      <th style="text-align: center;">الكمية المرتجعة سابقاً</th>
+                      <th style="text-align: center;">المتاح للإرجاع</th>
+                      <th style="text-align: center;">الكمية المرتجعة</th>
+                      <th style="text-align: center;">سعر الوحدة</th>
+                      <th style="text-align: center;">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody id="returnItemsBody">
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Reason for return -->
+              <div class="form-row" style="margin-top: 16px;">
+                <div class="form-group">
+                  <label>سبب الإرجاع</label>
+                  <input id="return_reason" type="text" placeholder="سبب المرتجع (اختياري)" />
+                </div>
+              </div>
+              
+              <!-- Return totals -->
+              <div style="margin-top: 16px; text-align: left; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="font-size: 1.1rem; font-weight: 700;">
+                  إجمالي المرتجع: <span id="returnGrandTotal" style="color: #dc2626;">0.00 ﷼</span>
+                </div>
+              </div>
+              
+              <!-- Save return button -->
+              <div style="margin-top: 16px; text-align: center;">
+                <button id="btnSaveReturn" class="btn primary" style="padding: 12px 32px; font-size: 1rem;">
+                  <span>💾</span> حفظ وطباعة المرتجع
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Saved Returns List -->
+        <div class="card" style="margin-top: 20px;">
+          <div class="pad">
+            <div class="section-header-row">
+              <div class="section-title-group">
+                <div class="section-icon">📋</div>
+                <div>
+                  <div class="section-title">فواتير المرتجعات المحفوظة</div>
+                  <div class="section-subtitle">عرض جميع فواتير المرتجعات</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>من تاريخ</label>
+                <input id="return_filter_from" type="datetime-local" onclick="this.showPicker()" />
+              </div>
+              <div class="form-group">
+                <label>إلى تاريخ</label>
+                <input id="return_filter_to" type="datetime-local" onclick="this.showPicker()" />
+              </div>
+              <div class="form-group">
+                <label>رقم المرتجع</label>
+                <input id="return_filter_no" type="text" placeholder="PR-..." />
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <button id="btnFilterReturns" class="btn primary">بحث</button>
+              </div>
+            </div>
+            
+            <!-- Pagination Controls - Top (Returns) -->
+            <div id="returnsPaginationControlsTop" class="pagination-wrapper" style="display:none;">
+              <div class="pagination-info">
+                <select id="returnsItemsPerPageSelectTop" class="items-per-page-select">
+                  <option value="10" selected>10 لكل صفحة</option>
+                  <option value="20">20 لكل صفحة</option>
+                  <option value="50">50 لكل صفحة</option>
+                  <option value="100">100 لكل صفحة</option>
+                </select>
+              </div>
+              <div id="returnsPaginationButtonsTop" class="pagination-buttons"></div>
+            </div>
+
+            <!-- Returns table -->
+            <div class="table-wrapper" style="margin-top: 16px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>رقم المرتجع</th>
+                    <th>رقم الفاتورة الأصلية</th>
+                    <th>المورد</th>
+                    <th>الإجمالي</th>
+                    <th style="text-align: center;">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyReturns">
+                  <tr><td colspan="6">
+                    <div class="empty-state">
+                      <div class="icon">↩️</div>
+                      <div class="message">لا توجد مرتجعات</div>
+                      <div class="hint">أنشئ مرتجع جديد من الأعلى</div>
+                    </div>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination Controls - Bottom (Returns) -->
+            <div id="returnsPaginationControls" class="pagination-wrapper" style="display:none;">
+              <div class="pagination-info">
+                <select id="returnsItemsPerPageSelect" class="items-per-page-select">
+                  <option value="10" selected>10 لكل صفحة</option>
+                  <option value="20">20 لكل صفحة</option>
+                  <option value="50">50 لكل صفحة</option>
+                  <option value="100">100 لكل صفحة</option>
+                </select>
+              </div>
+              <div id="returnsPaginationButtons" class="pagination-buttons"></div>
             </div>
           </div>
         </div>
