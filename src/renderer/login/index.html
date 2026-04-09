@@ -1,773 +1,904 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>تسجيل الدخول - نظام الرابط</title>
-    <style>
-      :root{
-        --primary: #8B6B47;
-        --primary-600: #6B4E31;
-        --primary-light: #A68968;
-        --accent: #C9A961;
-        --accent-light: #D4BA7F;
-        --gold: #D4A574;
-        --danger: #C17858;
-        --text: #3E2723;
-        --text-light: #5D4037;
-        --muted: #8D6E63;
-        --bg: linear-gradient(135deg, #f5e6d3 0%, #e8d4bf 50%, #d7c0a8 100%);
-        --card: rgba(255,250,245,0.95);
-        --card-glass: rgba(255,248,240,0.9);
-        --border: rgba(62,39,35,0.08);
-        --shadow-primary: 0 20px 40px rgba(139,107,71,0.15);
-        --shadow-card: 0 32px 64px rgba(62,39,35,0.12);
-      }
-      *{box-sizing:border-box}
-      body{
-        font-family: "Cairo", "Tajawal", system-ui, -apple-system, Segoe UI, Roboto, "Noto Kufi Arabic", Arial, sans-serif; 
-        background: var(--bg); 
-        margin:0; 
-        color:var(--text);
-        overflow-x: hidden;
-      } 
 
-      /* خلفية احترافية متطورة */
-      .bg{
-        position: fixed; 
-        inset:0; 
-        overflow:hidden; 
-        pointer-events:none;
-        /* خلفية بصورة back.png فقط */
-        background: url('../../../assets/icon/back.png') center/cover no-repeat fixed;
-      }
-      .shape{
-        position:absolute; 
-        filter:blur(60px); 
-        opacity:.4;
-      }
-      .shape.pos1{
-        width:600px; 
-        height:600px; 
-        background: radial-gradient(closest-side, rgba(201,169,97,.18), transparent 70%); 
-        right:-300px; 
-        top:-200px; 
-        border-radius:50%;
-      }
-      .shape.pos2{
-        width:500px; 
-        height:500px; 
-        background: radial-gradient(closest-side, rgba(139,107,71,.15), transparent 70%); 
-        left:-250px; 
-        bottom:-150px; 
-        border-radius:50%;
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تسجيل الدخول - نظام الرابط</title>
+  <link rel="stylesheet" href="../tailwind-output.css" />
+  <style>
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
 
-      .container{ 
-        position:relative; 
-        min-height:100vh; 
-        display:grid; 
-        place-items:center; 
-        padding: 20px 16px; 
-      }
-      
-      /* إشعار التحديث */
-      .update-notification {
-        position: fixed;
-        top: -100px;
-        right: 20px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 16px 24px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 9999;
-        transition: top 0.5s ease-in-out;
-        max-width: 90vw;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-      }
-      .update-notification.show {
-        top: 20px;
-      }
-      
-      /* عرض اسم الفرع */
-      .branch-display {
-        position: fixed;
-        top: -100px;
-        left: 20px;
-        background: #8B6B47;
-        color: white;
-        padding: 8px 18px;
-        border-radius: 50px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        z-index: 9999;
-        transition: top 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 14px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        display: none;
-        text-align: center;
-        line-height: 1.3;
-        white-space: nowrap;
-      }
-      .branch-display.show {
-        top: 20px;
-        display: inline-block;
-      }
-      .update-notification .icon {
-        font-size: 24px;
-      }
-      .update-notification .content {
-        flex: 1;
-      }
-      .update-notification .title {
-        font-weight: 700;
-        font-size: 16px;
-        margin-bottom: 4px;
-      }
-      .update-notification .message {
-        font-size: 13px;
-        opacity: 0.95;
-      }
-      .update-notification.expired {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
-      }
-      .card{
-        width:min(90vw, 380px);
-        background: var(--card);
-        border:2px solid rgba(139,107,71,0.2);
-        border-radius:20px; 
-        padding: 14px 18px; 
-        box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.2);
-        backdrop-filter: blur(20px);
-        position: relative;
-        overflow: hidden;
-      }
-      .card::before{
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-      }
-      
-      .brand{ 
-        display:flex; 
-        align-items:center; 
-        gap:16px; 
-        justify-content:center; 
-        margin-bottom:10px; 
-      }
-      .logo{ 
-        width:50px; 
-        height:32px; 
-        border-radius:8px; 
-        display:grid; 
-        place-items:center; 
-        background: linear-gradient(135deg, #FFD700, #FFC700); 
-        color:#000; 
-        box-shadow: 0 4px 12px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5); 
-        font-weight:900; 
-        font-size:13px;
-        position: relative;
-        letter-spacing: 0.5px;
-        align-self: flex-end;
-        margin-bottom: 2px;
-      }
-      .logo::after{
-        content: '';
-        position: absolute;
-        inset: 3px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
-      }
-      .brand h1{ 
-        margin:0; 
-        font-size:30px; 
-        font-weight:900;
-        letter-spacing:0.8px; 
-        background: linear-gradient(135deg, #6B4E31, #8B6B47, #A68968, #C9A961);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 4px 10px rgba(139,107,71,0.3);
-        filter: drop-shadow(0 2px 4px rgba(107,78,49,0.4));
-        position: relative;
-        font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        text-transform: uppercase;
-        transform: perspective(500px) rotateX(10deg);
-        text-align: center;
-      }
-      .brand h1::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(139,107,71,0.1), rgba(201,169,97,0.1));
-        border-radius: 12px;
-        z-index: -1;
-        transform: translateY(4px);
-      }
-      .brand h1::after {
-        content: '';
-        position: absolute;
-        top: -2px;
-        left: -2px;
-        right: -2px;
-        bottom: -2px;
-        background: linear-gradient(45deg, transparent, rgba(139,107,71,0.25), rgba(201,169,97,0.25), transparent);
-        border-radius: 14px;
-        z-index: -2;
-        animation: glow 2s ease-in-out infinite alternate;
-      }
-      @keyframes glow {
-        from { 
-          opacity: 0.6;
-          transform: scale(1);
-        }
-        to { 
-          opacity: 1;
-          transform: scale(1.02);
-        }
-      }
-      .subtitle{ 
-        text-align:center; 
-        color:var(--muted); 
-        font-size:14px; 
-        font-weight:500;
-        margin-bottom:12px; 
-      }
-      
-      /* نص النسخة التجريبية */
-      .trial-notice{
-        display: none;
-        text-align: center;
-        background: linear-gradient(135deg, #dc2626, #ef4444);
-        color: #fff;
-        padding: 12px 16px;
-        border-radius: 12px;
-        margin: 12px 0;
-        font-size: 18px;
-        font-weight: 900;
-        letter-spacing: 0.5px;
-        box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
-        border: 2px solid #b91c1c;
-        animation: pulse-trial 2s ease-in-out infinite;
-        position: relative;
-        overflow: hidden;
-      }
-      .trial-notice::before{
-        content: '⚠️';
-        font-size: 24px;
-        margin-left: 8px;
-        animation: shake 1s ease-in-out infinite;
-        display: inline-block;
-      }
-      .trial-notice.show{
-        display: block;
-      }
-      @keyframes pulse-trial {
-        0%, 100% { 
-          box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
-          transform: scale(1);
-        }
-        50% { 
-          box-shadow: 0 12px 32px rgba(220, 38, 38, 0.5);
-          transform: scale(1.02);
-        }
-      }
-      @keyframes shake {
-        0%, 100% { transform: rotate(0deg); }
-        25% { transform: rotate(-5deg); }
-        75% { transform: rotate(5deg); }
-      }
-      
-      /* شارة المبيعات */
-      .subtitle::after{
-        content: '💰 نظام إدارة المبيعات';
-        display: block;
-        margin-top: 12px;
-        color: #fff;
-        font-size: 16px;
-        font-weight: 800;
-        letter-spacing: .5px;
-        padding: 9px 28px;
-        border-radius: 50px;
-        background: linear-gradient(135deg, #10b981, #059669);
-        border: 2px solid rgba(255,255,255,0.3);
-        width: fit-content;
-        margin-inline: auto;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        box-shadow: 0 4px 16px rgba(16,185,129,0.4);
-        position: relative;
-        overflow: hidden;
-        min-width: 220px;
-        text-align: center;
-      }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
 
-      label{ 
-        display:block; 
-        margin: 10px 6px 5px; 
-        font-weight:700; 
-        font-size:13px; 
-        color:var(--text-light);
-        text-transform: uppercase;
-        letter-spacing: .3px;
-      }
-      .input{ position:relative; margin-bottom: 10px; }
-      input, select{
-        width:100%; 
-        padding: 13px 15px; 
-        border-radius:12px; 
-        border:2px solid rgba(139,107,71,0.15);
-        background: rgba(255,255,255,0.9); 
-        color:var(--text); 
-        outline:none; 
-        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 3px 10px rgba(139,107,71,0.08);
-      }
-      input::placeholder, select::placeholder{ 
-        color:var(--muted); 
-        font-weight: 400;
-      }
-      input:focus, select:focus{ 
-        border-color: var(--primary); 
-        box-shadow: 0 0 0 3px rgba(139,107,71,0.15), 0 6px 18px rgba(139,107,71,0.12);
-        background: #fff;
-      }
+    @font-face {
+      font-family: 'Cairo';
+      src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
+      font-weight: 900;
+      font-style: normal;
+      font-display: swap;
+    }
 
-      .options{ 
-        display:flex; 
-        justify-content:space-between; 
-        align-items:center; 
-        margin:20px 0; 
-      }
-      .remember{ 
-        display:flex; 
-        align-items:center; 
-        gap:10px; 
-        font-size:14px; 
-        color:var(--muted); 
-        cursor:pointer; 
-        font-weight: 500;
-      }
-      .remember input{ 
-        width:auto; 
-        padding: 0;
-        width: 16px;
-        height: 16px;
-        accent-color: var(--primary);
-      }
-      .actions{ margin-top:18px; }
-      button{
-        width:100%; 
-        padding: 13px 20px; 
-        border:0; 
-        border-radius:12px; 
-        background: linear-gradient(135deg, var(--primary), var(--primary-light));
-        color:white; 
-        font-weight:700; 
-        font-size:14px;
-        cursor:pointer; 
-        letter-spacing:.3px; 
-        box-shadow: var(--shadow-primary);
-        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-      }
-      button::before{
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left .4s ease;
-      }
-      button:hover{ 
-        transform: translateY(-1px);
-        box-shadow: 0 10px 26px rgba(139,107,71,0.22);
-      }
-      button:hover::before{
-        left: 100%;
-      }
-      button:active{ 
-        transform: translateY(0); 
-        box-shadow: var(--shadow-primary);
-      }
-      button:disabled{ 
-        opacity:.6; 
-        cursor:not-allowed; 
-        transform: none !important;
-      }
+    :root {
+      --modal-primary: #8B6B47;
+      --modal-accent: #C9A961;
+      --modal-text: #3E2723;
+      --modal-text-light: #5D4037;
+      --modal-muted: #8D6E63;
+      --modal-border: rgba(62, 39, 35, 0.08);
+      --modal-danger: #C17858;
+      --cyan: #06b6d4;
+      --cyan-dark: #0284c7;
+    }
 
-      .error{ 
-        color: var(--danger); 
-        background: linear-gradient(135deg, rgba(230,57,70,0.08), rgba(230,57,70,0.04)); 
-        border:2px solid rgba(230,57,70,0.2); 
-        padding:14px 18px; 
-        border-radius:14px; 
-        margin-top:16px; 
-        text-align:center;
-        font-weight: 600;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(230,57,70,0.1);
-      }
-      .error:empty{ display:none; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-      .sync-status{ 
-        color: #0ea5e9; 
-        background: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(14,165,233,0.04)); 
-        border:2px solid rgba(14,165,233,0.2); 
-        padding:14px 18px; 
-        border-radius:14px; 
-        margin-top:16px; 
-        text-align:center;
-        font-weight: 600;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(14,165,233,0.1);
-        display: none;
-      }
-      .sync-status.show{ display: block; }
-      .sync-status .spinner{
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(14,165,233,0.3);
-        border-top-color: #0ea5e9;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-left: 8px;
-        vertical-align: middle;
-      }
-      @keyframes spin{
-        to{ transform: rotate(360deg); }
-      }
+    html,
+    body {
+      font-family: 'Cairo', system-ui, sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
 
-      .footer-hint{ 
-        text-align:center; 
-        color:var(--muted); 
-        font-size:14px; 
-        margin-top:16px; 
-        font-weight: 500;
-      }
+    /* ==============================
+         SPLIT LAYOUT
+      ============================== */
+    .login-wrapper {
+      display: flex;
+      flex-direction: row;
+      direction: ltr;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
 
-      .saved-users{ 
-        display:flex; 
-        flex-wrap:wrap; 
-        gap:10px; 
-        margin-top:16px; 
-      }
-      .chip{
-        display:flex; 
-        align-items:center; 
-        gap:7px; 
-        padding:7px 12px; 
-        border-radius:18px; 
-        border:2px solid rgba(139,107,71,0.15); 
-        background: rgba(255,250,245,0.85);
-        color:var(--text); 
-        font-size:12px; 
-        font-weight: 500;
-        cursor:pointer; 
-        user-select:none;
-        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-        backdrop-filter: blur(10px);
-      }
-      .chip .x{ 
-        color:var(--muted); 
-        font-weight:700; 
-        padding-inline-start:3px; 
-        cursor:pointer; 
-        transition: color .2s;
-      }
-      .chip:hover{ 
-        border-color:var(--primary); 
-        background: rgba(255,250,245,0.95);
-        box-shadow: 0 3px 10px rgba(139,107,71,0.12);
-      }
-      .chip:hover .x{
-        color: var(--danger);
-      }
+    /* ==============================
+         LEFT PANEL — FORM
+      ============================== */
+    .left-panel {
+      width: 50%;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 50px;
+      position: relative;
+      flex-shrink: 0;
+      z-index: 2;
+      clip-path: polygon(0 0, 100% 0, calc(100% - 70px) 100%, 0 100%);
+    }
 
-      .eye{ 
-        position:absolute; 
-        left:12px; 
-        top:50%; 
-        transform:translateY(-50%); 
-        cursor:pointer; 
-        color:var(--muted); 
-        font-size: 18px;
-        transition: color .2s;
-      }
-      .eye:hover{
-        color: var(--primary);
+    /* ==============================
+         RIGHT PANEL — WELCOME
+      ============================== */
+    .right-panel {
+      flex: 1;
+      background: linear-gradient(150deg, #0d1f5c 0%, #1050b8 45%, #1976d2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      margin-left: -70px;
+      clip-path: polygon(70px 0, 100% 0, 100% 100%, 0 100%);
+    }
+
+    .right-panel::before {
+      content: '';
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+      top: -140px;
+      right: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .right-panel::after {
+      content: '';
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+      bottom: -80px;
+      left: 20px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .right-panel-logo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      z-index: 1;
+    }
+
+    /* ==============================
+         FORM CONTAINER
+      ============================== */
+    .form-container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .form-title {
+      font-size: 38px;
+      font-weight: 900;
+      color: #1a1a2e;
+      margin-bottom: 38px;
+      text-align: right;
+      width: 100%;
+      letter-spacing: 0.3px;
+    }
+
+    /* ==============================
+         INPUTS
+      ============================== */
+    .field-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: #06b6d4;
+      margin-bottom: 6px;
+      text-align: right;
+    }
+
+    .input-wrap {
+      position: relative;
+      margin-bottom: 22px;
+    }
+
+    .input-wrap .field-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(0, 0, 0, 0.35);
+      font-size: 18px;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid rgba(0, 0, 0, 0.15);
+      border-radius: 0;
+      padding: 14px 40px 14px 38px;
+      color: #1a1a2e;
+      font-family: 'Cairo', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      direction: rtl;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .input-wrap input::placeholder {
+      color: rgba(0, 0, 0, 0.3);
+      font-weight: 700;
+    }
+
+    .input-wrap input:focus {
+      border-bottom-color: var(--cyan);
+    }
+
+    /* eye toggle */
+    #toggleEye {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #00c9d4;
+      font-size: 18px;
+      transition: color 0.2s, background 0.2s;
+      user-select: none;
+      line-height: 1;
+      background: transparent;
+    }
+
+    #toggleEye:hover {
+      color: #00c9d4;
+      background: rgba(0, 201, 212, 0.12);
+    }
+
+    /* delete saved btn */
+    #deleteSavedBtn {
+      display: none;
+      flex-shrink: 0;
+      background: linear-gradient(90deg, #00c9d4 0%, #0099b8 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 50px;
+      padding: 0 20px;
+      height: 48px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 4px 14px rgba(0, 180, 210, 0.35);
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    #deleteSavedBtn:hover {
+      opacity: 0.88;
+    }
+
+    #deleteSavedBtn:active {
+      transform: scale(0.97);
+    }
+
+    .username-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .username-row .input-wrap {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    /* ==============================
+         REMEMBER ME ROW
+      ============================== */
+    .remember-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+      color: rgba(0, 0, 0, 0.55);
+      font-size: 15px;
+      font-weight: 400;
+      cursor: pointer;
+      justify-content: flex-end;
+    }
+
+    .remember-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--cyan);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ==============================
+         LOGIN BUTTON
+      ============================== */
+    #loginBtn {
+      width: 100%;
+      background: linear-gradient(90deg, #00c9d4 0%, #0099b8 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 20px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 6px 28px rgba(0, 180, 210, 0.4);
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #loginBtn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+      transition: left 0.4s ease;
+    }
+
+    #loginBtn:hover {
+      opacity: 0.92;
+    }
+
+    #loginBtn:hover::before {
+      left: 100%;
+    }
+
+    #loginBtn:active {
+      transform: scale(0.98);
+    }
+
+    #loginBtn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ==============================
+         ERROR
+      ============================== */
+    .error {
+      margin-top: 12px;
+      color: #dc2626;
+      background: rgba(220, 38, 38, 0.06);
+      border: 1.5px solid rgba(220, 38, 38, 0.2);
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .error:empty {
+      display: none;
+    }
+
+    /* ==============================
+         SUPPORT INFO
+      ============================== */
+    .support-info {
+      background: rgba(0, 180, 210, 0.06);
+      border: 1px solid rgba(0, 180, 210, 0.15);
+      border-radius: 12px;
+      padding: 12px 18px;
+      width: 100%;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .support-info::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0, 201, 212, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* single-row layout */
+    .support-info .si-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .support-info .si-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .support-info .label {
+      font-weight: 800;
+      color: #374151;
+      font-size: 12.5px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .support-info .label::before {
+      content: '🛡️';
+      font-size: 11px;
+    }
+
+    .support-info .sep {
+      color: rgba(0, 0, 0, 0.2);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .support-info .date {
+      font-weight: 800;
+      color: #1a1a2e;
+      font-size: 14.5px;
+      direction: ltr;
+      unicode-bidi: isolate;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .support-info .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-weight: 900;
+      font-size: 13.5px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
+    }
+
+    .support-info .badge::before {
+      content: '⏱';
+      font-size: 11px;
+    }
+
+    .support-info .badge.status-ok {
+      background: linear-gradient(90deg, #00c9d4 0%, #0099b8 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(0, 180, 210, 0.4);
+    }
+
+    .support-info .badge.status-warn {
+      background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    }
+
+    .support-info .badge.status-expired {
+      background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+    }
+
+    /* ==============================
+         TRIAL NOTICE
+      ============================== */
+    .trial-notice {
+      display: none;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.9), rgba(239, 68, 68, 0.8));
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      font-size: 15px;
+      font-weight: 900;
+      border: 1.5px solid rgba(220, 38, 38, 0.6);
+      animation: pulse-trial 2s ease-in-out infinite;
+      width: 100%;
+    }
+
+    .trial-notice.show {
+      display: block;
+    }
+
+    @keyframes pulse-trial {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.3);
       }
 
-      /* Support info styles - محسن */
-      .support-info{
-        position:relative;
-        display:flex; align-items:center; justify-content:space-between;
-        margin:14px 0 10px; padding:10px 15px; min-height:38px; width:100%;
-        border-radius:14px; border:2px solid rgba(139,107,71,0.15);
-        background: rgba(255,250,245,0.85);
-        box-shadow: 0 3px 12px rgba(139,107,71,0.08);
-        backdrop-filter: blur(10px);
+      50% {
+        box-shadow: 0 6px 24px rgba(220, 38, 38, 0.5);
       }
-      .support-info .group{ 
-        display:inline-flex; 
-        align-items:center; 
-        gap:10px; 
-        flex:0 1 auto; 
-        white-space:nowrap; 
-      }
-      .support-info .label{ 
-        font-size:13px; 
-        color:var(--muted); 
-        font-weight:600; 
-        line-height:1; 
-      }
-      .support-info .date{ 
-        font-weight:700; 
-        font-size:13px; 
-        line-height:1; 
-        color:var(--text); 
-        letter-spacing:.2px; 
-        direction:ltr; 
-        unicode-bidi:isolate; 
-        font-variant-numeric:tabular-nums; 
-      }
-      .support-info .badge{ 
-        display:inline-flex; 
-        align-items:center; 
-        height:28px; 
-        line-height:1; 
-        font-weight:700; 
-        font-size:12px; 
-        padding:0 12px; 
-        border-radius:14px; 
-        border:2px solid transparent; 
-        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .support-info .badge.status-ok{ 
-        background: linear-gradient(135deg, rgba(201,169,97,0.12), rgba(201,169,97,0.06));
-        border-color: rgba(201,169,97,0.25);
-        color: var(--accent);
-      }
-      .support-info .badge.status-warn{ 
-        background: linear-gradient(135deg, rgba(212,165,116,0.15), rgba(212,165,116,0.08));
-        border-color: rgba(212,165,116,0.3);
-        color: var(--gold);
-      }
-      .support-info .badge.status-expired{ 
-        background: linear-gradient(135deg, rgba(193,120,88,0.12), rgba(193,120,88,0.06));
-        border-color: rgba(193,120,88,0.25);
-        color: var(--danger);
-      }
-      /* خطوط Cairo للتصميم العربي */
-      @font-face {
-        font-family: 'Cairo';
-        src: url('../../../assets/fonts/Cairo-Regular.ttf') format('truetype');
-        font-weight: 400; font-style: normal; font-display: swap;
-      }
-      @font-face {
-        font-family: 'Cairo';
-        src: url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');
-        font-weight: 700; font-style: normal; font-display: swap;
-      }
-      @font-face {
-        font-family: 'Cairo';
-        src: url('../../../assets/fonts/Cairo-Black.ttf') format('truetype');
-        font-weight: 900; font-style: normal; font-display: swap;
-      }
+    }
 
-      /* تحسين الأزرار الثانوية */
-      #openConnDialog, #deleteSavedBtn, #connClose {
-        background: rgba(255,250,245,0.85) !important;
-        color: var(--text) !important;
-        border: 2px solid rgba(139,107,71,0.15) !important;
-        backdrop-filter: blur(10px);
-        font-weight: 600 !important;
-        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      }
-      #openConnDialog:hover, #deleteSavedBtn:hover {
-        background: rgba(255,250,245,0.95) !important;
-        border-color: var(--primary) !important;
-        box-shadow: 0 3px 10px rgba(139,107,71,0.12) !important;
-      }
-      #connClose {
-        background: linear-gradient(135deg, var(--danger), #C17858) !important;
-        color: white !important;
-        border: 2px solid rgba(193,120,88,0.3) !important;
-      }
-      #connClose:hover {
-        box-shadow: 0 3px 10px rgba(193,120,88,0.2) !important;
-      }
+    /* ==============================
+         SAVED ACCOUNTS
+      ============================== */
+    #savedWrap {
+      margin-top: 12px;
+      display: none;
+    }
 
-      /* تحسينات الاستجابة للشاشات الصغيرة */
-      @media (max-width: 480px) {
-        .container {
-          padding: 14px 10px;
-        }
-        .card {
-          padding: 12px 15px;
-          width: min(92vw, 340px);
-        }
-        .brand h1 {
-          font-size: 26px;
-          transform: perspective(400px) rotateX(8deg);
-        }
-        .brand {
-          margin-bottom: 7px;
-        }
-        .logo {
-          width: 44px;
-          height: 44px;
-          font-size: 15px;
-        }
-        .subtitle {
-          margin-bottom: 10px;
-          font-size: 13px;
-        }
-        .subtitle::after {
-          font-size: 15px;
-          padding: 7px 12px;
-          margin-top: 9px;
-        }
+    .saved-users {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(6, 182, 212, 0.3);
+      background: rgba(6, 182, 212, 0.08);
+      color: #374151;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      border-color: var(--cyan);
+      background: rgba(6, 182, 212, 0.15);
+      color: #1a1a2e;
+    }
+
+    .chip .x {
+      color: rgba(0, 0, 0, 0.3);
+      font-weight: 700;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .chip:hover .x {
+      color: #f87171;
+    }
+
+    /* ==============================
+         SYNC STATUS
+      ============================== */
+    .sync-status {
+      color: #0891b2;
+      background: rgba(6, 182, 212, 0.08);
+      border: 1.5px solid rgba(6, 182, 212, 0.2);
+      padding: 11px 16px;
+      border-radius: 10px;
+      margin-top: 12px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 13px;
+      display: none;
+    }
+
+    .sync-status.show {
+      display: block;
+    }
+
+    .sync-status .spinner {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(6, 182, 212, 0.25);
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 7px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
-    </style>
-  </head>
-  <body>
-    <!-- اتصال IP Modal -->
-    <div id="connModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.4); z-index:50; backdrop-filter: blur(4px);">
-      <div style="width:min(92vw,520px); background:#fff; border:2px solid rgba(139,107,71,0.25); border-radius:18px; box-shadow: 0 24px 48px rgba(15,23,42,.2);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:2px solid rgba(139,107,71,0.15); background: linear-gradient(135deg, rgba(139,107,71,0.05), rgba(201,169,97,0.03));">
-          <div style="font-weight:800; font-size:16px; color:var(--primary);">⚙️ إعدادات المزامنة مع الجهاز الرئيسي</div>
-          <button id="connClose" style="width:auto; padding:8px 14px; background:#dc2626; color:#fff; border:1px solid #b91c1c; border-radius:10px; font-weight:700; cursor:pointer;">✕ إغلاق</button>
+    }
+
+    /* ==============================
+         BRANCH DISPLAY
+      ============================== */
+    .branch-display {
+      position: fixed;
+      top: -100px;
+      left: 20px;
+      background: var(--cyan);
+      color: white;
+      padding: 8px 18px;
+      border-radius: 50px;
+      box-shadow: 0 2px 10px rgba(6, 182, 212, 0.4);
+      z-index: 9999;
+      transition: top 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 14px;
+      font-weight: 600;
+      display: none;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .branch-display.show {
+      top: 20px;
+      display: inline-block;
+    }
+
+    /* ==============================
+         UPDATE NOTIFICATION
+      ============================== */
+    .update-notification {
+      position: fixed;
+      top: -100px;
+      right: 20px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 9999;
+      transition: top 0.5s ease-in-out;
+      max-width: 90vw;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      font-size: 14px;
+    }
+
+    .update-notification.show {
+      top: 20px;
+    }
+
+    .update-notification.expired {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+    }
+
+    .update-notification .icon {
+      font-size: 24px;
+    }
+
+    .update-notification .content {
+      flex: 1;
+    }
+
+    .update-notification .title {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .update-notification .message {
+      font-size: 13px;
+      opacity: 0.95;
+    }
+
+    /* ==============================
+         CONN MODAL BUTTONS override
+      ============================== */
+    #connClose {
+      width: auto !important;
+      padding: 8px 14px !important;
+      background: #dc2626 !important;
+      color: #fff !important;
+      border: 1px solid #b91c1c !important;
+      border-radius: 10px !important;
+      font-weight: 700 !important;
+      cursor: pointer !important;
+      font-family: 'Cairo', sans-serif !important;
+      font-size: 14px !important;
+      box-shadow: none !important;
+    }
+
+    #testIpBtn,
+    #saveIpBtn {
+      font-family: 'Cairo', sans-serif;
+      border-radius: 10px;
+      padding: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      flex: 1;
+      transition: opacity 0.2s;
+    }
+
+    #testIpBtn {
+      background: linear-gradient(135deg, #C9A961, #22c55e);
+    }
+
+    #saveIpBtn {
+      background: linear-gradient(135deg, #8B6B47, #3b82f6);
+    }
+
+    #testIpBtn:hover,
+    #saveIpBtn:hover {
+      opacity: 0.88;
+    }
+
+    #deleteSavedBtn:hover::before {
+      display: none;
+    }
+
+    /* conn modal inputs */
+    #connModal input[type="text"],
+    #connModal input[type="number"],
+    #serverIp,
+    #serverPort {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid rgba(139, 107, 71, 0.15);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: 'Cairo', sans-serif;
+      color: #3E2723;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+      direction: ltr;
+    }
+
+    #serverIp:focus,
+    #serverPort:focus {
+      border-color: #8B6B47;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ====== CONNECTION MODAL ====== -->
+  <div id="connModal"
+    style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.45); z-index:9999; backdrop-filter:blur(4px);">
+    <div
+      style="width:min(92vw,520px); background:#fff; border:2px solid rgba(139,107,71,0.25); border-radius:18px; box-shadow:0 24px 48px rgba(15,23,42,.22); font-family:'Cairo',sans-serif;">
+      <div
+        style="display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:2px solid rgba(139,107,71,0.15); background:linear-gradient(135deg,rgba(139,107,71,0.05),rgba(201,169,97,0.03));">
+        <div style="font-weight:800; font-size:16px; color:#8B6B47;">⚙️ إعدادات المزامنة مع الجهاز الرئيسي</div>
+        <button id="connClose">✕ إغلاق</button>
+      </div>
+      <div style="padding:20px; max-height:70vh; overflow-y:auto; overflow-x:hidden;">
+        <div style="margin-bottom:14px;">
+          <label style="display:block; margin-bottom:7px; font-weight:700; font-size:13px; color:#5D4037;">🌐 عنوان IP
+            للجهاز الرئيسي</label>
+          <input id="serverIp" placeholder="مثال: 192.168.1.100" />
+          <div style="margin-top:5px; font-size:12px; color:#8D6E63;">اترك فارغاً إذا كان هذا هو الجهاز الرئيسي</div>
         </div>
-        <div style="padding:20px; max-height:70vh; overflow-y:auto; overflow-x:hidden;">
-          <!-- IP Address -->
-          <div style="margin-bottom:14px;">
-            <label style="display:block; margin-bottom:7px; font-weight:700; font-size:13px; color:var(--text-light);">🌐 عنوان IP للجهاز الرئيسي</label>
-            <input id="serverIp" placeholder="مثال: 192.168.1.100" style="width:100%; padding:12px 14px; border:2px solid rgba(139,107,71,0.15); border-radius:10px; font-size:14px;" />
-            <div style="margin-top:5px; font-size:12px; color:var(--muted);">اترك فارغاً إذا كان هذا هو الجهاز الرئيسي</div>
-          </div>
-          
-          <!-- Port -->
-          <div style="margin-bottom:14px;">
-            <label style="display:block; margin-bottom:7px; font-weight:700; font-size:13px; color:var(--text-light);">🔌 المنفذ (Port)</label>
-            <input id="serverPort" type="number" min="1" max="65535" value="3001" placeholder="3001" style="width:100%; padding:12px 14px; border:2px solid rgba(139,107,71,0.15); border-radius:10px; font-size:14px;" />
-          </div>
-          
-          <!-- Enable Sync Checkbox -->
-          <div style="margin-bottom:18px; padding:12px; background:rgba(139,107,71,0.05); border:2px solid rgba(139,107,71,0.12); border-radius:10px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input id="syncEnabled" type="checkbox" checked style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;" />
-              <span style="font-weight:600; font-size:13px; color:var(--text);">تفعيل المزامنة التلقائية</span>
-            </label>
-          </div>
-          
-          <!-- Warning Box -->
-          <div style="margin-bottom:18px; padding:14px; background:linear-gradient(135deg, rgba(255,165,0,0.08), rgba(255,165,0,0.04)); border:2px solid rgba(255,165,0,0.3); border-radius:10px;">
-            <p style="font-weight:700; color:var(--text); margin:0 0 6px 0; font-size:13px;">⚠️ ملاحظة هامة:</p>
-            <ul style="margin:0; padding-right:18px; color:var(--text-light); line-height:1.7; font-size:12px;">
-              <li>عند إدخال IP للجهاز الرئيسي، سيصبح هذا الجهاز <strong>فرعياً</strong> تلقائياً</li>
-              <li>الجهاز الفرعي <strong>لا يحتاج</strong> إلى كود تفعيل</li>
-              <li>يجب <strong>إعادة تشغيل البرنامج</strong> بعد الحفظ لتفعيل التغييرات</li>
-            </ul>
-          </div>
-          
-          <!-- Action Buttons -->
-          <div style="display:flex; gap:8px;">
-            <button id="testIpBtn" style="flex:1; background:linear-gradient(135deg, var(--accent), #22c55e); padding:12px;">اختبار الاتصال</button>
-            <button id="saveIpBtn" style="flex:1; background:linear-gradient(135deg, var(--primary), #3b82f6); padding:12px;">💾 حفظ الإعدادات</button>
-          </div>
-          <div id="ipMsg" class="error" style="margin-top:12px;"></div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block; margin-bottom:7px; font-weight:700; font-size:13px; color:#5D4037;">🔌 المنفذ
+            (Port)</label>
+          <input id="serverPort" type="number" min="1" max="65535" value="3001" placeholder="3001" />
         </div>
+
+        <div
+          style="margin-bottom:18px; padding:12px; background:rgba(139,107,71,0.05); border:2px solid rgba(139,107,71,0.12); border-radius:10px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input id="syncEnabled" type="checkbox" checked
+              style="width:16px; height:16px; accent-color:#8B6B47; cursor:pointer;" />
+            <span style="font-weight:600; font-size:13px; color:#3E2723;">تفعيل المزامنة التلقائية</span>
+          </label>
+        </div>
+
+        <div
+          style="margin-bottom:18px; padding:14px; background:linear-gradient(135deg,rgba(255,165,0,0.08),rgba(255,165,0,0.04)); border:2px solid rgba(255,165,0,0.3); border-radius:10px;">
+          <p style="font-weight:700; color:#3E2723; margin:0 0 6px 0; font-size:13px;">⚠️ ملاحظة هامة:</p>
+          <ul style="margin:0; padding-right:18px; color:#5D4037; line-height:1.7; font-size:12px;">
+            <li>عند إدخال IP للجهاز الرئيسي، سيصبح هذا الجهاز <strong>فرعياً</strong> تلقائياً</li>
+            <li>الجهاز الفرعي <strong>لا يحتاج</strong> إلى كود تفعيل</li>
+            <li>يجب <strong>إعادة تشغيل البرنامج</strong> بعد الحفظ لتفعيل التغييرات</li>
+          </ul>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button id="testIpBtn">اختبار الاتصال</button>
+          <button id="saveIpBtn">💾 حفظ الإعدادات</button>
+        </div>
+        <div id="ipMsg" class="error" style="margin-top:12px; background:none; border:none; padding:0;"></div>
       </div>
     </div>
-    <div class="bg">
-      <div class="shape pos1"></div>
-      <div class="shape pos2"></div>
+  </div>
+
+  <!-- ====== UPDATE NOTIFICATION ====== -->
+  <div id="updateNotification" class="update-notification" style="display:none;">
+    <div class="icon">🎉</div>
+    <div class="content">
+      <div class="title" id="updateTitle">يتوفر تحديث جديد!</div>
+      <div class="message" id="updateMessage">توجه إلى الإعدادات لتحديث البرنامج</div>
     </div>
+  </div>
 
-    <!-- إشعار التحديث (مخفي افتراضياً) -->
-    <div id="updateNotification" class="update-notification" style="display: none;">
-      <div class="icon">🎉</div>
-      <div class="content">
-        <div class="title" id="updateTitle">يتوفر تحديث جديد!</div>
-        <div class="message" id="updateMessage">توجه إلى الإعدادات لتحديث البرنامج</div>
-      </div>
-    </div>
+  <!-- ====== BRANCH DISPLAY ====== -->
+  <div id="branchDisplay" class="branch-display"></div>
 
-    <!-- عرض اسم الفرع (مخفي افتراضياً) -->
-    <div id="branchDisplay" class="branch-display"></div>
+  <!-- ====== MAIN SPLIT LAYOUT ====== -->
+  <div class="login-wrapper">
 
-    <div class="container">
-      <div class="card">
-        <div class="brand">
-          <h1>نظام الرابط</h1>
-          <div class="logo">PLUS</div>
-        </div>
-        <div class="subtitle"></div>
-        
-        <!-- نص النسخة التجريبية -->
-        <div id="trialNotice" class="trial-notice">هذه النسخة تجريبية</div>
+    <!-- LEFT: LOGIN FORM -->
+    <div class="left-panel" dir="rtl">
+      <div class="form-container">
 
-        <div id="supportInfo" class="support-info" style="display:none">
-          <div class="group">
-            <div class="label">تاريخ انتهاء الدعم الفني:</div>
-            <div class="date" id="supportEndDate">—</div>
-          </div>
-          <div class="group">
+        <!-- Trial Notice -->
+        <div id="trialNotice" class="trial-notice">⚠️ هذه النسخة تجريبية</div>
+
+        <!-- Support Info -->
+        <div id="supportInfo" class="support-info" style="display:none;">
+          <div class="si-inner">
+            <div class="si-left">
+              <div class="label">تاريخ انتهاء الدعم الفني</div>
+              <div class="sep">•</div>
+              <div class="date" id="supportEndDate">—</div>
+            </div>
             <div class="badge" id="supportDaysLeft">—</div>
           </div>
         </div>
 
-        <div class="input">
-          <label for="username">اسم المستخدم</label>
-          <div style="position:relative; display:flex; gap:8px; align-items:center;">
-            <input id="username" list="savedUsersList" autocomplete="username" placeholder="مثال: admin" style="flex:1" />
-            <button id="deleteSavedBtn" title="حذف هذا الحساب المحفوظ" style="display:none; width:auto; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; color:#b91c1c; font-weight:700;">حذف</button>
+        <!-- Title -->
+        <h1 class="form-title">تسجيل الدخول</h1>
+
+        <!-- Username -->
+        <div style="margin-bottom:22px;">
+          <label class="field-label" for="username">اسم المستخدم</label>
+          <div class="username-row">
+            <div class="input-wrap">
+              <span class="field-icon">👤</span>
+              <input id="username" list="savedUsersList" autocomplete="username" placeholder="مثال: admin" />
+              <datalist id="savedUsersList"></datalist>
+            </div>
+            <button id="deleteSavedBtn" title="حذف هذا الحساب المحفوظ">حذف</button>
           </div>
-          <datalist id="savedUsersList"></datalist>
         </div>
 
-        <div class="input" style="margin-top:8px;">
-          <label for="password">كلمة المرور</label>
+        <!-- Password -->
+        <div class="input-wrap">
+          <label class="field-label" for="password">كلمة المرور</label>
+          <span class="field-icon">🔒</span>
           <input id="password" type="password" autocomplete="current-password" placeholder="••••••" />
-          <span id="toggleEye" class="eye">👁️</span>
+          <span id="toggleEye" title="إظهار/إخفاء كلمة المرور">👁</span>
         </div>
 
-        <div class="options">
-          <label class="remember"><input type="checkbox" id="rememberCheck" /> تذكرني</label>
-          <div style="font-size:12px; color:#3b82f6"></div>
-        </div>
+        <!-- Remember Me -->
+        <label class="remember-row">
+          <input type="checkbox" id="rememberCheck" />
+          <span>تذكرني</span>
+        </label>
 
-        <div class="actions"><button id="loginBtn">دخول</button></div>
+        <!-- Login Button -->
+        <button id="loginBtn">دخول</button>
+
+        <!-- Error -->
         <div class="error" id="error"></div>
 
-        <div id="savedWrap" style="margin-top:12px; display:none;">
-          <div style="font-weight:700; font-size:13px; color:#334155; margin:4px 2px;">حسابات محفوظة</div>
+        <!-- Saved Accounts -->
+        <div id="savedWrap">
+          <div style="font-size:12px; color:rgba(0,0,0,0.4); font-weight:600; margin-top:4px;">حسابات محفوظة</div>
           <div id="savedUsers" class="saved-users"></div>
         </div>
+
       </div>
     </div>
-    <script src="../appointment-notifications.js"></script>
 
-    <script src="../theme.js"></script>
-    <script src="./renderer.js"></script>
-  </body>
+    <!-- RIGHT: WELCOME PANEL -->
+    <div class="right-panel">
+      <img src="../../../assets/icon/Gemini_Generated_Image_wh6zddwh6zddwh6z.png" alt="الرابط بلس"
+        class="right-panel-logo" />
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById('connClose').addEventListener('click', function () {
+      document.getElementById('connModal').style.display = 'none';
+    });
+    document.getElementById('connModal').addEventListener('click', function (e) {
+      if (e.target === this) this.style.display = 'none';
+    });
+  </script>
+
+  <script src="../appointment-notifications.js"></script>
+  <script src="../theme.js"></script>
+  <script src="./renderer.js"></script>
+</body>
+
 </html>
