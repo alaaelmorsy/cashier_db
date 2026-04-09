@@ -325,12 +325,56 @@ async function exportZatcaPDF() {
   const toStr2 = fromInputToStr(toAtEl);
   if (!fromStr || !toStr2) { alert('يرجى تحديد الفترة كاملة'); return; }
 
-  const [resInv, resCN, resSimplePur, resInvPur] = await Promise.all([
+  const [resInv, resCN, resSimplePur, resInvPur, resSt, resLg] = await Promise.all([
     window.api.sales_list({ date_from: fromStr, date_to: toStr2, pageSize: 999999, page: 1 }),
     window.api.sales_list_credit_notes({ date_from: fromStr, date_to: toStr2, pageSize: 999999 }),
     window.api.purchases_list({ from_at: fromStr, to_at: toStr2 }),
-    window.api.purchase_invoices_list({ from: fromStr, to: toStr2 })
+    window.api.purchase_invoices_list({ from: fromStr, to: toStr2 }),
+    window.api.settings_get(),
+    window.api.settings_image_get()
   ]);
+
+  const settings = (resSt && resSt.ok) ? resSt.item : {};
+  const lg = resLg;
+
+  let logoHtml = '';
+  if (lg && lg.ok && lg.base64) {
+    logoHtml = `<img src="data:${lg.mime || 'image/png'};base64,${lg.base64}" alt="" style="width:70px;height:70px;border-radius:8px;object-fit:contain;border:1px solid #cbd5e1;background:#fff;" />`;
+  } else if (settings.logo_path) {
+    const lp = settings.logo_path.startsWith('assets/') ? '../../../' + settings.logo_path : settings.logo_path;
+    logoHtml = `<img src="${lp}" alt="" style="width:70px;height:70px;border-radius:8px;object-fit:contain;border:1px solid #cbd5e1;background:#fff;" />`;
+  }
+
+  const arName = settings.seller_legal_name || '';
+  const enName = settings.seller_legal_name_en || arName;
+  const arInfo = [];
+  const enInfo = [];
+  if (settings.company_location) { arInfo.push(settings.company_location); }
+  if (settings.company_location_en || settings.company_location) { enInfo.push(settings.company_location_en || settings.company_location); }
+  if (settings.company_site) { arInfo.push(settings.company_site); enInfo.push(settings.company_site); }
+  if (settings.mobile) { arInfo.push('جوال: ' + settings.mobile); enInfo.push('Mobile: ' + settings.mobile); }
+  if (settings.email && (typeof settings.show_email_in_invoice === 'undefined' || settings.show_email_in_invoice)) { arInfo.push('إيميل: ' + settings.email); enInfo.push('Email: ' + settings.email); }
+  if (settings.seller_vat_number) { arInfo.push('الرقم الضريبي: ' + settings.seller_vat_number); enInfo.push('VAT No: ' + settings.seller_vat_number); }
+  if (settings.commercial_register) { arInfo.push('السجل التجاري: ' + settings.commercial_register); enInfo.push('CR No: ' + settings.commercial_register); }
+
+  const companyHeaderHtml = `
+    <div style="border-bottom:3px solid #0b3daa;padding-bottom:14px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="text-align:right;direction:rtl;">
+          <div style="font-size:18px;font-weight:800;margin:0 0 4px 0;">${arName}</div>
+          <div style="white-space:pre-wrap;font-size:12px;line-height:1.6;">${arInfo.join('\n')}</div>
+        </div>
+        <div style="text-align:center;">${logoHtml}</div>
+        <div style="text-align:left;direction:ltr;">
+          <div style="font-size:18px;font-weight:800;margin:0 0 4px 0;">${enName}</div>
+          <div style="white-space:pre-wrap;font-size:12px;line-height:1.6;">${enInfo.join('\n')}</div>
+        </div>
+      </div>
+      <div style="text-align:center;border-top:1px solid #e6eaf0;padding-top:10px;">
+        <div style="font-size:20px;font-weight:700;color:#0b3daa;margin:0 0 4px 0;">تقرير هيئة الزكاة والضريبة والجمارك</div>
+        <div style="font-size:13px;color:#64748b;">${periodText}</div>
+      </div>
+    </div>`;
 
   const allInvoices = (resInv && resInv.ok) ? (resInv.items || []) : [];
   const salesInvoices = allInvoices.filter(s =>
@@ -428,9 +472,6 @@ async function exportZatcaPDF() {
     @font-face{font-family:'Cairo';src:url('../../../assets/fonts/Cairo-Bold.ttf') format('truetype');font-weight:700;}
     *{font-family:'Cairo',Arial,sans-serif;font-weight:700;box-sizing:border-box;}
     body{background:#fff;margin:0;padding:15px 20px;color:#0f172a;}
-    .pdf-header{text-align:center;border-bottom:3px solid #3b82f6;padding-bottom:12px;margin-bottom:16px;}
-    .pdf-title{font-size:24px;font-weight:700;color:#0f172a;margin:0 0 6px 0;}
-    .pdf-period{font-size:13px;color:#64748b;}
     .section{border:1px solid #e6eaf0;border-radius:8px;padding:12px;margin:12px 0;page-break-inside:avoid;}
     h3{font-size:14px;margin:0 0 8px 0;color:#0f172a;}
     table{width:100%;border-collapse:collapse;margin:6px 0;}
@@ -442,10 +483,7 @@ async function exportZatcaPDF() {
     .total-val{font-size:16px;font-weight:700;margin-bottom:3px;}
     .total-lbl{font-size:11px;color:#64748b;}
   </style></head><body>
-  <div class="pdf-header">
-    <div class="pdf-title">تقرير هيئة الزكاة والضريبة والجمارك</div>
-    <div class="pdf-period">${periodText}</div>
-  </div>
+  ${companyHeaderHtml}
 
   <div class="section">
     <h3>الفواتير (مدفوعة وغير مدفوعة) ضمن الفترة — العدد: ${salesInvoices.length}</h3>
@@ -569,6 +607,18 @@ async function exportZatcaPDF() {
 async function exportZatcaExcel() {
   const lines = [];
   const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+
+  try {
+    const resSt = await window.api.settings_get();
+    const settings = (resSt && resSt.ok) ? resSt.item : {};
+    if (settings.seller_legal_name) { lines.push(esc(settings.seller_legal_name)); }
+    if (settings.company_location) { lines.push([esc('العنوان'), esc(settings.company_location)].join(',')); }
+    if (settings.mobile) { lines.push([esc('الجوال'), esc(settings.mobile)].join(',')); }
+    if (settings.email) { lines.push([esc('الإيميل'), esc(settings.email)].join(',')); }
+    if (settings.seller_vat_number) { lines.push([esc('الرقم الضريبي'), esc(settings.seller_vat_number)].join(',')); }
+    if (settings.commercial_register) { lines.push([esc('السجل التجاري'), esc(settings.commercial_register)].join(',')); }
+    lines.push('');
+  } catch (_) {}
 
   if (rangeEl && rangeEl.textContent) {
     lines.push(esc('الفترة'), esc(rangeEl.textContent.trim()));
