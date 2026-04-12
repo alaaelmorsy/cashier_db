@@ -2990,7 +2990,7 @@ async function renderNameSuggestions(prefetched){
     let list;
     if(prefetched){ list = prefetched; }
     else {
-      const r = await window.api.products_list({ q, active:'1', limit: 30, offset: 0, starts_with: 1 });
+      const r = await window.api.products_list({ q, active:'1', limit: 30, offset: 0 });
       list = (r && r.ok) ? (r.items||[]) : [];
       // لا نقيّد الاقتراحات بتبويب محدد عند البحث بالاسم
     }
