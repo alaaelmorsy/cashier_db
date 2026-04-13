@@ -4271,6 +4271,7 @@ btnPay.addEventListener('click', async () => {
     if(cashierName) q.cashier = cashierName;
     return q;
   };
+  const copies = Math.max(0, Number(settings.print_copies != null ? settings.print_copies : (settings.print_two_copies ? 2 : 1)));
   window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(1), silentMode: !!settings.silent_print }).catch(()=>{});
 
   // تحضير kitchen payload بعد فتح النافذة
@@ -4292,7 +4293,6 @@ btnPay.addEventListener('click', async () => {
       __kitchenPayload = { items: itemsToSend, room_name: (roomMeta?roomMeta.name:null), sale_id: r.sale_id, waiter_name: waiterName, copies_per_section: 1, order_no: r.order_no };
     }
   }catch(_){ }
-  const copies = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
   if(copies > 1){
     setTimeout(()=>{
       for(let i=2;i<=copies;i++){
@@ -4304,9 +4304,8 @@ btnPay.addEventListener('click', async () => {
   if(settings.silent_print){
     (async()=>{
       try{
-        const copiesSilent = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
         const ps = [];
-        for(let i=1;i<=copiesSilent;i++){
+        for(let i=1;i<=copies;i++){
           let cashier = '';
           try{ const u = JSON.parse(localStorage.getItem('pos_user')||'null'); if(u && (u.full_name || u.username)){ cashier = u.full_name || u.username; } }catch(_){ }
           ps.push(window.api.print_invoice_silent({ id: r.sale_id, pay: paymentMethod.value, cash: String(cash), room: (__currentRoomId||''), format: fmt, cashier, copyNumber: i }));
@@ -4673,6 +4672,7 @@ async function processPrint(){
     if(cashierName) q.cashier = cashierName;
     return q;
   };
+  const copies = Math.max(0, Number(settings.print_copies != null ? settings.print_copies : (settings.print_two_copies ? 2 : 1)));
   window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: __buildPreviewQuery(1), silentMode: !!settings.silent_print }).catch(()=>{});
 
   // تحضير kitchen payload بعد فتح النافذة
@@ -4694,7 +4694,6 @@ async function processPrint(){
       __kitchenPayload = { items: itemsToSend, room_name: (roomMeta?roomMeta.name:null), sale_id: r.sale_id, waiter_name: waiterName, copies_per_section: 1, order_no: r.order_no };
     }
   }catch(_){ }
-  const copies = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
   if(copies > 1){
     setTimeout(()=>{
       for(let i=2;i<=copies;i++){
@@ -4706,9 +4705,8 @@ async function processPrint(){
   if(settings.silent_print){
     (async()=>{
       try{
-        const copiesSilent = Math.max(1, Number(settings.print_copies || (settings.print_two_copies ? 2 : 1)));
         const ps = [];
-        for(let i=1;i<=copiesSilent;i++){
+        for(let i=1;i<=copies;i++){
           let cashier = '';
           try{ const u = JSON.parse(localStorage.getItem('pos_user')||'null'); if(u && (u.full_name || u.username)){ cashier = u.full_name || u.username; } }catch(_){ }
           ps.push(window.api.print_invoice_silent({ id: r.sale_id, pay: paymentMethod.value, cash: String(cash), room: (__currentRoomId||''), format: fmt, cashier, copyNumber: i }));

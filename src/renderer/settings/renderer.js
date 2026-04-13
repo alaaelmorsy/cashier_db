@@ -552,7 +552,7 @@ async function loadSettings(){
   fCurrencySymbol.value = s.currency_symbol || '﷼';
   fCurrencyPos.value = s.currency_symbol_position || 'after';
   if(fPrintFormat) fPrintFormat.value = (s.default_print_format === 'a4' ? 'a4' : 'thermal');
-  fPrintCopies.value = String(Number(s.print_copies || (s.print_two_copies ? 2 : 1)));
+  fPrintCopies.value = String(s.print_copies != null ? Number(s.print_copies) : (s.print_two_copies ? 2 : 1));
   fShowChange.checked = s.print_show_change !== 0;
   if(fShowBarcodeA4) fShowBarcodeA4.checked = (typeof s.show_barcode_in_a4 === 'undefined') ? false : !!s.show_barcode_in_a4;
   if(fUnitPriceLabel) fUnitPriceLabel.value = s.unit_price_label || 'سعر القطعة';
@@ -991,7 +991,7 @@ saveBtn.addEventListener('click', async () => {
     currency_symbol: (fCurrencySymbol.value||'﷼').trim() || '﷼',
     currency_symbol_position: (fCurrencyPos.value === 'before' ? 'before' : 'after'),
     default_print_format: (fPrintFormat?.value === 'a4' ? 'a4' : 'thermal'),
-    print_copies: Math.max(1, Number(fPrintCopies.value || 1)),
+    print_copies: Math.max(0, Number(fPrintCopies.value)),
     silent_print: !!fSilentPrint.checked,
     print_show_change: !!fShowChange.checked ? 1 : 0,
     show_barcode_in_a4: !!(fShowBarcodeA4?.checked),

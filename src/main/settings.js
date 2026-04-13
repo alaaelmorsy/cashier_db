@@ -570,7 +570,7 @@ function registerSettingsIPC(){
         item.silent_print = item.silent_print ? 1 : 0;
         item.cart_separate_duplicate_lines = item.cart_separate_duplicate_lines ? 1 : 0;
         // Default copies: if print_copies missing/null, derive from legacy flag
-        item.print_copies = Number(item.print_copies || (item.print_two_copies ? 2 : 1));
+        item.print_copies = item.print_copies != null ? Number(item.print_copies) : (item.print_two_copies ? 2 : 1);
         // Ensure logo size numbers
         item.logo_width_px = Number(item.logo_width_px || 120);
         item.logo_height_px = Number(item.logo_height_px || 120);
@@ -813,7 +813,7 @@ function registerSettingsIPC(){
           (p.currency_symbol_position === 'before' ? 'before' : 'after'),
           (p.app_locale === 'en' ? 'en' : 'ar'),
           (p.default_print_format === 'a4' ? 'a4' : 'thermal'),
-          Math.max(1, Number(p.print_copies || 1)),
+          Math.max(0, Number(p.print_copies ?? 1)),
           (p.silent_print ? 1 : 0),
           (p.print_show_change === 0 ? 0 : 1),
           (p.show_barcode_in_a4 ? 1 : 0),
