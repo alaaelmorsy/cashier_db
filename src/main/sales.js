@@ -814,6 +814,9 @@ function registerSalesIPC(){
         if (_q.q) apiParams.search = _q.q;
         if (_q.customer_q) apiParams.customer_q = _q.customer_q;
         if (_q.payment_status) apiParams.payment_status = _q.payment_status;
+        if (_q.date_from) apiParams.date_from = _q.date_from;
+        if (_q.date_to) apiParams.date_to = _q.date_to;
+        if (_q.user_id) apiParams.user_id = _q.user_id;
         // Pass before_id for keyset pagination (avoids OFFSET scan on millions of rows)
         if (_q.before_id) {
           apiParams.before_id = _q.before_id;

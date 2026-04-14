@@ -76,7 +76,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/invoices', async (req, res) => {
     let conn;
     try {
-      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status } = req.query;
+      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status, date_from, date_to, user_id } = req.query;
       conn = await dbAdapter.getConnection();
       const SELECT_COLS = `id, invoice_no, order_no, doc_type, created_at,
         customer_id, customer_name, customer_phone, customer_vat,
@@ -89,7 +89,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
 
       const whereClauses = ["(doc_type IS NULL OR doc_type='invoice')"];
       const params = [];
-      const hasFilters = !!(search || customer_q || payment_status);
+      const hasFilters = !!(search || customer_q || payment_status || date_from || date_to || user_id);
 
       if (search) {
         whereClauses.push('(invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR customer_vat LIKE ?)');
@@ -105,9 +105,21 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         whereClauses.push('payment_status = ?');
         params.push(payment_status);
       }
+      if (date_from) {
+        whereClauses.push('created_at >= ?');
+        params.push(date_from);
+      }
+      if (date_to) {
+        whereClauses.push('created_at <= ?');
+        params.push(date_to);
+      }
+      if (user_id) {
+        whereClauses.push('created_by_user_id = ?');
+        params.push(Number(user_id));
+      }
 
       const where = 'WHERE ' + whereClauses.join(' AND ');
-      const lim = Math.min(parseInt(limit) || 20, 500);
+      const lim = Math.min(parseInt(limit) || 20, 999999);
 
       // Fast COUNT: use index stats for unfiltered, exact COUNT only when filters applied
       let total = 0;

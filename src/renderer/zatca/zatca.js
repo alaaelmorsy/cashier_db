@@ -81,15 +81,52 @@ async function handleSettingsSubmit(ev){
   finally{ showLoading(false); }
 }
 
-// عرض رسائل التنبيه
+// عرض رسائل التنبيه في منتصف الشاشة
 function showAlert(message, type='info'){
-  const existing = document.querySelector('.alert');
+  const existing = document.getElementById('zatca-toast');
   if(existing) existing.remove();
-  const div = document.createElement('div');
-  div.className = `alert alert-${type}`;
-  div.textContent = message;
-  const container = document.getElementById('settings-content');
-  if(container){ container.insertBefore(div, container.firstChild); setTimeout(()=>{ if(div.parentNode) div.remove(); }, 5000); }
+
+  const colors = {
+    success: { bg: '#22c55e', icon: '✅' },
+    error:   { bg: '#ef4444', icon: '❌' },
+    info:    { bg: '#3b82f6', icon: 'ℹ️' },
+  };
+  const c = colors[type] || colors.info;
+
+  const toast = document.createElement('div');
+  toast.id = 'zatca-toast';
+  toast.style.cssText = [
+    'position:fixed',
+    'top:50%',
+    'left:50%',
+    'transform:translate(-50%,-50%) scale(0.85)',
+    'background:' + c.bg,
+    'color:#fff',
+    'padding:28px 48px',
+    'border-radius:16px',
+    'font-size:22px',
+    'font-weight:700',
+    'text-align:center',
+    'z-index:99999',
+    'box-shadow:0 8px 40px rgba(0,0,0,0.35)',
+    'opacity:0',
+    'transition:opacity 0.25s ease, transform 0.25s ease',
+    'pointer-events:none',
+    'min-width:260px',
+  ].join(';');
+  toast.innerHTML = `<div style="font-size:40px;margin-bottom:10px">${c.icon}</div>${message}`;
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translate(-50%,-50%) scale(1)';
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%,-50%) scale(0.85)';
+    setTimeout(() => { if(toast.parentNode) toast.remove(); }, 280);
+  }, 3000);
 }
 
 // شاشة تحميل بسيطة
