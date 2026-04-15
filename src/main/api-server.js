@@ -76,7 +76,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/invoices', async (req, res) => {
     let conn;
     try {
-      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status, date_from, date_to, user_id } = req.query;
+      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status, date_from, date_to, user_id, type } = req.query;
       conn = await dbAdapter.getConnection();
       const SELECT_COLS = `id, invoice_no, order_no, doc_type, created_at,
         customer_id, customer_name, customer_phone, customer_vat,
@@ -87,9 +87,14 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         zatca_uuid, zatca_submitted, zatca_status, zatca_rejection_reason, zatca_response,
         created_by_user_id, created_by_username`;
 
-      const whereClauses = ["(doc_type IS NULL OR doc_type='invoice')"];
+      const whereClauses = [];
+      if (type === 'invoice') {
+        whereClauses.push("(doc_type IS NULL OR doc_type='invoice')");
+      } else if (type === 'credit_note') {
+        whereClauses.push("doc_type='credit_note'");
+      }
       const params = [];
-      const hasFilters = !!(search || customer_q || payment_status || date_from || date_to || user_id);
+      const hasFilters = !!(search || customer_q || payment_status || date_from || date_to || user_id || type);
 
       if (search) {
         whereClauses.push('(invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR customer_vat LIKE ?)');
@@ -118,15 +123,13 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         params.push(Number(user_id));
       }
 
-      const where = 'WHERE ' + whereClauses.join(' AND ');
+      const where = whereClauses.length ? ('WHERE ' + whereClauses.join(' AND ')) : '';
       const lim = Math.min(parseInt(limit) || 20, 999999);
 
       // Fast COUNT: use index stats for unfiltered, exact COUNT only when filters applied
       let total = 0;
       if (!hasFilters) {
-        const [cntRows] = await conn.query(
-          `SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`
-        );
+        const [cntRows] = await conn.query(`SELECT COUNT(*) AS total FROM sales`);
         total = Number(cntRows[0]?.total || 0);
       } else {
         const [[countRow]] = await conn.query(`SELECT COUNT(*) AS total FROM sales ${where}`, params);
@@ -1254,8 +1257,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       const { limit = 50, offset = 0, from, to } = req.query;
       conn = await dbAdapter.getConnection();
       const terms = []; const params = [];
-      if (from) { terms.push('purchase_date >= ?'); params.push(from); }
-      if (to) { terms.push('purchase_date <= ?'); params.push(to); }
+      if (from) { terms.push('COALESCE(purchase_at, created_at) >= ?'); params.push(from); }
+      if (to) { terms.push('COALESCE(purchase_at, created_at) <= ?'); params.push(to); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM purchases ${where}`, params);
       const lim = Math.min(parseInt(limit) || 50, 500);

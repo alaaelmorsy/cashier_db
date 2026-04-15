@@ -246,6 +246,28 @@
           const result = await window.api.branches_get();
           if (result && result.ok) {
             branches = result.branches || [];
+
+            let savedApiHost = null;
+            let savedApiPort = null;
+            try {
+              const modeRes = await window.api.device_get_mode();
+              if (modeRes && modeRes.ok && modeRes.config && modeRes.config.mode === 'secondary') {
+                savedApiHost = modeRes.config.api_host;
+                savedApiPort = Number(modeRes.config.api_port);
+              }
+            } catch (_) {}
+
+            if (savedApiHost) {
+              const match = branches.find(b =>
+                String(b.host) === String(savedApiHost) &&
+                Number(b.api_port) === savedApiPort
+              );
+              if (match) {
+                selectedBranchId = match.id;
+                selectBtn.disabled = false;
+              }
+            }
+
             renderBranches();
           } else {
             showToast('فشل في تحميل الفروع', 'error');
