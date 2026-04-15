@@ -253,6 +253,44 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // Sales Items Summary Endpoint
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/sales-items-summary', async (req, res) => {
+    let conn;
+    try {
+      const { date_from, date_to, from_at, to_at } = req.query;
+      const from = date_from || from_at || null;
+      const to = date_to || to_at || null;
+      
+      conn = await dbAdapter.getConnection();
+      const terms = [];
+      const params = [];
+      if (from) { terms.push('s.created_at >= ?'); params.push(from); }
+      if (to) { terms.push('s.created_at <= ?'); params.push(to); }
+      terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      
+      const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
+                          COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
+                          COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
+                   FROM sales_items si 
+                   INNER JOIN sales s ON s.id = si.sale_id
+                   LEFT JOIN products p ON p.id = si.product_id
+                   ${where}
+                   GROUP BY si.product_id, si.name, p.cost, p.price, p.stock, p.is_vat_exempt
+                   ORDER BY SUM(si.qty) DESC`;
+      
+      const [rows] = await conn.query(sql, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      console.error('sales-items-summary error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   // Products Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/products', async (req, res) => {

@@ -1239,10 +1239,11 @@ async function loadRange(startStr, endStr){
       (soldItems||[]).forEach(it => {
         const pid = Number(it.product_id||0);
         const qty = Number(it.qty_total||0);
-        const product = __prodById.get(pid);
-        const cost = Number(product?.cost || 0);
-        const price = Number(product?.price || 0);
-        const itemVatPct = (Number(product?.is_vat_exempt || 0) === 1) ? 0 : vatPct;
+        // Use historical prices from sales_items_summary (si.price) with fallback to current product catalog
+        const cost = Number(it.cost_price || 0);
+        const price = Number(it.sale_price || 0);
+        const isVatExempt = Number(it.is_vat_exempt ?? 0) === 1;
+        const itemVatPct = isVatExempt ? 0 : vatPct;
         
         // حساب التكلفة شاملة/غير شاملة الضريبة حسب الإعدادات
         let costWithVat, costExVat;

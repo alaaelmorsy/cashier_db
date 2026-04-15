@@ -1531,6 +1531,25 @@ function registerSalesIPC(){
 
   // Summarize sold items (qty and amount) within a period
   ipcMain.handle('sales:items_summary', async (_e, query) => {
+    // If Secondary device, fetch from API
+    if (isSecondaryDevice()) {
+      try {
+        const q = query || {};
+        const apiParams = {};
+        if (q.date_from) apiParams.date_from = q.date_from;
+        if (q.date_to) apiParams.date_to = q.date_to;
+        if (q.from_at) apiParams.from_at = q.from_at;
+        if (q.to_at) apiParams.to_at = q.to_at;
+        const result = await fetchFromAPI('/sales-items-summary', apiParams);
+        if (result && result.ok) {
+          return { ok: true, items: result.items || [] };
+        }
+        return { ok: false, error: result && result.error ? result.error : 'Failed to connect to primary device' };
+      } catch (err) {
+        return { ok: false, error: err.message || 'Failed to connect to primary device' };
+      }
+    }
+
     const q = query || {};
     // Accept either date_from/date_to or from_at/to_at
     const from = q.date_from || q.from_at || null;
@@ -1547,12 +1566,12 @@ function registerSalesIPC(){
       try{
         await ensureTables(conn);
         const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
-                            COALESCE(p.cost, 0) AS cost_price, COALESCE(p.price, 0) AS sale_price,
-                            COALESCE(p.stock, 0) AS stock_qty
+                            COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
+                            COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
                      FROM sales_items si INNER JOIN sales s ON s.id = si.sale_id
                      LEFT JOIN products p ON p.id = si.product_id
                      ${where}
-                     GROUP BY si.product_id, si.name, p.cost, p.price, p.stock
+                     GROUP BY si.product_id, si.name, p.cost, p.price, p.stock, p.is_vat_exempt
                      ORDER BY SUM(si.qty) DESC`;
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows };
