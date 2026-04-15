@@ -445,7 +445,7 @@ function registerProductsIPC(){
         }
         
         const params = [...whereParams, ...orderParams];
-        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSql} ${order}`;
+        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSql} ${order}`;
         if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; params.push(limit, Math.max(0, offset)); }
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows, total };
@@ -482,7 +482,7 @@ function registerProductsIPC(){
           
           let orderFallback = 'ORDER BY id DESC';
           if(query.sort === 'custom') orderFallback = 'ORDER BY sort_order ASC, is_active DESC, name ASC';
-          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSqlFallback} ${orderFallback}`;
+          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSqlFallback} ${orderFallback}`;
           if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; paramsFallback.push(limit, Math.max(0, offset)); }
           const [rows] = await conn.query(sql, paramsFallback);
           return { ok:true, items: rows, total };
