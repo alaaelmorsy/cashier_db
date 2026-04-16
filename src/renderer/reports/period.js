@@ -1257,19 +1257,12 @@ async function loadRange(startStr, endStr){
         costTotalWithVat += (qty * costWithVat);
         costTotalExVat += (qty * costExVat);
         
-        // حساب سعر البيع شاملة/غير شاملة الضريبة حسب الإعدادات
-        let priceWithVat, priceExVat;
-        if(pricesIncludeVat){
-          priceWithVat = price;
-          priceExVat = itemVatPct > 0 ? price / (1 + itemVatPct) : price;
-        } else {
-          priceExVat = price;
-          priceWithVat = price * (1 + itemVatPct);
-        }
-        salesTotalWithVat += (qty * priceWithVat);
-        salesTotalExVat += (qty * priceExVat);
+        // سعر البيع يُحسب من إجمالي الفواتير الصافي (يُضبط خارج الحلقة)
       });
-    }catch(_){ costTotalWithVat = 0; salesTotalWithVat = 0; costTotalExVat = 0; salesTotalExVat = 0; }
+    }catch(_){ costTotalWithVat = 0; salesTotalExVat = 0; }
+    // إجمالي إيراد البيع من الملخص التفصيلي (صافي بعد الخصم والمرتجعات) - الأكثر دقةً
+    salesTotalWithVat = salesAfterDiscNetAfter;
+    salesTotalExVat   = salesAfterDiscNetPre;
     
     const profitNetWithVat = Number(salesTotalWithVat - costTotalWithVat);
     const profitNetExVat = Number(salesTotalExVat - costTotalExVat);
@@ -1335,9 +1328,8 @@ async function loadRange(startStr, endStr){
       const rows = sortedSold.map(it => {
         const qty = Number(it.qty_total||0);
         const costPrice = Number(it.cost_price||0);
-        const salePrice = Number(it.sale_price||0);
         const totalCost = costPrice * qty;
-        const totalSale = salePrice * qty;
+        const totalSale = Number(it.amount_total||0);
         const profit = totalSale - totalCost;
         const stockQty = Number(it.stock_qty||0);
         return `<tr><td>${it.name||''}</td><td>${qty}</td><td>${fmt(totalCost)}</td><td>${fmt(totalSale)}</td><td>${fmt(profit)}</td><td>${stockQty}</td></tr>`;
