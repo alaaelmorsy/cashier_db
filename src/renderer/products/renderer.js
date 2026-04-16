@@ -101,6 +101,28 @@ function applySellingUnitsVisibility(){
 // Load on page load
 (async ()=>{ await loadSellingUnitsVisibility(); })();
 
+// VAT price display in dialog
+let __vatPercent = 0;
+async function loadVatSetting(){
+  try{
+    const r = await __prodInitPromise;
+    const s = r && r.ok ? (r.settings || {}) : {};
+    __vatPercent = Number(s.vat_percent || 0);
+  }catch(_){ __vatPercent = 0; }
+  const wrap = document.getElementById('vatPriceWrap');
+  const label = document.getElementById('vatPercentLabel');
+  if(label) label.textContent = __vatPercent;
+  if(wrap) wrap.classList.toggle('hidden', __vatPercent <= 0);
+}
+function updateVatPriceDisplay(){
+  if(__vatPercent <= 0) return;
+  const price = Number(document.getElementById('f_price')?.value || 0);
+  const withVat = price * (1 + __vatPercent / 100);
+  const el = document.getElementById('f_price_with_vat');
+  if(el) el.textContent = withVat.toFixed(2);
+}
+(async ()=>{ await loadVatSetting(); })();
+
 // Performance optimization: Advanced debounce & throttle
 let searchTimeout;
 function debounceSearch(fn, delay = 100) {
@@ -223,6 +245,8 @@ const f_category = document.getElementById('f_category');
 const f_is_tobacco = document.getElementById('f_is_tobacco');
 const f_is_vat_exempt = document.getElementById('f_is_vat_exempt');
 const f_hide_from_sales = document.getElementById('f_hide_from_sales');
+
+if(f_price) f_price.addEventListener('input', updateVatPriceDisplay);
 
 // Toggle barcode field visibility (hide in Add, show in Edit)
 const barcodeWrap = f_barcode ? f_barcode.closest('div') : null;
@@ -405,6 +429,7 @@ async function openEditDialog(item){
   window.__removeImage = false;
   f_name.value=item.name||''; f_name_en.value=item.name_en||''; if(f_barcode) f_barcode.value=item.barcode||''; f_price.value=item.price; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el){ if(item.min_price!=null && item.min_price!==''){ const mp=Number(item.min_price); f_min_price_el.value = isNaN(mp) ? '' : String(mp.toFixed(2)); } else { f_min_price_el.value=''; } } f_cost.value=item.cost; f_stock.value=item.stock; f_description.value=item.description||''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el){ if(item.expiry_date){ const dt=new Date(item.expiry_date); if(!isNaN(dt.getTime())){ const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); f_expiry_date_el.value=`${y}-${m}-${d}`; } else { f_expiry_date_el.value=''; } } else { f_expiry_date_el.value=''; } } if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value = (item.is_tobacco ? '1' : '0'); if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked = !!item.is_vat_exempt; if(f_hide_from_sales) f_hide_from_sales.checked = (item.hide_from_sales === 1);
   
+  updateVatPriceDisplay();
   // Open dialog immediately for faster perceived response
   applySellingUnitsVisibility();
   safeShowModal(dlg);
@@ -624,6 +649,16 @@ function renderRows(list){
   
   initLazyLoadObserver();
   
+  let _sumBuy = 0, _sumSell = 0;
+  list.forEach((p, idx) => {
+    _sumBuy += Number(p.cost||0) * Number(p.stock||0);
+    _sumSell += Number(p.price||0) * Number(p.stock||0);
+  });
+  const _elBuy = document.getElementById('summaryTotalBuy');
+  const _elSell = document.getElementById('summaryTotalSell');
+  if(_elBuy) _elBuy.textContent = _sumBuy.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if(_elSell) _elSell.textContent = _sumSell.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
   list.forEach((p, idx) => {
     const tr = document.createElement('tr');
     tr.setAttribute('draggable', 'true');
@@ -1888,8 +1923,12 @@ function buildBarcodeLabelHtml(prod, settings){
   }
   
   const name = String(prod.name||'').trim();
-  const price = Number(prod.price||0);
   const barcode = String(prod.barcode||'').trim();
+  const vatPct = Number(s.vat_percent || 0);
+  const pricesIncludeVat = s.prices_include_vat === 1 || s.prices_include_vat === true || s.prices_include_vat === '1';
+  const price = (vatPct > 0 && !pricesIncludeVat && prod.price_with_vat != null)
+    ? Number(prod.price_with_vat)
+    : Number(prod.price||0);
   // Get shop name from settings
   const shopName = s.seller_legal_name || sellerName || '';
 
