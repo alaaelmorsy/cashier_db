@@ -1757,9 +1757,14 @@ function computeTotals(){
     const qty = Number(item.qty || 1);
     let itemBase = 0;
     if(settings.prices_include_vat){
+      // Use __amount (user-entered inclusive total in weight mode) when available
+      // to avoid floating-point drift from qty rounding (e.g. 200/55 = 3.636 → 55*3.636 = 199.98)
+      const inclusiveItemTotal = (item.__amount != null && isFinite(Number(item.__amount)))
+        ? Number(item.__amount)
+        : (price * qty);
       // If item is VAT-exempt, its price does not include VAT; don't strip VAT from it.
-      const base = __isVatExempt(item.is_vat_exempt) ? price : (price / (1 + vatPct));
-      itemBase = base * qty;
+      const base = __isVatExempt(item.is_vat_exempt) ? inclusiveItemTotal : (inclusiveItemTotal / (1 + vatPct));
+      itemBase = base;
       sub += itemBase;
     } else {
       itemBase = price * qty;
@@ -1928,8 +1933,10 @@ function computeTotals(){
         const price = Number(item.price||0);
         const qty = Number(item.qty||1);
         if(settings.prices_include_vat){
-          const base = price / (1 + vatPct);
-          tobaccoSub += base * qty;
+          const inclusiveItemTotal = (item.__amount != null && isFinite(Number(item.__amount)))
+            ? Number(item.__amount)
+            : (price * qty);
+          tobaccoSub += inclusiveItemTotal / (1 + vatPct);
         } else {
           tobaccoSub += price * qty;
         }
