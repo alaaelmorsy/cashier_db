@@ -162,7 +162,62 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
         'المستخدمون - POS SA': 'Users - POS SA', '👥 إدارة المستخدمين': '👥 Manage users', 'إدارة المستخدمين': 'Manage users', 'العودة': 'Back', 'إضافة مستخدم': 'Add user', '➕ إضافة مستخدم': '➕ Add user', 'تحديث': 'Refresh', '🔄 تحديث': '🔄 Refresh', 'اسم المستخدم': 'Username', 'الاسم الكامل': 'Full name', 'الدور': 'Role', 'عمليات': 'Actions', 'تعديل مستخدم': 'Edit user', 'اتركها فارغة لعدم التغيير': 'Leave empty to keep unchanged', 'حفظ': 'Save', 'إلغاء': 'Cancel', 'تعذر تحميل المستخدمين': 'Failed to load users', 'تعذر جلب المستخدم': 'Failed to fetch user', 'فشل تحديث الحالة': 'Failed to update status', 'تأكيد حذف المستخدم؟': 'Confirm user deletion?',
         // Products
         'المنتجات - POS SA': 'Products - POS SA', 'إدارة المنتجات': 'Manage products', 'تصدير PDF': 'Export PDF', 'تصدير CSV': 'Export CSV', 'كل الحالات': 'All statuses', 'الأحدث': 'Newest', 'ترتيبي المخصص': 'Custom order', 'ترتيبي': 'Custom', 'الاسم (أ-ي)': 'Name (A-Z)', 'السعر ↑': 'Price ↑', 'السعر ↓': 'Price ↓', 'المخزون ↑': 'Stock ↑', 'السعر (تصاعدي)': 'Price (Asc)', 'السعر (تنازلي)': 'Price (Desc)', 'المخزون (أعلى)': 'Stock (High)', 'عدد الصفوف في الصفحة:': 'Rows per page:', 'الكل': 'All', 'الصورة': 'Image', 'الاسم': 'Name', 'الباركود': 'Barcode', 'السعر': 'Price', 'سعر الشراء': 'Purchase price', 'سعر البيع': 'Sale price', 'العمليات وأسعارها': 'Operations & prices', 'المخزون': 'Stock', 'إجمالي الشراء': 'Total purchase', 'إجمالي البيع': 'Total sales', 'صافي الربح': 'Net profit', 'الفئة': 'Category', 'كل الفئات': 'All categories', 'تاريخ الصلاحية': 'Expiry date', 'حفظ ترتيب السطور': 'Save row order', 'اسحب الصفوف لأعلى/أسفل ثم اضغط حفظ': 'Drag rows up/down then click Save', 'إضافة منتج': 'Add product', 'تعديل منتج': 'Edit product', 'إزالة الصورة': 'Remove image', 'اختيار صورة': 'Pick image', 'صورة المنتج': 'Product image', 'الوصف': 'Description', 'اسم المنتج (عربي)': 'Product name (Arabic)', 'اسم المنتج (إنجليزي) - اختياري': 'Product name (English) - optional', 'التكلفة': 'Cost', 'الحد الأدنى لسعر البيع': 'Minimum sale price', 'عمليات المنتج وأسعارها': 'Product operations & prices', 'وحدات البيع': 'Selling units', 'الأصناف (مثال: علبة، كرتونة)': 'Variants (e.g., box, carton)', 'اسم الوحدة (مثال: كرتون)': 'Unit name (e.g., carton)', 'عدد القطع': 'Number of pieces', 'احتساب تلقائي': 'Auto calculate', 'سعر يدوي': 'Manual price', 'اسم الصنف (مثال: علبة)': 'Variant name (e.g., box)', 'التكلفة (اختياري)': 'Cost (optional)', 'خصم المخزون': 'Stock deduction', '➕ إضافة صنف': '➕ Add variant', 'تاريخ انتهاء الصلاحية (اختياري)': 'Expiry date (optional)', 'إخفاء المنتج من شاشة الفاتورة': 'Hide product from invoice screen', '✓ حفظ': '✓ Save', 'تأكيد': 'Confirm', 'موافق': 'OK', 'تطبيق رسوم التبغ؟': 'Apply tobacco fee?', 'لا': 'No', 'نعم': 'Yes',
-        // Operations
+        // Products page - missing translations
+        '🏷️ باركود': '🏷️ Barcode', 'باركود': 'Barcode',
+        '📥 استيراد من Excel': '📥 Import from Excel', 'استيراد من Excel': 'Import from Excel',
+        '📋 نموذج Excel': '📋 Excel Template', 'نموذج Excel': 'Excel Template',
+        '💾 حفظ ترتيب السطور': '💾 Save row order',
+        '💡 اسحب الصفوف لأعلى/أسفل ثم اضغط حفظ': '💡 Drag rows up/down then click Save',
+        '➕ إضافة': '➕ Add',
+        '🧾 PDF': '🧾 PDF',
+        '📄 CSV': '📄 CSV',
+        '✏️ تعديل': '✏️ Edit',
+        '❌ إيقاف': '❌ Disable',
+        '✅ تفعيل': '✅ Enable',
+        '🗑️ حذف': '🗑️ Delete',
+        'طباعة الباركود': 'Print Barcode',
+        '✕ إلغاء': '✕ Cancel',
+        '🖨️ طباعة': '🖨️ Print',
+        'جاري الطباعة...': 'Printing...',
+        'إجمالي الشراء:': 'Total purchase:',
+        'إجمالي البيع:': 'Total sales:',
+        'جاري الاستيراد...': 'Importing...',
+        'جاري قراءة الملف...': 'Reading file...',
+        'جاري التحميل...': 'Loading...',
+        'جاري الحفظ...': 'Saving...',
+        // Products page header
+        '📦 إدارة المنتجات': '📦 Manage Products',
+        // Fullscreen button (injected by preload)
+        'ملء الشاشة': 'Fullscreen',
+        // Products dialog - add/edit
+        'اختر عملية': 'Select operation',
+        'اختر النوع الرئيسي': 'Select main type',
+        'غير موجود في الأنواع': 'not found in types',
+        'تلقائي': 'Auto',
+        'يدوي': 'Manual',
+        'التسعير': 'Pricing',
+        'حفظ التعديل': 'Save edit',
+        'شامل الضريبة': 'Incl. VAT',
+        'تطبيق رسوم التبغ على هذا المنتج': 'Apply tobacco fee to this product',
+        'استثناء هذا الصنف من الضريبة (VAT)': 'Exempt this item from VAT',
+        'عدد النسخ': 'Number of copies',
+        // Variant validation errors
+        'اسم الصنف مطلوب': 'Variant name is required',
+        'الباركود مطلوب': 'Barcode is required',
+        'السعر يجب أن يكون أكبر من صفر': 'Price must be greater than zero',
+        'قيمة خصم المخزون يجب أن تكون أكبر من صفر': 'Stock deduction must be greater than zero',
+        'هذا الباركود موجود بالفعل': 'This barcode already exists',
+        // Dialog validation errors
+        'يرجى إدخال سعر صحيح': 'Please enter a valid price',
+        'يرجى إدخال تكلفة صحيحة': 'Please enter a valid cost',
+        'يرجى إدخال مخزون صحيح': 'Please enter a valid stock',
+        // Confirm/alert dialogs
+        'تنبيه': 'Notice',
+        'تأكيد حذف المنتج': 'Confirm product deletion',
+        'هل أنت متأكد من حذف هذا المنتج نهائياً؟': 'Are you sure you want to permanently delete this product?',
+        // Category/operation save buttons
+        'يرجى إدخال اسم النوع الرئيسي': 'Please enter main type name',
+        'يرجى إدخال اسم العملية': 'Please enter operation name',
         'العمليات - POS SA': 'Operations - POS SA', 'إدارة العمليات': 'Manage operations', 'إضافة عملية': 'Add operation', 'إضافة عملية جديدة': 'Add new operation', 'اسم العملية': 'Operation name', 'أدخل اسم العملية': 'Enter operation name',
         // Categories/Types
         'إضافة نوع رئيسي جديد': 'Add new main type', 'اسم النوع الرئيسي': 'Main type name', 'أدخل اسم النوع الرئيسي': 'Enter main type name',
@@ -208,10 +263,13 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
     // Pattern translations for dynamic strings (Arabic -> English)
     TR.patterns_ar_en = [
+      { re: /^صفحة\s+(\d+)\s+من\s+(\d+)\s+\((\d+)\s+منتج\)$/u, to: (_m, a, b, c) => `Page ${a} of ${b} (${c} products)` },
       { re: /^صفحة\s+(\d+)\s+من\s+(\d+)$/u, to: (_m, a, b) => `Page ${a} of ${b}` },
-      { re: /^تم اختيار:\s*(.+)$/u, to: (_m, x) => `Selected: ${x}` }
+      { re: /^تم اختيار:\s*(.+)$/u, to: (_m, x) => `Selected: ${x}` },
+      { re: /^(\d+)\s+\/\s+(\d+)\s+منتج$/u, to: (_m, a, b) => `${a} / ${b} products` }
     ];
     TR.patterns_en_ar = [
+      { re: /^Page\s+(\d+)\s+of\s+(\d+)\s+\((\d+)\s+products\)$/u, to: (_m, a, b, c) => `صفحة ${a} من ${b} (${c} منتج)` },
       { re: /^Page\s+(\d+)\s+of\s+(\d+)$/u, to: (_m, a, b) => `صفحة ${a} من ${b}` },
       { re: /^Selected:\s*(.+)$/u, to: (_m, x) => `تم اختيار: ${x}` }
     ];

@@ -258,7 +258,7 @@ async function populateCategories(){
     f_category.innerHTML = '';
     const def = document.createElement('option');
     def.value = '';
-    def.textContent = 'اختر النوع الرئيسي';
+    def.textContent = t('اختر النوع الرئيسي');
     f_category.appendChild(def);
     if(res && res.ok){
       (res.items||[]).forEach(t => {
@@ -342,7 +342,7 @@ async function loadAllOps(){
     const r = await cachedRequest('ops_list', () => window.api.ops_list(), 10000);
     allOps = r.ok ? (r.items||[]).filter(o=>o.is_active) : [];
     opSelect.innerHTML='';
-    const d = document.createElement('option'); d.value=''; d.textContent='اختر عملية'; opSelect.appendChild(d);
+    const d = document.createElement('option'); d.value=''; d.textContent=t('اختر عملية'); opSelect.appendChild(d);
     
     // Use DocumentFragment for batch DOM insertion
     const fragment = document.createDocumentFragment();
@@ -363,8 +363,8 @@ function renderProdOps(){
     row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center';
     row.innerHTML = `<div style="flex:1">${it.name}</div>
       <div style="width:150px; text-align:left">${Number(it.price).toFixed(2)}</div>
-      <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-idx="${idx}">✏️ تعديل</button>
-      <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="remove" data-idx="${idx}">🗑️ حذف</button>`;
+      <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-idx="${idx}">✏️ ${t('تعديل')}</button>
+      <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="remove" data-idx="${idx}">🗑️ ${t('حذف')}</button>`;
     opList.appendChild(row);
   });
 }
@@ -379,14 +379,14 @@ function renderProdUnits(){
     row.style.gridTemplateColumns = '2fr 1fr 1fr 1fr auto';
     row.style.gap='8px';
     row.style.alignItems='center';
-    const priceTxt = (u.price_mode==='manual' && u.price!=null) ? Number(u.price).toFixed(2) : 'تلقائي';
+    const priceTxt = (u.price_mode==='manual' && u.price!=null) ? Number(u.price).toFixed(2) : t('تلقائي');
     row.innerHTML = `<div>${u.unit_name}</div>
-      <div>عدد القطع: ${Number(u.multiplier||1)}</div>
-      <div>التسعير: ${u.price_mode==='manual'?'يدوي':'تلقائي'}</div>
-      <div>السعر: ${priceTxt}</div>
+      <div>${t('عدد القطع')}: ${Number(u.multiplier||1)}</div>
+      <div>${t('التسعير')}: ${u.price_mode==='manual'?t('يدوي'):t('تلقائي')}</div>
+      <div>${t('السعر')}: ${priceTxt}</div>
       <div style="display:flex; gap:6px; justify-content:end;">
-        <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="u_edit" data-idx="${idx}">✏️ تعديل</button>
-        <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="u_remove" data-idx="${idx}">🗑️ حذف</button>
+        <button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="u_edit" data-idx="${idx}">✏️ ${t('تعديل')}</button>
+        <button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="u_remove" data-idx="${idx}">🗑️ ${t('حذف')}</button>
       </div>`;
     unitList.appendChild(row);
   });
@@ -421,9 +421,9 @@ function renderProdVariants(){
 
 function clearDialog(){ f_name.value=''; f_name_en.value=''; if(f_barcode) f_barcode.value=''; f_price.value=''; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el) f_min_price_el.value=''; f_cost.value=''; f_stock.value=''; f_category.value=''; f_description.value=''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el) f_expiry_date_el.value=''; pickedImagePath=null; f_thumb.src=''; prodOps=[]; renderProdOps(); prodUnits=[]; renderProdUnits(); prodVariants=[]; renderProdVariants(); if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value='0'; if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked=false; if(f_hide_from_sales) f_hide_from_sales.checked=false; try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; delete window.__removeImage; }catch(_){ } }
 
-function openAddDialog(){ editId=null; dlgTitle.textContent='إضافة منتج'; clearDialog(); setBarcodeVisible(true); populateCategories(); loadAllOps(); applySellingUnitsVisibility(); safeShowModal(dlg); focusFirstField(); }
+function openAddDialog(){ editId=null; dlgTitle.textContent=t('إضافة منتج'); clearDialog(); setBarcodeVisible(true); populateCategories(); loadAllOps(); applySellingUnitsVisibility(); safeShowModal(dlg); focusFirstField(); }
 async function openEditDialog(item){
-  editId=item.id; dlgTitle.textContent='تعديل منتج';
+  editId=item.id; dlgTitle.textContent=t('تعديل منتج');
   setBarcodeVisible(true);
   try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; }catch(_){ }
   window.__removeImage = false;
@@ -452,7 +452,7 @@ async function openEditDialog(item){
       if(!exists){
         const opt = document.createElement('option');
         opt.value = currentCat;
-        opt.textContent = currentCat + ' (غير موجود في الأنواع)';
+        opt.textContent = currentCat + ` (${t('غير موجود في الأنواع')})`;
         f_category.appendChild(opt);
       }
     }
@@ -914,7 +914,7 @@ dlgSave.addEventListener('click', async () => {
   // Add loading state to button
   const originalText = dlgSave.textContent;
   dlgSave.disabled = true;
-  dlgSave.textContent = 'جاري الحفظ...';
+  dlgSave.textContent = t('جاري الحفظ...');
   
   try {
     const payload = {
@@ -933,14 +933,14 @@ dlgSave.addEventListener('click', async () => {
       hide_from_sales: (f_hide_from_sales && f_hide_from_sales.checked) ? 1 : 0,
     };
 
-    if(!payload.name){ setError('يرجى إدخال اسم المنتج'); return; }
-    if(isNaN(payload.price) || payload.price<0){ setError('يرجى إدخال سعر صحيح'); return; }
-    if(isNaN(payload.cost) || payload.cost<0){ setError('يرجى إدخال تكلفة صحيحة'); return; }
-    if(isNaN(payload.stock)){ setError('يرجى إدخال مخزون صحيح'); return; }
+    if(!payload.name){ setError(t('يرجى إدخال اسم المنتج')); return; }
+    if(isNaN(payload.price) || payload.price<0){ setError(t('يرجى إدخال سعر صحيح')); return; }
+    if(isNaN(payload.cost) || payload.cost<0){ setError(t('يرجى إدخال تكلفة صحيحة')); return; }
+    if(isNaN(payload.stock)){ setError(t('يرجى إدخال مخزون صحيح')); return; }
 
     // تحقق: لا يمكن أن تكون تكلفة الشراء أكبر من سعر البيع
     if(payload.cost > payload.price){
-      setError('لا يمكن أن يكون سعر الشراء أكبر من سعر البيع');
+      setError(t('لا يمكن أن يكون سعر الشراء أكبر من سعر البيع'));
       try{ 
         const dlgErr = document.getElementById('dlgError');
         if(dlgErr && dlg.open){ setTimeout(()=>{ if(dlg.open){ dlgErr.textContent=''; } }, 4000); }
@@ -1088,14 +1088,14 @@ removeImageBtn.addEventListener('click', () => {
     const cost = variantCostInput.value!=='' ? Number(variantCostInput.value) : null;
     const stockDeduct = variantStockDeductInput && variantStockDeductInput.value!=='' ? Number(variantStockDeductInput.value) : 1;
     
-    if(!name) { setError('اسم الصنف مطلوب'); return; }
-    if(!barcode) { setError('الباركود مطلوب'); return; }
-    if(price <= 0) { setError('السعر يجب أن يكون أكبر من صفر'); return; }
-    if(!(stockDeduct>0)) { setError('قيمة خصم المخزون يجب أن تكون أكبر من صفر'); return; }
+    if(!name) { setError(t('اسم الصنف مطلوب')); return; }
+    if(!barcode) { setError(t('الباركود مطلوب')); return; }
+    if(price <= 0) { setError(t('السعر يجب أن يكون أكبر من صفر')); return; }
+    if(!(stockDeduct>0)) { setError(t('قيمة خصم المخزون يجب أن تكون أكبر من صفر')); return; }
 
     // Check for duplicate barcode in current list (exclude current index in edit mode)
     const dup = prodVariants.some((v, i) => v.barcode === barcode && i !== variantEditIndex);
-    if(dup){ setError('هذا الباركود موجود بالفعل'); return; }
+    if(dup){ setError(t('هذا الباركود موجود بالفعل')); return; }
 
     const roundedStockDeduct = Number(Number(stockDeduct).toFixed(3));
 
@@ -1144,7 +1144,7 @@ removeImageBtn.addEventListener('click', () => {
       variantPriceInput.value = (v.price!=null ? String(v.price) : '');
       variantCostInput.value = (v.cost!=null ? String(v.cost) : '');
       if(variantStockDeductInput) variantStockDeductInput.value = String(v.stock_deduct_multiplier!=null ? v.stock_deduct_multiplier : 1);
-      variantAddBtn.textContent = 'حفظ التعديل';
+      variantAddBtn.textContent = t('حفظ التعديل');
       try{ variantNameInput.focus(); variantNameInput.select && variantNameInput.select(); }catch(_){ }
     }
   });
@@ -1201,7 +1201,7 @@ function customConfirm(title, text, options = {}){
 }
 async function customAlert(text, options = {}){
   const icon = options.icon || 'ℹ️';
-  await customConfirm('تنبيه', text, { icon, ...options });
+  await customConfirm(t('تنبيه'), text, { icon, ...options });
 }
 
 // Track pending operations to prevent duplicate requests
@@ -1260,8 +1260,8 @@ tbody.addEventListener('click', async (e) => {
   
   if(act==='delete'){
     const ok = await customConfirm(
-      'تأكيد حذف المنتج', 
-      'هل أنت متأكد من حذف هذا المنتج نهائياً؟\n\nلا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة به.',
+      t('تأكيد حذف المنتج'), 
+      t('هل أنت متأكد من حذف هذا المنتج نهائياً؟'),
       { type: 'delete' }
     );
     if(!ok) return;
@@ -1570,14 +1570,14 @@ categoryCancelBtn.addEventListener('click', () => {
 categorySaveBtn.addEventListener('click', async () => {
   const name = (categoryNameInput.value || '').trim();
   if(!name){ 
-    showCategoryError('يرجى إدخال اسم النوع الرئيسي'); 
+    showCategoryError(t('يرجى إدخال اسم النوع الرئيسي')); 
     categoryNameInput.focus(); 
     return; 
   }
   
   showCategoryError('');
   categorySaveBtn.disabled = true;
-  categorySaveBtn.textContent = 'جاري الحفظ...';
+  categorySaveBtn.textContent = t('جاري الحفظ...');
   
   try {
     const res = await window.api.types_add({ name });
@@ -1593,14 +1593,14 @@ categorySaveBtn.addEventListener('click', async () => {
     
     categoryDlg.close();
     clearCategoryDialog();
-    setError(`✓ تم إضافة النوع الرئيسي "${name}" بنجاح`);
+    setError(`✓ ${t('تم إضافة النوع الرئيسي')} "${name}" ${t('بنجاح')}`);
     setTimeout(() => setError(''), 3000);
   } catch(e) {
-    showCategoryError('حدث خطأ غير متوقع');
+    showCategoryError(t('حدث خطأ غير متوقع'));
     console.error(e);
   } finally {
     categorySaveBtn.disabled = false;
-    categorySaveBtn.textContent = 'حفظ';
+    categorySaveBtn.textContent = t('حفظ');
   }
 });
 

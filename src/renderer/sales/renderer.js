@@ -92,7 +92,44 @@ function translateUI(isAr){
     additionalNotesLabel: '📝 ملاحظات إضافية',
     additionalNotesPlaceholder: 'أي ملاحظات خاصة بالعميل...',
     cancelBtn: '❌ إلغاء',
-    saveBtn: '✅ حفظ البيانات'
+    saveBtn: '✅ حفظ البيانات',
+    // Add Product Modal
+    addProductModalTitle: '➕ إضافة منتج جديد',
+    productNameArLabel: '📦 اسم المنتج (عربي)',
+    productNameArPlaceholder: 'أدخل اسم المنتج...',
+    productNameEnLabel: '🏷️ اسم المنتج (إنجليزي)',
+    productNameEnPlaceholder: 'Product name in English...',
+    barcodeLabel: '🔢 الباركود',
+    barcodePlaceholder: 'الباركود',
+    purchasePriceLabel: '💵 سعر الشراء',
+    salePriceLabel: '💰 سعر البيع',
+    minSalePriceLabel: '📉 الحد الأدنى لسعر البيع',
+    inventoryLabel: '📊 المخزون',
+    categoryLabel: '📁 الفئة',
+    categoryPlaceholder: 'اختر الفئة...',
+    expiryDateLabel: '📅 تاريخ انتهاء الصلاحية (اختياري)',
+    descriptionLabel: '📝 الوصف',
+    descriptionPlaceholder: 'وصف المنتج (اختياري)...',
+    productImageLabel: '🖼️ صورة المنتج',
+    pickImageBtn: 'اختيار صورة',
+    removeImageBtn: 'إزالة الصورة',
+    hideFromSalesLabel: '🔒 إخفاء المنتج من شاشة الفاتورة',
+    vatExemptLabel: '🚫 استثناء هذا الصنف من الضريبة (VAT)',
+    productOperationsLabel: '🔧 عمليات المنتج وأسعارها',
+    selectOperationPlaceholder: 'اختر عملية',
+    pricePlaceholder: 'السعر',
+    addOperationBtn: 'إضافة',
+    saveProductBtn: '✅ حفظ المنتج',
+    // Confirm Add Product Dialog
+    productNotFoundTitle: 'الصنف غير موجود',
+    productNotFoundMessage: 'الباركود المدخل غير موجود في النظام. هل تريد إضافة منتج جديد؟',
+    noBtn: 'لا',
+    yesBtn: 'نعم',
+    // Add Operation Dialog
+    addOperationDialogTitle: 'إضافة عملية جديدة',
+    operationNameLabel: 'اسم العملية',
+    operationNamePlaceholder: 'أدخل اسم العملية',
+    saveOperationBtn: '✓ حفظ'
   } : {
     subtotalLabel: 'Subtotal (before VAT)',
     vatLabel: 'VAT',
@@ -155,7 +192,44 @@ function translateUI(isAr){
     additionalNotesLabel: '📝 Notes',
     additionalNotesPlaceholder: 'Any notes about customer...',
     cancelBtn: '❌ Cancel',
-    saveBtn: '✅ Save data'
+    saveBtn: '✅ Save data',
+    // Add Product Modal
+    addProductModalTitle: '➕ Add new product',
+    productNameArLabel: '📦 Product name (Arabic)',
+    productNameArPlaceholder: 'Enter product name...',
+    productNameEnLabel: '🏷️ Product name (English)',
+    productNameEnPlaceholder: 'Product name in English...',
+    barcodeLabel: '🔢 Barcode',
+    barcodePlaceholder: 'Barcode',
+    purchasePriceLabel: '💵 Purchase price',
+    salePriceLabel: '💰 Sale price',
+    minSalePriceLabel: '📉 Minimum sale price',
+    inventoryLabel: '📊 Inventory',
+    categoryLabel: '📁 Category',
+    categoryPlaceholder: 'Select category...',
+    expiryDateLabel: '📅 Expiry date (optional)',
+    descriptionLabel: '📝 Description',
+    descriptionPlaceholder: 'Product description (optional)...',
+    productImageLabel: '🖼️ Product image',
+    pickImageBtn: 'Pick image',
+    removeImageBtn: 'Remove image',
+    hideFromSalesLabel: '🔒 Hide product from invoice screen',
+    vatExemptLabel: '🚫 Exempt this item from VAT',
+    productOperationsLabel: '🔧 Product operations and prices',
+    selectOperationPlaceholder: 'Select operation',
+    pricePlaceholder: 'Price',
+    addOperationBtn: 'Add',
+    saveProductBtn: '✅ Save product',
+    // Confirm Add Product Dialog
+    productNotFoundTitle: 'Product not found',
+    productNotFoundMessage: 'The entered barcode is not found in the system. Do you want to add a new product?',
+    noBtn: 'No',
+    yesBtn: 'Yes',
+    // Add Operation Dialog
+    addOperationDialogTitle: 'Add new operation',
+    operationNameLabel: 'Operation name',
+    operationNamePlaceholder: 'Enter operation name',
+    saveOperationBtn: '✓ Save'
   };
   
   try{
@@ -343,6 +417,128 @@ function translateUI(isAr){
     
     const acmSave = document.getElementById('acmSave');
     if(acmSave) acmSave.textContent = t.saveBtn;
+    
+    // Translate Add Product Modal
+    const addProductModalHeader = document.querySelector('#addProductModal header div');
+    if(addProductModalHeader) addProductModalHeader.textContent = t.addProductModalTitle;
+    
+    const apmNameLabel = document.querySelector('label[for="apmName"]');
+    if(!apmNameLabel) {
+      const labels = document.querySelectorAll('#addProductModal label');
+      labels.forEach(label => {
+        const text = label.textContent.trim();
+        if(text.includes('اسم المنتج (عربي)') || text.includes('Product name (Arabic)')) {
+          label.innerHTML = t.productNameArLabel + ' <span style="color:#dc2626;">*</span>';
+        } else if(text.includes('اسم المنتج (إنجليزي)') || text.includes('Product name (English)')) {
+          label.textContent = t.productNameEnLabel;
+        } else if(text.includes('الباركود') || text.includes('Barcode')) {
+          label.innerHTML = t.barcodeLabel + ' <span style="color:#dc2626;">*</span>';
+        } else if(text.includes('سعر الشراء') || text.includes('Purchase price')) {
+          label.textContent = t.purchasePriceLabel;
+        } else if(text.includes('سعر البيع') && !text.includes('الحد الأدنى') && !text.includes('Minimum')) {
+          label.innerHTML = t.salePriceLabel + ' <span style="color:#dc2626;">*</span>';
+        } else if(text.includes('الحد الأدنى لسعر البيع') || text.includes('Minimum sale price')) {
+          label.textContent = t.minSalePriceLabel;
+        } else if(text.includes('المخزون') || text.includes('Inventory')) {
+          label.textContent = t.inventoryLabel;
+        } else if(text.includes('الفئة') || text.includes('Category')) {
+          label.textContent = t.categoryLabel;
+        } else if(text.includes('تاريخ انتهاء الصلاحية') || text.includes('Expiry date')) {
+          label.textContent = t.expiryDateLabel;
+        } else if(text.includes('الوصف') || text.includes('Description')) {
+          label.textContent = t.descriptionLabel;
+        } else if(text.includes('صورة المنتج') || text.includes('Product image')) {
+          label.textContent = t.productImageLabel;
+        }
+      });
+    }
+    
+    const apmName = document.getElementById('apmName');
+    if(apmName) apmName.placeholder = t.productNameArPlaceholder;
+    
+    const apmNameEn = document.getElementById('apmNameEn');
+    if(apmNameEn) apmNameEn.placeholder = t.productNameEnPlaceholder;
+    
+    const apmBarcode = document.getElementById('apmBarcode');
+    if(apmBarcode) apmBarcode.placeholder = t.barcodePlaceholder;
+    
+    const apmCategory = document.getElementById('apmCategory');
+    if(apmCategory && apmCategory.options[0]) {
+      apmCategory.options[0].textContent = t.categoryPlaceholder;
+    }
+    
+    const apmDescription = document.getElementById('apmDescription');
+    if(apmDescription) apmDescription.placeholder = t.descriptionPlaceholder;
+    
+    const apmPickImage = document.getElementById('apmPickImage');
+    if(apmPickImage) apmPickImage.textContent = t.pickImageBtn;
+    
+    const apmRemoveImage = document.getElementById('apmRemoveImage');
+    if(apmRemoveImage) apmRemoveImage.textContent = t.removeImageBtn;
+    
+    const apmHideFromSalesLabel = document.querySelector('label[for="apmHideFromSales"]');
+    if(apmHideFromSalesLabel) apmHideFromSalesLabel.textContent = t.hideFromSalesLabel;
+    
+    const apmVatExemptLabel = document.querySelector('label[for="apmVatExempt"]');
+    if(apmVatExemptLabel) apmVatExemptLabel.textContent = t.vatExemptLabel;
+    
+    const apmOpsLabel = document.querySelector('#addProductModal label[style*="عمليات المنتج"], #addProductModal label[style*="Product operations"]');
+    if(!apmOpsLabel) {
+      const allLabels = document.querySelectorAll('#addProductModal label');
+      allLabels.forEach(label => {
+        if(label.textContent.includes('عمليات المنتج') || label.textContent.includes('Product operations')) {
+          label.textContent = t.productOperationsLabel;
+        }
+      });
+    } else {
+      apmOpsLabel.textContent = t.productOperationsLabel;
+    }
+    
+    const apmOpSelect = document.getElementById('apmOpSelect');
+    if(apmOpSelect && apmOpSelect.options[0]) {
+      apmOpSelect.options[0].textContent = t.selectOperationPlaceholder;
+    }
+    
+    const apmOpPrice = document.getElementById('apmOpPrice');
+    if(apmOpPrice) apmOpPrice.placeholder = t.pricePlaceholder;
+    
+    const apmOpAdd = document.getElementById('apmOpAdd');
+    if(apmOpAdd) apmOpAdd.textContent = t.addOperationBtn;
+    
+    const apmSave = document.getElementById('apmSave');
+    if(apmSave) apmSave.textContent = t.saveProductBtn;
+    
+    const apmCancel = document.getElementById('apmCancel');
+    if(apmCancel) apmCancel.textContent = t.cancelBtn;
+    
+    // Translate Confirm Add Product Dialog
+    const confirmAddProductHead = document.querySelector('#confirmAddProduct .head span:not(.icon)');
+    if(confirmAddProductHead) confirmAddProductHead.textContent = t.productNotFoundTitle;
+    
+    const confirmAddProductBody = document.querySelector('#confirmAddProduct .body');
+    if(confirmAddProductBody) confirmAddProductBody.textContent = t.productNotFoundMessage;
+    
+    const confirmAddProductNo = document.getElementById('confirmAddProductNo');
+    if(confirmAddProductNo) confirmAddProductNo.textContent = t.noBtn;
+    
+    const confirmAddProductYes = document.getElementById('confirmAddProductYes');
+    if(confirmAddProductYes) confirmAddProductYes.textContent = t.yesBtn;
+    
+    // Translate Add Operation Dialog
+    const apmOperationDlgTitle = document.querySelector('#apmOperationDlg > div:first-child span');
+    if(apmOperationDlgTitle) apmOperationDlgTitle.textContent = t.addOperationDialogTitle;
+    
+    const apmOperationNameLabel = document.querySelector('#apmOperationDlg label');
+    if(apmOperationNameLabel) apmOperationNameLabel.textContent = t.operationNameLabel;
+    
+    const apmOperationNameInput = document.getElementById('apmOperationNameInput');
+    if(apmOperationNameInput) apmOperationNameInput.placeholder = t.operationNamePlaceholder;
+    
+    const apmOperationCancelBtn = document.getElementById('apmOperationCancelBtn');
+    if(apmOperationCancelBtn) apmOperationCancelBtn.textContent = t.cancelBtn;
+    
+    const apmOperationSaveBtn = document.getElementById('apmOperationSaveBtn');
+    if(apmOperationSaveBtn) apmOperationSaveBtn.textContent = t.saveOperationBtn;
   }catch(_){}
 }
 
@@ -3369,9 +3565,9 @@ function parseScaleBarcode(code, scaleType){
     const s = String(code||'').trim();
     if(!/^[0-9]{13}$/.test(s)) return null;
     
-    // Check prefix (20, 21, or 22)
+    // Check prefix (20, 21, 22, 01, or 99)
     const prefix = s.slice(0,2);
-    if(prefix !== '20' && prefix !== '21' && prefix !== '22') return null;
+    if(prefix !== '20' && prefix !== '21' && prefix !== '22' && prefix !== '01' && prefix !== '99') return null;
     
     // Extract item code (positions 2-6, which is index 2 to 7 exclusive)
     const plu = s.slice(2, 7);
@@ -5654,13 +5850,15 @@ async function openAddProductModal(barcode){
       
       // Validation
       if(!name){
-        showErrorNotification('❌ يرجى إدخال اسم المنتج (عربي)');
+        const isAr = document.documentElement.lang === 'ar';
+        showErrorNotification(isAr ? '❌ يرجى إدخال اسم المنتج (عربي)' : '❌ Please enter product name (Arabic)');
         if(nameInput) nameInput.focus();
         return;
       }
       
       if(price <= 0){
-        showErrorNotification('❌ يرجى إدخال سعر البيع');
+        const isAr = document.documentElement.lang === 'ar';
+        showErrorNotification(isAr ? '❌ يرجى إدخال سعر البيع' : '❌ Please enter sale price');
         if(priceInput) priceInput.focus();
         return;
       }
@@ -5687,7 +5885,8 @@ async function openAddProductModal(barcode){
       const result = await window.api.products_add(productData);
       
       if(!result || !result.ok){
-        showErrorNotification('❌ فشل حفظ المنتج: ' + (result?.error || 'خطأ غير معروف'));
+        const isAr = document.documentElement.lang === 'ar';
+        showErrorNotification(isAr ? '❌ فشل حفظ المنتج: ' + (result?.error || 'خطأ غير معروف') : '❌ Failed to save product: ' + (result?.error || 'Unknown error'));
         return;
       }
 
@@ -5700,7 +5899,8 @@ async function openAddProductModal(barcode){
       }catch(_){}
       
       // Success
-      showSuccessNotification('✓ تم إضافة المنتج بنجاح');
+      const isAr = document.documentElement.lang === 'ar';
+      showSuccessNotification(isAr ? '✓ تم إضافة المنتج بنجاح' : '✓ Product added successfully');
       modal.style.display = 'none';
       
       // Reload catalog to show new product (reset state to force full reload)
@@ -5711,7 +5911,8 @@ async function openAddProductModal(barcode){
       }catch(_){}
       
     }catch(err){
-      showErrorNotification('❌ حدث خطأ أثناء حفظ المنتج: ' + (err?.message || String(err)));
+      const isAr = document.documentElement.lang === 'ar';
+      showErrorNotification(isAr ? '❌ حدث خطأ أثناء حفظ المنتج: ' + (err?.message || String(err)) : '❌ Error saving product: ' + (err?.message || String(err)));
     }
   };
   
@@ -5792,17 +5993,19 @@ if(apmOperationSaveBtn){
   apmOperationSaveBtn.addEventListener('click', async () => {
     const name = (apmOperationNameInput ? apmOperationNameInput.value : '').trim();
     if(!name){
-      __apmShowOperationError('يرجى إدخال اسم العملية');
+      const isAr = document.documentElement.lang === 'ar';
+      __apmShowOperationError(isAr ? 'يرجى إدخال اسم العملية' : 'Please enter operation name');
       if(apmOperationNameInput) apmOperationNameInput.focus();
       return;
     }
     __apmShowOperationError('');
     apmOperationSaveBtn.disabled = true;
-    apmOperationSaveBtn.textContent = 'جاري الحفظ...';
+    const isAr = document.documentElement.lang === 'ar';
+    apmOperationSaveBtn.textContent = isAr ? 'جاري الحفظ...' : 'Saving...';
     try{
       const res = await window.api.ops_add({ name });
       if(!res || !res.ok){
-        __apmShowOperationError(res?.error || 'فشل الحفظ');
+        __apmShowOperationError(res?.error || (isAr ? 'فشل الحفظ' : 'Save failed'));
         return;
       }
       apmOperationDlg.close();
@@ -5814,10 +6017,10 @@ if(apmOperationSaveBtn){
         __apmOpDialogCallback = null;
       }
     }catch(e){
-      __apmShowOperationError('حدث خطأ أثناء الحفظ');
+      __apmShowOperationError(isAr ? 'حدث خطأ أثناء الحفظ' : 'Error while saving');
     }finally{
       apmOperationSaveBtn.disabled = false;
-      apmOperationSaveBtn.textContent = '✓ حفظ';
+      apmOperationSaveBtn.textContent = isAr ? '✓ حفظ' : '✓ Save';
     }
   });
 }
