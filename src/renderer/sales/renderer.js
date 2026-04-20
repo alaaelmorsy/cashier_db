@@ -1703,6 +1703,8 @@ async function showPartialRefundModal(saleId){
     }
     
     function updateTotals(){
+      const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
+      const pricesIncludeVat = settings.prices_include_vat ? 1 : 0;
       let subtotal = 0;
       saleItems.forEach((item, idx) => {
         const checkbox = document.getElementById(`refund_item_${idx}`);
@@ -1710,12 +1712,14 @@ async function showPartialRefundModal(saleId){
         
         if(checkbox && checkbox.checked && qtyInput){
           const qty = Number(qtyInput.value||0);
-          const price = Number(item.price||0);
+          let price = Number(item.price||0);
+          if(pricesIncludeVat && !item.is_vat_exempt && vatPercent > 0){
+            price = price / (1 + vatPercent / 100);
+          }
           subtotal += qty * price;
         }
       });
       
-      const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
       const vat = Number((subtotal * (vatPercent/100)).toFixed(2));
       const total = Number((subtotal + vat).toFixed(2));
       
@@ -1761,7 +1765,8 @@ async function showPartialRefundModal(saleId){
           sale_id: saleId,
           items: refundItems,
           reason: 'إرجاع جزئي',
-          notes: null
+          notes: null,
+          prices_include_vat: settings.prices_include_vat ? 1 : 0
         });
         
         if(!r || !r.ok){ 

@@ -1786,6 +1786,7 @@ function registerSalesIPC(){
     const items = Array.isArray(p.items) ? p.items : [];
     const reason = String(p.reason||'').trim();
     const notes = String(p.notes||'').trim() || null;
+    const pricesIncludeVat = p.prices_include_vat ? 1 : 0;
     
     if(!saleId) return { ok:false, error:'رقم الفاتورة مفقود' };
     if(!items.length) return { ok:false, error:'لا توجد أصناف للإرجاع' };
@@ -1862,6 +1863,8 @@ function registerSalesIPC(){
           });
         }
 
+        const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
+
         let totalExclusiveRefund = 0;
         const itemsToInsert = [];
         
@@ -1896,7 +1899,11 @@ function registerSalesIPC(){
           availableQty[key] -= qtyToRefund;
 
           const pricePerUnit = Number(origItem.price||0);
-          const lineTotal = Number((pricePerUnit * qtyToRefund).toFixed(2));
+          const isVatExempt = Number(origItem.is_vat_exempt||0) === 1;
+          const exclusivePricePerUnit = (pricesIncludeVat && !isVatExempt && vatPercent > 0)
+            ? pricePerUnit / (1 + vatPercent / 100)
+            : pricePerUnit;
+          const lineTotal = Number((exclusivePricePerUnit * qtyToRefund).toFixed(2));
           totalExclusiveRefund += lineTotal;
 
           const mult = (origItem.unit_multiplier!=null) ? Number(origItem.unit_multiplier||1) : 1;
@@ -1911,7 +1918,7 @@ function registerSalesIPC(){
             Number(origItem.unit_multiplier ?? 1),
             -pricePerUnit,
             -qtyToRefund,
-            -lineTotal,
+            -Number((pricePerUnit * qtyToRefund).toFixed(2)),
             (origItem.operation_id||null),
             (origItem.operation_name||null),
             (origItem.employee_id||null)
@@ -1920,7 +1927,6 @@ function registerSalesIPC(){
 
         if(!itemsToInsert.length){ await conn.rollback(); return { ok:false, error:'لا توجد أصناف صالحة للإرجاع' }; }
 
-        const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
         const vatForRefund = Number((totalExclusiveRefund * (vatPercent/100)).toFixed(2));
         const grandTotalRefund = Number((totalExclusiveRefund + vatForRefund).toFixed(2));
 
