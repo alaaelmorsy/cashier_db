@@ -3601,126 +3601,124 @@ function parseScaleBarcode(code, scaleType){
   }catch(_){ return null; }
 }
 
+// ── Scan Queue: prevent race conditions when scanning barcodes rapidly ─────────
+let __scanQueue = [];
+let __scanBusy = false;
+const __barcodePrefetchMap = new Map();
+
+async function __doScanCode(code){
+  const scaleEnabled = settings && settings.electronic_scale_enabled;
+  const scaleType = (settings && settings.electronic_scale_type) || 'weight';
+  const scale = scaleEnabled ? parseScaleBarcode(code, scaleType) : null;
+  if(scale){
+    const sr = await window.api.products_get_by_barcode(scale.plu);
+    if(sr && sr.ok && sr.item){
+      const p = sr.item;
+      if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); return; }
+      if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); return; }
+      const it = {
+        id: p.id, name: p.name, name_en: p.name_en || null, barcode: p.barcode || null,
+        price: Number(p.price||0), qty: 1, image_path: p.image_path,
+        category: p.category || null, is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+        is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+        unit_name: null, unit_multiplier: 1, operation_name: null,
+        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
+      };
+      await applyCustomerPricingForItem(it);
+      if(scale.type === 'weight'){
+        it.qty = Number(scale.value.toFixed(3));
+      } else {
+        const unitPrice = Number(it.price||0);
+        if(unitPrice > 0){ it.qty = Number((scale.value / unitPrice).toFixed(3)); }
+      }
+      cart.push(it);
+      renderCart();
+      try{ await checkLowStockForItems([it]); }catch(_){ }
+      return;
+    }
+  }
+  let r;
+  if(__barcodePrefetchMap.has(code)){
+    r = await __barcodePrefetchMap.get(code);
+    __barcodePrefetchMap.delete(code);
+  } else {
+    r = await window.api.products_get_by_barcode(code);
+  }
+  if(!r || !r.ok || !r.item){
+    const userWantsToAdd = await showAddProductConfirmation();
+    if(userWantsToAdd){ await openAddProductModal(code); }
+    return;
+  }
+  const p = r.item;
+  if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); return; }
+  if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); return; }
+  if(p.variant_id){
+    const idx = cart.findIndex(x => x.id === p.id && x.variant_id === p.variant_id);
+    const forceSeparate = !!settings.cart_separate_duplicate_lines;
+    if(idx >= 0 && !forceSeparate){
+      cart[idx].qty += 1;
+      renderCart();
+      try{ await checkLowStockForItems([cart[idx]]); }catch(_){ }
+    } else {
+      const it = {
+        id: p.id, name: p.name, name_en: p.name_en || null, barcode: p.barcode || null,
+        price: Number(p.price||0), qty: 1, image_path: p.image_path,
+        category: p.category || null, is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
+        is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+        unit_name: null, unit_multiplier: 1,
+        variant_id: p.variant_id, variant_name: p.variant_name,
+        operation_id: p.variant_id, operation_name: p.variant_name,
+        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
+      };
+      await applyCustomerPricingForItem(it);
+      cart.push(it);
+    }
+    renderCart();
+    try{ await checkLowStockForItems([cart.find(x=>x.id===p.id && x.variant_id===p.variant_id)]); }catch(_){ }
+  } else {
+    const idx = cart.findIndex(x => x.id === p.id);
+    const forceSeparate = !!settings.cart_separate_duplicate_lines;
+    if(idx >= 0 && !forceSeparate){
+      cart[idx].qty += 1;
+      renderCart();
+      try{ await checkLowStockForItems([cart[idx]]); }catch(_){ }
+    } else {
+      await addToCart(p);
+    }
+  }
+}
+
+async function __processScanQueue(){
+  if(__scanBusy) return;
+  __scanBusy = true;
+  try{
+    while(__scanQueue.length > 0){
+      const batch = __scanQueue.splice(0);
+      await Promise.all(batch.map(code =>
+        __doScanCode(code).catch(() =>
+          __showSalesToast('تعذر جلب الصنف بالباركود', { icon:'⚠️', danger:true, ms:4000 })
+        )
+      ));
+    }
+  }finally{
+    __scanBusy = false;
+    try{ if(barcode){ barcode.value = ''; barcode.focus(); } }catch(_){ }
+  }
+}
+
 // مسح الباركود من أعلى الشاشة: عند الضغط Enter يتم محاولة جلب الصنف وإضافته للسلة
 if(barcode){
-  barcode.addEventListener('keydown', async (e) => {
+  barcode.addEventListener('keydown', (e) => {
     if(e.key !== 'Enter') return;
     e.preventDefault();
     const code = normalizeDigits((barcode.value||'').trim());
     if(!code) return;
-    try{
-      // Try scale barcode first (EAN-13 with embedded weight/price) if enabled
-      const scaleEnabled = settings && settings.electronic_scale_enabled;
-      const scaleType = settings && settings.electronic_scale_type || 'weight';
-      const scale = scaleEnabled ? parseScaleBarcode(code, scaleType) : null;
-      if(scale){
-        // Lookup by PLU (we store PLU in barcode field for scale items)
-        const sr = await window.api.products_get_by_barcode(scale.plu);
-        if(sr && sr.ok && sr.item){
-          const p = sr.item;
-          if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); barcode.select(); return; }
-          if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); barcode.select(); return; }
-          // Add with quantity from barcode when type=weight; if type=price, derive qty = price / unit price
-          const itBase = {
-            id: p.id,
-            name: p.name,
-            name_en: p.name_en || null,
-            barcode: p.barcode || null,
-            price: Number(p.price||0),
-            qty: 1,
-            image_path: p.image_path,
-            category: p.category || null,
-            is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
-            is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
-            unit_name: null,
-            unit_multiplier: 1,
-            operation_name: null,
-            product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
-          };
-          // If variant scanned earlier, products_get_by_barcode on PLU won't return variant; scale PLUs typically map to base product
-          const it = itBase;
-          await applyCustomerPricingForItem(it);
-          // Compute qty
-          if(scale.type === 'weight'){
-            it.qty = Number(scale.value.toFixed(3));
-          } else {
-            const unitPrice = Number(it.price||0);
-            if(unitPrice > 0){ it.qty = Number((scale.value / unitPrice).toFixed(3)); }
-          }
-          cart.push(it);
-          renderCart();
-          try{ await checkLowStockForItems([it]); }catch(_){ }
-          barcode.value = '';
-          setTimeout(()=>{ try{ barcode.focus(); }catch(_){ } }, 0);
-          return;
-        }
-        // If PLU lookup fails, fallback to normal lookup on full code
-      }
-      const r = await window.api.products_get_by_barcode(code);
-      if(!r || !r.ok || !r.item){ 
-        // الصنف غير موجود - اسأل المستخدم إذا كان يريد إضافته
-        const userWantsToAdd = await showAddProductConfirmation();
-        if(userWantsToAdd){
-          await openAddProductModal(code);
-        }
-        barcode.select(); 
-        return; 
-      }
-      const p = r.item;
-      if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); barcode.select(); return; }
-      if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); barcode.select(); return; }
-      
-      // إذا كان هناك variant_id (صنف)، أضفه مع variant_name كـ operation_name
-      if(p.variant_id){
-        // البحث عن نفس المنتج + الصنف معاً في السلة
-        const idx = cart.findIndex(x => x.id === p.id && x.variant_id === p.variant_id);
-        const forceSeparate = !!settings.cart_separate_duplicate_lines;
-        if(idx >= 0 && !forceSeparate){
-          cart[idx].qty += 1;
-          renderCart();
-          try{ await checkLowStockForItems([cart[idx]]); }catch(_){ }
-        } else {
-          // إضافة منتج جديد مع الصنف
-          const it = {
-            id: p.id,
-            name: p.name,
-            name_en: p.name_en || null,
-            barcode: p.barcode || null,
-            price: Number(p.price||0),
-            qty: 1,
-            image_path: p.image_path,
-            category: p.category || null,
-            is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
-            is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
-            unit_name: null,
-            unit_multiplier: 1,
-            variant_id: p.variant_id,
-            variant_name: p.variant_name,
-            operation_id: p.variant_id,  // استخدم variant_id كـ operation_id
-            operation_name: p.variant_name,  // استخدم variant_name كـ operation_name
-            product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
-          };
-          await applyCustomerPricingForItem(it);
-          cart.push(it);
-        }
-        renderCart();
-        try{ await checkLowStockForItems([cart.find(x=>x.id===p.id && x.variant_id===p.variant_id)]); }catch(_){ }
-      } else {
-        // المنتج العادي بدون variant
-        const idx = cart.findIndex(x => x.id === p.id);
-        const forceSeparate = !!settings.cart_separate_duplicate_lines;
-        if(idx >= 0 && !forceSeparate){
-          cart[idx].qty += 1;
-          renderCart();
-          try{ await checkLowStockForItems([cart[idx]]); }catch(_){ }
-        } else {
-          await addToCart(p);
-        }
-      }
-      // نظّف وأعد التركيز
-      barcode.value = '';
-      setTimeout(()=>{ try{ barcode.focus(); }catch(_){ } }, 0);
-    }catch(err){ __showSalesToast('تعذر جلب الصنف بالباركود', { icon:'⚠️', danger:true, ms:4000 }); }
+    barcode.value = '';
+    if(!__barcodePrefetchMap.has(code)){
+      __barcodePrefetchMap.set(code, window.api.products_get_by_barcode(code).catch(()=>null));
+    }
+    __scanQueue.push(code);
+    __processScanQueue();
   });
 }
 
@@ -3729,7 +3727,35 @@ if(barcode){
 (function(){
   let __barcodeBuffer = '';
   let __barcodeLastTime = 0;
-  const __BARCODE_TIMEOUT = 80; // ms between chars — scanners are faster than human typing
+  let __flushTimer = null;
+  let __capturedEl = null;
+  let __scannerMode = false; // true once two rapid chars detected → no more flush timers
+  const __BARCODE_TIMEOUT = 400;  // reset buffer after this gap (ms)
+  const __SCANNER_SPEED   = 50;   // chars faster than this = scanner
+  const __HUMAN_FLUSH_MS  = 80;   // flush single char to element after this (ms) if no rapid follow-up
+
+  function __resetBuffer(){
+    if(__flushTimer){ clearTimeout(__flushTimer); __flushTimer = null; }
+    __barcodeBuffer  = '';
+    __barcodeLastTime = 0;
+    __capturedEl     = null;
+    __scannerMode    = false;
+  }
+
+  function __flushBufferToElement(){
+    const buf = __barcodeBuffer;
+    const el  = __capturedEl;
+    __resetBuffer();
+    if(buf && el && el !== barcode && document.body.contains(el)){
+      try{
+        const start = (el.selectionStart != null) ? el.selectionStart : (el.value||'').length;
+        const end   = (el.selectionEnd   != null) ? el.selectionEnd   : start;
+        el.value = (el.value||'').slice(0, start) + buf + (el.value||'').slice(end);
+        el.selectionStart = el.selectionEnd = start + buf.length;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }catch(_){}
+    }
+  }
 
   document.addEventListener('keydown', function(e){
     if(!barcode) return;
@@ -3738,43 +3764,88 @@ if(barcode){
     const tag = activeEl ? activeEl.tagName : '';
     const isTypingEl = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
     const isBarcodeField = (activeEl === barcode);
-
-    // If already in the barcode field, let the existing listener handle it
-    if(isBarcodeField) return;
-
-    // If user is typing in another input/textarea, don't intercept
-    if(isTypingEl) return;
+    const barcodeEmpty = !barcode.value;
 
     // Ignore modifier-key combos (Ctrl+S, Alt+F4, etc.)
     if(e.ctrlKey || e.altKey || e.metaKey) return;
 
+    // ── Numpad +/- → increment/decrement last cart item qty ──────────────────
+    const canQtyKey = !isTypingEl || (isBarcodeField && barcodeEmpty);
+    if(canQtyKey){
+      if(e.code === 'NumpadAdd'){
+        e.preventDefault();
+        if(cart.length > 0 && !__isProcessingOld){
+          const it = cart[cart.length - 1];
+          it.qty = Number((Number(it.qty||1) + 1).toFixed(3));
+          renderCart();
+        }
+        return;
+      }
+      if(e.code === 'NumpadSubtract'){
+        e.preventDefault();
+        if(cart.length > 0 && !__isProcessingOld){
+          const it = cart[cart.length - 1];
+          const newQty = Number((Number(it.qty||1) - 1).toFixed(3));
+          if(newQty >= 1){ it.qty = newQty; }
+          renderCart();
+        }
+        return;
+      }
+    }
+
+    // If already in the barcode field, let the existing listener handle it
+    if(isBarcodeField) return;
+
     const now = Date.now();
+    const timeSinceLast = (__barcodeLastTime > 0) ? (now - __barcodeLastTime) : Infinity;
+    const isRapid = timeSinceLast < __SCANNER_SPEED;
 
+    // ── Enter: process buffered barcode ──────────────────────────────────────
     if(e.key === 'Enter'){
-      const elapsed = now - __barcodeLastTime;
-      const code = __barcodeBuffer.trim();
-      __barcodeBuffer = '';
-      __barcodeLastTime = 0;
-
-      // Only act if we collected chars recently (within scanner speed window)
-      if(code && elapsed < __BARCODE_TIMEOUT + 200){
+      const code = normalizeDigits(__barcodeBuffer.trim());
+      __resetBuffer();
+      if(code){
         e.preventDefault();
         e.stopPropagation();
+        if(!__barcodePrefetchMap.has(code)){
+          __barcodePrefetchMap.set(code, window.api.products_get_by_barcode(code).catch(()=>null));
+        }
         barcode.value = code;
         barcode.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
       }
       return;
     }
 
-    // Accumulate printable single characters
+    // ── Printable single characters ───────────────────────────────────────────
     if(e.key && e.key.length === 1){
-      const elapsed = now - __barcodeLastTime;
-      // Reset buffer if too much time passed since last char (user typed manually earlier)
-      if(__barcodeLastTime > 0 && elapsed > __BARCODE_TIMEOUT){
-        __barcodeBuffer = '';
+      // If gap is too long → old buffer belongs to previous sequence, discard it
+      if(__barcodeLastTime > 0 && timeSinceLast > __BARCODE_TIMEOUT){
+        if(__capturedEl) __flushBufferToElement(); else __resetBuffer();
       }
-      __barcodeBuffer += e.key;
-      __barcodeLastTime = now;
+
+      if(isTypingEl){
+        e.preventDefault(); // always intercept in typing elements
+
+        if(isRapid || __scannerMode){
+          // ── Scanner confirmed: rapid chars → activate scanner mode, no flush timer
+          if(__flushTimer){ clearTimeout(__flushTimer); __flushTimer = null; }
+          __scannerMode = true;
+          __capturedEl  = activeEl;
+          __barcodeBuffer += e.key;
+          __barcodeLastTime = now;
+        } else {
+          // ── First char or slow typing: set short timer; if next char is rapid → scanner
+          if(__flushTimer){ clearTimeout(__flushTimer); __flushTimer = null; }
+          __capturedEl = activeEl;
+          __barcodeBuffer += e.key;
+          __barcodeLastTime = now;
+          __flushTimer = setTimeout(__flushBufferToElement, __HUMAN_FLUSH_MS);
+        }
+      } else {
+        // Non-typing element: just accumulate, no intercept needed
+        __barcodeBuffer += e.key;
+        __barcodeLastTime = now;
+      }
     }
   }, true);
 })();

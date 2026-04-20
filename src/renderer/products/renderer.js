@@ -305,11 +305,38 @@ const dlgCancel = document.getElementById('dlgCancel');
 
 let editId = null; // track edit product id
 
+let __prodToastTimer = null;
+let __prodErrToastTimer = null;
+function showProdToast(msg, isError = false){
+  const id = isError ? 'prodErrorToast' : 'prodSuccessToast';
+  const textId = isError ? 'prodErrorToastText' : 'prodSuccessToastText';
+  const closeId = isError ? 'prodErrorToastClose' : 'prodSuccessToastClose';
+  const el = document.getElementById(id);
+  const textEl = document.getElementById(textId);
+  const closeEl = document.getElementById(closeId);
+  if(!el || !textEl) return;
+  const timerRef = isError ? '__prodErrToastTimer' : '__prodToastTimer';
+  if(window[timerRef]) clearTimeout(window[timerRef]);
+  textEl.textContent = msg;
+  try{ if(!el.matches(':popover-open')) el.showPopover(); } catch(_){ el.style.display='block'; }
+  const hide = () => {
+    try{ el.hidePopover(); } catch(_){ el.style.display='none'; }
+    window[timerRef] = null;
+  };
+  if(closeEl) closeEl.onclick = hide;
+  window[timerRef] = setTimeout(hide, isError ? 5000 : 3000);
+}
+
 function setError(msg){
   const m = msg || '';
   const dlgErr = document.getElementById('dlgError');
-  if(dlgErr && dlg.open){ dlgErr.textContent = m; }
-  else { errorDiv.textContent = m; }
+  if(dlgErr && dlg.open){
+    if(m){ showProdToast(m, !m.startsWith('✓')); }
+    dlgErr.textContent = '';
+  } else {
+    if(m && m.startsWith('✓')){ showProdToast(m, false); errorDiv.textContent = ''; }
+    else { errorDiv.textContent = m; }
+  }
 }
 // Normalize Arabic-Indic digits to ASCII for barcode/search
 function normalizeDigits(s){
@@ -1009,7 +1036,9 @@ dlgSave.addEventListener('click', async () => {
       }
     }catch(e){ /* ignore variant errors */ console.error('Variant save error:', e); }
 
+    const successMsg = editId ? t('✓ تم تحديث المنتج بنجاح') : t('✓ تم إضافة المنتج بنجاح');
     closeDialog();
+    showProdToast(successMsg, false);
     await loadProducts();
   } finally {
     // Restore button state

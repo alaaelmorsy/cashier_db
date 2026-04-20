@@ -158,6 +158,12 @@
       tbody tr {
         border-bottom: 3px solid #d1d5db;
       }
+      .prod-toast{ position:fixed; top:20px; right:20px; inset:unset; top:20px; right:20px; border:none; padding:0; margin:0; background:transparent; min-width:280px; max-width:420px; }
+      .prod-toast .toast-content{ display:flex; align-items:center; gap:12px; padding:14px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); font-weight:700; font-size:15px; font-family:inherit; direction:rtl; box-shadow:0 10px 25px rgba(0,0,0,0.3); }
+      .prod-toast.success .toast-content{ background:#10b981; color:#fff; }
+      .prod-toast.error .toast-content{ background:#dc2626; color:#fff; }
+      .prod-toast .toast-text{ flex:1; }
+      .prod-toast .toast-close{ background:rgba(255,255,255,0.2); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0; }
     </style>
   </head>
   <body class="bg-gray-50">
@@ -533,6 +539,21 @@
         </div>
       </div>
     </dialog>
+    <div id="prodSuccessToast" popover="manual" class="prod-toast success" role="alert" aria-live="polite">
+      <div class="toast-content">
+        <span>✨</span>
+        <span class="toast-text" id="prodSuccessToastText"></span>
+        <button class="toast-close" id="prodSuccessToastClose">&times;</button>
+      </div>
+    </div>
+    <div id="prodErrorToast" popover="manual" class="prod-toast error" role="alert" aria-live="assertive">
+      <div class="toast-content">
+        <span>⚠️</span>
+        <span class="toast-text" id="prodErrorToastText"></span>
+        <button class="toast-close" id="prodErrorToastClose">&times;</button>
+      </div>
+    </div>
+
     <script src="../appointment-notifications.js"></script>
 
     <script src="../theme.js"></script>
