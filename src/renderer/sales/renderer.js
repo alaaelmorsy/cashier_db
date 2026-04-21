@@ -3823,6 +3823,15 @@ if(barcode){
         if(__capturedEl) __flushBufferToElement(); else __resetBuffer();
       }
 
+      // Do not intercept keypresses inside modals (add product, add customer, etc.)
+      const isInsideModal = activeEl && activeEl.closest && (
+        activeEl.closest('#addProductModal') ||
+        activeEl.closest('#addCustomerModal') ||
+        activeEl.closest('#acmModal') ||
+        activeEl.closest('.modal-backdrop')
+      );
+      if(isInsideModal) return;
+
       if(isTypingEl){
         e.preventDefault(); // always intercept in typing elements
 
