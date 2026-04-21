@@ -3832,6 +3832,9 @@ if(barcode){
       );
       if(isInsideModal) return;
 
+      // Do not intercept keypresses in decimal number inputs (discount, extra, cash, etc.)
+      if(activeEl && activeEl.type === 'number' && activeEl.step && activeEl.step !== '1') return;
+
       if(isTypingEl){
         e.preventDefault(); // always intercept in typing elements
 
@@ -4042,6 +4045,8 @@ function enforceDiscountLimits(){
   if(!discountValueEl || !discountTypeEl) return;
   const s = (discountValueEl.value||'').trim();
   if(s==='') return;
+  // Skip enforcement while user is still typing a decimal (e.g. "5." or "5.0")
+  if(/\.$/.test(s) || /\.\d*0$/.test(s)) return;
   const dtype = discountTypeEl.value;
   let val = Number(s);
   if(isNaN(val)){ val = 0; }
@@ -4051,7 +4056,8 @@ function enforceDiscountLimits(){
     const sub = calcSubBeforeVAT();
     val = Math.max(0, Math.min(sub, val));
   }
-  try{ discountValueEl.value = String(Number(val.toFixed(2))); }catch(_){ discountValueEl.value = String(val); }
+  const formatted = String(Number(val.toFixed(2)));
+  if(formatted !== s){ try{ discountValueEl.value = formatted; }catch(_){ discountValueEl.value = String(val); } }
 }
 if(discountTypeEl){
   discountTypeEl.addEventListener('change', () => { updateDiscountFieldUI(); enforceDiscountLimits(); scheduleComputeTotals(); if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); } });
