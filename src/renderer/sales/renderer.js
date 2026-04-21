@@ -3769,28 +3769,23 @@ if(barcode){
     // Ignore modifier-key combos (Ctrl+S, Alt+F4, etc.)
     if(e.ctrlKey || e.altKey || e.metaKey) return;
 
-    // ── Numpad +/- → increment/decrement last cart item qty ──────────────────
+    // ── Numpad +/- or keyboard +/- → increment/decrement last cart item qty ──
     const canQtyKey = !isTypingEl || (isBarcodeField && barcodeEmpty);
-    if(canQtyKey){
-      if(e.code === 'NumpadAdd'){
-        e.preventDefault();
-        if(cart.length > 0 && !__isProcessingOld){
-          const it = cart[cart.length - 1];
+    const isPlus = e.code === 'NumpadAdd' || e.key === '+';
+    const isMinus = e.code === 'NumpadSubtract' || e.key === '-';
+    if(canQtyKey && (isPlus || isMinus)){
+      e.preventDefault();
+      if(cart.length > 0 && !__isProcessingOld){
+        const it = cart[0];
+        if(isPlus){
           it.qty = Number((Number(it.qty||1) + 1).toFixed(3));
-          renderCart();
-        }
-        return;
-      }
-      if(e.code === 'NumpadSubtract'){
-        e.preventDefault();
-        if(cart.length > 0 && !__isProcessingOld){
-          const it = cart[cart.length - 1];
+        } else {
           const newQty = Number((Number(it.qty||1) - 1).toFixed(3));
           if(newQty >= 1){ it.qty = newQty; }
-          renderCart();
         }
-        return;
+        renderCart();
       }
+      return;
     }
 
     // If already in the barcode field, let the existing listener handle it
@@ -4126,6 +4121,70 @@ tbody.addEventListener('input', async (e) => {
     const cur = numInp.value;
     const fixed = cur.replace(/[^0-9.]/g, '').replace(/^(\d*\.?\d*).*$/, '$1');
     if(fixed !== cur){ const pos = numInp.selectionStart - (cur.length - fixed.length); numInp.value = fixed; try{ numInp.setSelectionRange(pos, pos); }catch(_){} }
+    const priceInpLive = e.target.closest('input.op-price');
+    if(priceInpLive && settings.op_price_manual){
+      const idx = Number(priceInpLive.dataset.idx);
+      const it = cart[idx];
+      const p = Number(priceInpLive.value || 0);
+      if(it && !isNaN(p) && p >= 0){
+        const qty = Number(it.qty || 0);
+        const tr = priceInpLive.closest('tr');
+        const totalVal = tr ? tr.querySelector('.total-val') : null;
+        const amtInpLive = tr ? tr.querySelector('input.amount-paid') : null;
+        if(totalVal){
+          const newTotal = (p * qty).toFixed(2);
+          totalVal.textContent = newTotal;
+          totalVal.style.width = Math.max(4, newTotal.length) + 'ch';
+        } else if(amtInpLive && settings.weight_mode_enabled){
+          const srcAmt = (it.__wm_source === 'amount' && typeof it.__amount !== 'undefined') ? Number(it.__amount || 0) : (qty * p);
+          const newAmt = p > 0 ? (it.__wm_source === 'amount' ? srcAmt : (qty * p)) : 0;
+          const newAmtStr = newAmt.toFixed(2);
+          amtInpLive.value = newAmtStr;
+          amtInpLive.style.width = Math.max(4, newAmtStr.length) + 'ch';
+        }
+      }
+    }
+    const qtyInpLive = e.target.closest('input.qty');
+    if(qtyInpLive){
+      const idx = Number(qtyInpLive.dataset.idx);
+      const it = cart[idx];
+      const qty = Number(qtyInpLive.value || 0);
+      if(it && !isNaN(qty) && qty >= 0){
+        const price = Number(it.price || 0);
+        const tr = qtyInpLive.closest('tr');
+        if(settings.weight_mode_enabled){
+          const newAmt = Math.max(0, Number((qty * price).toFixed(2)));
+          const amtInp = tr ? tr.querySelector('input.amount-paid') : null;
+          if(amtInp){
+            amtInp.value = String(newAmt.toFixed(2));
+            amtInp.style.width = Math.max(4, amtInp.value.length) + 'ch';
+          }
+        } else {
+          const totalVal = tr ? tr.querySelector('.total-val') : null;
+          if(totalVal){
+            const newTotal = (qty * price).toFixed(2);
+            totalVal.textContent = newTotal;
+            totalVal.style.width = Math.max(4, newTotal.length) + 'ch';
+          }
+        }
+      }
+    }
+    const amtInpLive2 = e.target.closest('input.amount-paid');
+    if(amtInpLive2 && settings.weight_mode_enabled){
+      const idx = Number(amtInpLive2.dataset.idx);
+      const it = cart[idx];
+      const amount = Number(amtInpLive2.value || 0);
+      if(it && !isNaN(amount) && amount >= 0){
+        const price = Number(it.price || 0);
+        const newQty = price > 0 ? Math.max(0, Number((amount / price).toFixed(3))) : 0;
+        const tr = amtInpLive2.closest('tr');
+        const qtyInp = tr ? tr.querySelector('input.qty') : null;
+        if(qtyInp){
+          qtyInp.value = String(newQty.toFixed(3));
+          qtyInp.style.width = Math.max(3, qtyInp.value.length) + 'ch';
+        }
+      }
+    }
     return;
   }
 });
@@ -4796,10 +4855,49 @@ async function showPaymentMethodModal(){
       resolve(true);
     };
     
-    closeBtn.onclick = closeModal;
-    cancelBtn.onclick = closeModal;
-    confirmBtn.onclick = confirmModal;
-    
+    let focusedIdx = availableMethods.indexOf(selectedMethod);
+    if(focusedIdx < 0) focusedIdx = 0;
+
+    const getOptions = () => Array.from(optionsContainer.querySelectorAll(':scope > div'));
+
+    const highlightOption = (idx) => {
+      const options = getOptions();
+      if(!options.length) return;
+      focusedIdx = (idx + options.length) % options.length;
+      options.forEach((o, i) => {
+        o.style.borderColor = i === focusedIdx ? '#2563eb' : '#cbd5e1';
+        o.style.background  = i === focusedIdx ? '#dbeafe' : '#fff';
+        const radio = o.querySelector('input[type="radio"]');
+        if(radio) radio.checked = (i === focusedIdx);
+      });
+      selectedMethod = availableMethods[focusedIdx];
+    };
+
+    optionsContainer.querySelectorAll(':scope > div').forEach((o, i) => {
+      o.addEventListener('click', () => highlightOption(i));
+    });
+
+    highlightOption(focusedIdx);
+
+    const onModalKey = (e) => {
+      if(modal.style.display === 'none') return;
+      const cols = 3;
+      if(e.key === 'Enter'){      e.preventDefault(); e.stopPropagation(); cleanup(); confirmModal(); return; }
+      if(e.key === 'Escape'){     e.preventDefault(); e.stopPropagation(); cleanup(); closeModal();  return; }
+      if(e.key === 'ArrowRight'){ e.preventDefault(); e.stopPropagation(); highlightOption(focusedIdx - 1); return; }
+      if(e.key === 'ArrowLeft'){  e.preventDefault(); e.stopPropagation(); highlightOption(focusedIdx + 1); return; }
+      if(e.key === 'ArrowUp'){    e.preventDefault(); e.stopPropagation(); highlightOption(focusedIdx - cols); return; }
+      if(e.key === 'ArrowDown'){  e.preventDefault(); e.stopPropagation(); highlightOption(focusedIdx + cols); return; }
+    };
+
+    const cleanup = () => document.removeEventListener('keydown', onModalKey, true);
+
+    document.addEventListener('keydown', onModalKey, true);
+
+    closeBtn.onclick   = () => { cleanup(); closeModal(); };
+    cancelBtn.onclick  = () => { cleanup(); closeModal(); };
+    confirmBtn.onclick = () => { cleanup(); confirmModal(); };
+
     modal.style.display = 'flex';
   });
 }
