@@ -4127,6 +4127,7 @@ tbody.addEventListener('input', async (e) => {
       const it = cart[idx];
       const p = Number(priceInpLive.value || 0);
       if(it && !isNaN(p) && p >= 0){
+        it.price = p;
         const qty = Number(it.qty || 0);
         const tr = priceInpLive.closest('tr');
         const totalVal = tr ? tr.querySelector('.total-val') : null;
@@ -4136,12 +4137,15 @@ tbody.addEventListener('input', async (e) => {
           totalVal.textContent = newTotal;
           totalVal.style.width = Math.max(4, newTotal.length) + 'ch';
         } else if(amtInpLive && settings.weight_mode_enabled){
-          const srcAmt = (it.__wm_source === 'amount' && typeof it.__amount !== 'undefined') ? Number(it.__amount || 0) : (qty * p);
-          const newAmt = p > 0 ? (it.__wm_source === 'amount' ? srcAmt : (qty * p)) : 0;
+          const newAmt = (it.__wm_source === 'amount' && typeof it.__amount !== 'undefined')
+            ? Number(it.__amount || 0)
+            : Math.max(0, qty * p);
           const newAmtStr = newAmt.toFixed(2);
+          it.__amount = Number(newAmtStr);
           amtInpLive.value = newAmtStr;
           amtInpLive.style.width = Math.max(4, newAmtStr.length) + 'ch';
         }
+        scheduleComputeTotals();
       }
     }
     const qtyInpLive = e.target.closest('input.qty');
@@ -4150,10 +4154,13 @@ tbody.addEventListener('input', async (e) => {
       const it = cart[idx];
       const qty = Number(qtyInpLive.value || 0);
       if(it && !isNaN(qty) && qty >= 0){
+        it.qty = qty;
         const price = Number(it.price || 0);
         const tr = qtyInpLive.closest('tr');
         if(settings.weight_mode_enabled){
           const newAmt = Math.max(0, Number((qty * price).toFixed(2)));
+          it.__amount = newAmt;
+          it.__wm_source = 'qty';
           const amtInp = tr ? tr.querySelector('input.amount-paid') : null;
           if(amtInp){
             amtInp.value = String(newAmt.toFixed(2));
@@ -4167,6 +4174,7 @@ tbody.addEventListener('input', async (e) => {
             totalVal.style.width = Math.max(4, newTotal.length) + 'ch';
           }
         }
+        scheduleComputeTotals();
       }
     }
     const amtInpLive2 = e.target.closest('input.amount-paid');
@@ -4175,14 +4183,18 @@ tbody.addEventListener('input', async (e) => {
       const it = cart[idx];
       const amount = Number(amtInpLive2.value || 0);
       if(it && !isNaN(amount) && amount >= 0){
+        it.__amount = amount;
+        it.__wm_source = 'amount';
         const price = Number(it.price || 0);
         const newQty = price > 0 ? Math.max(0, Number((amount / price).toFixed(3))) : 0;
+        it.qty = newQty;
         const tr = amtInpLive2.closest('tr');
         const qtyInp = tr ? tr.querySelector('input.qty') : null;
         if(qtyInp){
           qtyInp.value = String(newQty.toFixed(3));
           qtyInp.style.width = Math.max(3, qtyInp.value.length) + 'ch';
         }
+        scheduleComputeTotals();
       }
     }
     return;
