@@ -20,6 +20,128 @@ let __perms = new Set();
 let __isAdmin = false;
 let __showHideButton = true;
 
+// ===== i18n =====
+let __typesLang = 'ar';
+let __typesT = null;
+
+const __typesTranslations = {
+  ar: {
+    pageTitle: 'الأنواع الرئيسية - POS SA',
+    headerTitle: '🏷️ الأنواع الرئيسية',
+    btnBack: '⬅ العودة',
+    openAdd: '➕ إضافة نوع',
+    refreshBtn: '🔄 تحديث',
+    modalTitleAdd: 'إضافة نوع رئيسي',
+    modalTitleEdit: 'تعديل نوع رئيسي',
+    nameLabel: 'اسم النوع',
+    namePlaceholder: 'مثال: إلكترونيات',
+    cancelBtn: 'إلغاء',
+    saveBtn: 'حفظ',
+    confirmTitle: 'تأكيد',
+    confirmOk: 'تأكيد',
+    confirmCancel: 'إلغاء',
+    deleteConfirmTitle: 'تأكيد الحذف',
+    deleteConfirmMessage: 'هل تريد حذف هذا النوع بشكل نهائي؟',
+    statusActive: 'نشط',
+    statusInactive: 'موقوف',
+    sortOrder: 'ترتيب',
+    btnEdit: '✏️ تعديل',
+    btnStop: '⏸️ إيقاف',
+    btnActivate: '▶️ تفعيل',
+    btnShow: '👁️ إظهار',
+    btnHide: '🙈 إخفاء',
+    btnDelete: '🗑️ حذف',
+    errNameRequired: 'يرجى إدخال اسم النوع',
+    errSaveFailed: 'فشل الحفظ',
+    errEditFailed: 'فشل التعديل',
+    errToggleFailed: 'فشل تحديث الحالة',
+    errToggleHideFailed: 'فشل تحديث حالة الإخفاء',
+    errDeleteFailed: 'فشل الحذف',
+    errLoadFailed: 'تعذر تحميل الأنواع',
+    errReorderFailed: 'فشل حفظ الترتيب',
+  },
+  en: {
+    pageTitle: 'Main Types - POS SA',
+    headerTitle: '🏷️ Main Types',
+    btnBack: '⬅ Back',
+    openAdd: '➕ Add Type',
+    refreshBtn: '🔄 Refresh',
+    modalTitleAdd: 'Add Main Type',
+    modalTitleEdit: 'Edit Main Type',
+    nameLabel: 'Type Name',
+    namePlaceholder: 'E.g.: Electronics',
+    cancelBtn: 'Cancel',
+    saveBtn: 'Save',
+    confirmTitle: 'Confirm',
+    confirmOk: 'Confirm',
+    confirmCancel: 'Cancel',
+    deleteConfirmTitle: 'Confirm Delete',
+    deleteConfirmMessage: 'Are you sure you want to permanently delete this type?',
+    statusActive: 'Active',
+    statusInactive: 'Inactive',
+    sortOrder: 'Order',
+    btnEdit: '✏️ Edit',
+    btnStop: '⏸️ Deactivate',
+    btnActivate: '▶️ Activate',
+    btnShow: '👁️ Show',
+    btnHide: '🙈 Hide',
+    btnDelete: '🗑️ Delete',
+    errNameRequired: 'Please enter the type name',
+    errSaveFailed: 'Save failed',
+    errEditFailed: 'Edit failed',
+    errToggleFailed: 'Failed to update status',
+    errToggleHideFailed: 'Failed to update visibility',
+    errDeleteFailed: 'Delete failed',
+    errLoadFailed: 'Failed to load types',
+    errReorderFailed: 'Failed to save order',
+  }
+};
+
+function _t(key) {
+  return (__typesT && __typesT[key] !== undefined) ? __typesT[key] : key;
+}
+
+function applyTypesLocale(lang) {
+  __typesLang = String(lang || 'ar');
+  const isAr = __typesLang.toLowerCase().startsWith('ar');
+  __typesT = isAr ? __typesTranslations.ar : __typesTranslations.en;
+
+  document.documentElement.lang = isAr ? 'ar' : 'en';
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  document.title = _t('pageTitle');
+
+  const headerTitle = document.getElementById('headerTitle');
+  if (headerTitle) headerTitle.textContent = _t('headerTitle');
+  if (btnBack) btnBack.textContent = _t('btnBack');
+  if (openAdd) openAdd.textContent = _t('openAdd');
+  if (refreshBtn) refreshBtn.textContent = _t('refreshBtn');
+
+  const m_nameLabel = document.getElementById('m_nameLabel');
+  if (m_nameLabel) m_nameLabel.textContent = _t('nameLabel');
+  if (mName) mName.placeholder = _t('namePlaceholder');
+  if (mCancel) mCancel.textContent = _t('cancelBtn');
+  if (mSave) mSave.textContent = _t('saveBtn');
+  if (cCancel) cCancel.textContent = _t('confirmCancel');
+  if (cOk) cOk.textContent = _t('confirmOk');
+
+  renderCards(currentItems);
+}
+
+(async () => {
+  try {
+    const r = await window.api.app_get_locale();
+    applyTypesLocale((r && r.lang) || 'ar');
+  } catch (_) {
+    applyTypesLocale('ar');
+  }
+  const _origBurst = window.__i18n_burst;
+  window.__i18n_burst = (lang) => {
+    try { applyTypesLocale(lang); } catch (_) {}
+    try { _origBurst && _origBurst(lang); } catch (_) {}
+  };
+})();
+
+// ===== Permissions =====
 async function loadPerms(){
   try{
     const u = JSON.parse(localStorage.getItem('pos_user')||'null');
@@ -84,7 +206,7 @@ function safeShowModal(dlg) {
 function showModal(mode, opts = {}){
   modalMode = mode;
   editId = opts.id ?? null;
-  modalTitle.textContent = mode === 'add' ? 'إضافة نوع رئيسي' : 'تعديل نوع رئيسي';
+  modalTitle.textContent = mode === 'add' ? _t('modalTitleAdd') : _t('modalTitleEdit');
   mName.value = (opts.name || '').trim();
   safeShowModal(modal);
   setTimeout(() => mName.focus(), 0);
@@ -96,8 +218,8 @@ function hideModal(){
   editId = null;
 }
 
-function showConfirm({ title = 'تأكيد', message = '', onOk }){
-  cTitle.textContent = title;
+function showConfirm({ title, message = '', onOk }){
+  cTitle.textContent = title || _t('confirmTitle');
   cMessage.textContent = message;
   safeShowModal(confirmModal);
 
@@ -154,18 +276,18 @@ function renderCards(items){
     
     const actionsHtml = `
       <div class="flex gap-2 flex-wrap">
-        ${canType('types.edit') ? `<button class="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium" data-act="edit" data-id="${t.id}" data-name="${attrEscape(t.name)}">✏️ تعديل</button>` : ''}
-        ${canType('types.toggle') ? `<button class="px-3 py-1.5 ${active ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'} rounded-lg text-sm font-medium" data-act="toggle" data-id="${t.id}">${active ? '⏸️ إيقاف' : '▶️ تفعيل'}</button>` : ''}
-        ${(canType('types.toggle') && __showHideButton) ? `<button class="px-3 py-1.5 ${isHidden ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'} rounded-lg text-sm font-medium" data-act="toggle_hide" data-id="${t.id}">${isHidden ? '👁️ إظهار' : '🙈 إخفاء'}</button>` : ''}
-        ${canType('types.delete') ? `<button class="px-3 py-1.5 bg-red-100 text-red-800 rounded-lg text-sm font-medium" data-act="delete" data-id="${t.id}">🗑️ حذف</button>` : ''}
+        ${canType('types.edit') ? `<button class="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium" data-act="edit" data-id="${t.id}" data-name="${attrEscape(t.name)}">${_t('btnEdit')}</button>` : ''}
+        ${canType('types.toggle') ? `<button class="px-3 py-1.5 ${active ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'} rounded-lg text-sm font-medium" data-act="toggle" data-id="${t.id}">${active ? _t('btnStop') : _t('btnActivate')}</button>` : ''}
+        ${(canType('types.toggle') && __showHideButton) ? `<button class="px-3 py-1.5 ${isHidden ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'} rounded-lg text-sm font-medium" data-act="toggle_hide" data-id="${t.id}">${isHidden ? _t('btnShow') : _t('btnHide')}</button>` : ''}
+        ${canType('types.delete') ? `<button class="px-3 py-1.5 bg-red-100 text-red-800 rounded-lg text-sm font-medium" data-act="delete" data-id="${t.id}">${_t('btnDelete')}</button>` : ''}
       </div>`;
     
     card.innerHTML = `
       <div class="flex items-center justify-between">
         <div class="text-lg font-bold text-gray-800">${escapeHtml(t.name)}</div>
-        <span class="${badgeClass}">${active ? 'نشط' : 'موقوف'}</span>
+        <span class="${badgeClass}">${active ? _t('statusActive') : _t('statusInactive')}</span>
       </div>
-      <div class="text-xs text-gray-500">#${t.id} · ترتيب: ${Number(t.sort_order||0)}</div>
+      <div class="text-xs text-gray-500">#${t.id} · ${_t('sortOrder')}: ${Number(t.sort_order||0)}</div>
       ${actionsHtml}
     `;
     
@@ -184,7 +306,7 @@ function renderCards(items){
       currentItems.splice(to,0,it);
       const updates = currentItems.map((x,i)=>({ id: x.id, sort_order: i }));
       const r = await window.api.types_reorder(updates);
-      if(!r.ok){ setError(r.error || 'فشل حفظ الترتيب'); return; }
+      if(!r.ok){ setError(r.error || _t('errReorderFailed')); return; }
       await loadTypes();
     });
     grid.appendChild(card);
@@ -202,7 +324,7 @@ async function loadTypes(){
   setError('');
   await loadSettings();
   const res = await window.api.types_list_all();
-  if(!res.ok){ setError(res.error || 'تعذر تحميل الأنواع'); return; }
+  if(!res.ok){ setError(res.error || _t('errLoadFailed')); return; }
   renderCards(res.items);
 }
 
@@ -220,14 +342,14 @@ mCancel.addEventListener('click', hideModal);
 
 mSave.addEventListener('click', async () => {
   const name = (mName.value || '').trim();
-  if(!name){ setError('يرجى إدخال اسم النوع'); mName.focus(); return; }
+  if(!name){ setError(_t('errNameRequired')); mName.focus(); return; }
   setError('');
   if(modalMode === 'add'){
     const res = await window.api.types_add({ name });
-    if(!res.ok){ setError(res.error || 'فشل الحفظ'); return; }
+    if(!res.ok){ setError(res.error || _t('errSaveFailed')); return; }
   } else if(modalMode === 'edit' && editId){
     const res = await window.api.types_update(editId, { name });
-    if(!res.ok){ setError(res.error || 'فشل التعديل'); return; }
+    if(!res.ok){ setError(res.error || _t('errEditFailed')); return; }
   }
   hideModal();
   await loadTypes();
@@ -259,7 +381,7 @@ grid.addEventListener('click', async (e) => {
   if(act === 'toggle'){
     if(!canType('types.toggle')) return;
     const r = await window.api.types_toggle(id);
-    if(!r.ok){ setError(r.error || 'فشل تحديث الحالة'); return; }
+    if(!r.ok){ setError(r.error || _t('errToggleFailed')); return; }
     await loadTypes();
     return;
   }
@@ -267,7 +389,7 @@ grid.addEventListener('click', async (e) => {
   if(act === 'toggle_hide'){
     if(!canType('types.toggle')) return;
     const r = await window.api.types_toggle_hide(id);
-    if(!r.ok){ setError(r.error || 'فشل تحديث حالة الإخفاء'); return; }
+    if(!r.ok){ setError(r.error || _t('errToggleHideFailed')); return; }
     await loadTypes();
     return;
   }
@@ -275,19 +397,19 @@ grid.addEventListener('click', async (e) => {
   if(act === 'delete'){
     if(!canType('types.delete')) return;
     showConfirm({
-      title: 'تأكيد الحذف',
-      message: 'هل تريد حذف هذا النوع بشكل نهائي؟',
+      title: _t('deleteConfirmTitle'),
+      message: _t('deleteConfirmMessage'),
       onOk: async () => {
         const r = await window.api.types_delete(id);
         if(!r.ok){ 
           if(r.cannotDelete){
             showToast({
-              message: r.error || 'فشل الحذف',
+              message: r.error || _t('errDeleteFailed'),
               type: 'warning',
               duration: 6000
             });
           } else {
-            setError(r.error || 'فشل الحذف'); 
+            setError(r.error || _t('errDeleteFailed')); 
           }
           return; 
         }

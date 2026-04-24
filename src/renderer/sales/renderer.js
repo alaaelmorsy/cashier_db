@@ -1,4 +1,4 @@
-// Sales screen: scan by barcode or pick from catalog, compute totals w/ VAT and currency settings
+﻿// Sales screen: scan by barcode or pick from catalog, compute totals w/ VAT and currency settings
 // Suppress console.log in production to reduce overhead on slow devices
 try{ if(!location.search.includes('debug')){ const __noop=()=>{}; console.log=__noop; console.debug=__noop; } }catch(_){}
 
@@ -31,6 +31,20 @@ function getDiscountLabel(type, value, isAr){
 
 function translateUI(isAr){
   const t = isAr ? {
+    pageTitle: 'فاتورة جديدة - POS SA',
+    headerTitle: 'فاتورة جديدة',
+    closeShiftBtn: '🔒 إغلاق الشيفت',
+    homeBtn: '🏠 الرئيسية',
+    closeNotificationAria: 'إغلاق الإشعار',
+    lowStockTitle: 'تحذير: أصناف قرب نفاد المخزون',
+    heldInvoicesModalTitle: '📋 الفواتير المعلقة',
+    heldInvoicesCloseBtn: 'إغلاق',
+    clearConfirmTitle: 'تأكيد تفريغ السلة',
+    clearConfirmBody: 'هل تريد تفريغ السلة الآن؟',
+    deleteHeldConfirmTitle: 'تأكيد حذف الفاتورة',
+    deleteHeldConfirmBody: 'هل تريد حذف الفاتورة المعلقة؟',
+    yesShort: 'نعم',
+    noShort: 'لا',
     subtotalLabel: 'قبل الضريبة',
     vatLabel: 'ض.القيمة المضافة',
     grandTotalLabel: 'الإجمالي',
@@ -129,8 +143,75 @@ function translateUI(isAr){
     addOperationDialogTitle: 'إضافة عملية جديدة',
     operationNameLabel: 'اسم العملية',
     operationNamePlaceholder: 'أدخل اسم العملية',
-    saveOperationBtn: '✓ حفظ'
+    saveOperationBtn: '✓ حفظ',
+    // Notifications
+    notifCreditNoteSuccess: '✓ تم إنشاء إشعار دائن وإرجاع المخزون بنجاح',
+    notifPartialCreditNoteSuccess: '✓ تم إنشاء إشعار دائن جزئي وإرجاع المخزون بنجاح',
+    notifCreditNoteFailDefault: 'تعذر معالجة كامل الفاتورة',
+    notifNoProcessedInvoice: '⚠️ لا توجد فاتورة مُعالجة',
+    notifAlreadyProcessed: '⚠️ تم عمل معالجة لهذه الفاتورة من قبل',
+    notifCreditUnpaid: '❌ هذه فاتورة آجل غير مسددة ولا يمكن عمل معالجة لها قبل السداد',
+    notifPartialNoDiscount: '⚠️ لا يمكن عمل معالجة جزئية لفاتورة تحتوي على خصم أو إضافي. استخدم معالجة كامل الفاتورة',
+    notifCannotOpenPartialRefund: '❌ تعذر فتح نافذة الإرجاع الجزئي',
+    notifCannotFetchInvoice: '❌ تعذر جلب تفاصيل الفاتورة',
+    notifPartialRefundNoItems: '⚠️ يرجى اختيار صنف واحد على الأقل للإرجاع',
+    notifPartialCreditNoteFailDefault: 'تعذر إنشاء إشعار دائن جزئي',
+    notifEnterValidInvoiceNo: '⚠️ أدخل رقم فاتورة صحيح',
+    notifInvoiceNotFound: '❌ لم يتم العثور على الفاتورة',
+    notifCannotProcessCreditNote: '❌ لا يمكن معالجة إشعار دائن (CN). يمكن فقط معالجة الفواتير العادية',
+    notifProcessingError: '❌ حدث خطأ أثناء المعالجة',
+    notifQuotationRestoredSuccess: '✓ تم استعادة عرض السعر بنجاح',
+    notifCartEmptyHold: '⚠️ السلة فارغة - لا يمكن تعليق فاتورة فارغة',
+    notifHoldFailed: 'فشل حفظ الفاتورة',
+    notifHoldSuccess: '✓ تم تعليق الفاتورة بنجاح',
+    notifRestoreSuccess: '✓ تم استرجاع الفاتورة بنجاح',
+    notifDeleteHoldFailed: 'فشل حذف الفاتورة',
+    notifDeleteHoldSuccess: '✓ تم حذف الفاتورة المعلقة',
+    notifProductNameRequired: '❌ يرجى إدخال اسم المنتج (عربي)',
+    notifSalePriceRequired: '❌ يرجى إدخال سعر البيع',
+    notifSaveProductFailedDefault: 'خطأ غير معروف',
+    notifProductAddedSuccess: '✓ تم إضافة المنتج بنجاح',
+    notifSaveProductErrorPrefix: '❌ حدث خطأ أثناء حفظ المنتج: ',
+    notifSaveProductFailedPrefix: '❌ فشل حفظ المنتج: ',
+    toastAddProductsFirst: 'أضف منتجات أولاً',
+    toastBarcodeAlreadyUsed: 'هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج',
+    toastItemInactive: 'الصنف غير مفعل',
+    toastFetchProductFailed: 'تعذر جلب الصنف بالباركود',
+    toastPriceAdjustedToMin: 'تم تعديل السعر إلى الحد الأدنى المسموح',
+    toastPriceBelowMinPrefix: 'السعر أقل من الحد الأدنى لهذا الصنف وهو',
+    toastSalePriceBelowCostPrefix: 'سعر البيع',
+    toastSalePriceBelowCostMiddle: 'أقل من سعر الشراء',
+    toastPhoneRequired: 'رقم الجوال مطلوب',
+    toastPhoneDigitsOnly: 'رقم الجوال يجب أن يحتوي على أرقام فقط',
+    toastPhoneMin10: 'رقم الجوال يجب أن يكون 10 أرقام على الأقل',
+    toastVatMust15: 'الرقم الضريبي يجب أن يكون 15 رقماً بالضبط',
+    toastCrDigitsOnly: 'رقم السجل التجاري يجب أن يحتوي على أرقام فقط',
+    toastCustomerAddedSuccess: 'تم إضافة العميل بنجاح',
+    toastAddCustomerFailedDefault: 'تعذر إضافة العميل',
+    toastSelectCustomerFirst: 'يرجى اختيار العميل قبل طباعة الفاتورة',
+    toastRowPriceBelowMinPrefix: 'سطر',
+    toastRowPriceBelowMinMiddle: ': السعر أقل من الحد الأدنى',
+    toastSaveInvoiceFailedDefault: 'فشل حفظ الفاتورة',
+    toastUnknownError: 'خطأ غير معروف',
+    promptZatcaInvoiceNo: 'أدخل رقم الفاتورة لإرسالها للهيئة:',
+    alertZatcaSentSuccess: 'تم الإرسال بنجاح',
+    alertZatcaSentFailed: 'فشل الإرسال',
+    alertZatcaSendError: 'تعذر الإرسال'
   } : {
+    pageTitle: 'New Invoice - POS SA',
+    headerTitle: 'New Invoice',
+    closeShiftBtn: '🔒 Close Shift',
+    homeBtn: '🏠 Home',
+    closeNotificationAria: 'Close notification',
+    lowStockTitle: 'Warning: Items are near out of stock',
+    heldInvoicesModalTitle: '📋 Held Invoices',
+    heldInvoicesCloseBtn: 'Close',
+    clearConfirmTitle: 'Confirm cart clear',
+    clearConfirmBody: 'Do you want to clear the cart now?',
+    deleteHeldConfirmTitle: 'Confirm invoice deletion',
+    deleteHeldConfirmBody: 'Do you want to delete the held invoice?',
+    yesShort: 'Yes',
+    noShort: 'No',
     subtotalLabel: 'Subtotal (before VAT)',
     vatLabel: 'VAT',
     grandTotalLabel: 'Grand total (incl. VAT)',
@@ -229,22 +310,119 @@ function translateUI(isAr){
     addOperationDialogTitle: 'Add new operation',
     operationNameLabel: 'Operation name',
     operationNamePlaceholder: 'Enter operation name',
-    saveOperationBtn: '✓ Save'
+    saveOperationBtn: '✓ Save',
+    // Notifications
+    notifCreditNoteSuccess: '✓ Credit note created and inventory returned successfully',
+    notifPartialCreditNoteSuccess: '✓ Partial credit note created and inventory returned successfully',
+    notifCreditNoteFailDefault: 'Failed to process full invoice',
+    notifNoProcessedInvoice: '⚠️ No processed invoice',
+    notifAlreadyProcessed: '⚠️ This invoice has already been processed',
+    notifCreditUnpaid: '❌ This credit invoice is unpaid and cannot be processed before settlement',
+    notifPartialNoDiscount: '⚠️ Cannot process partial refund for an invoice with discount or extra. Use full invoice processing',
+    notifCannotOpenPartialRefund: '❌ Failed to open partial refund window',
+    notifCannotFetchInvoice: '❌ Failed to fetch invoice details',
+    notifPartialRefundNoItems: '⚠️ Please select at least one item to return',
+    notifPartialCreditNoteFailDefault: 'Failed to create partial credit note',
+    notifEnterValidInvoiceNo: '⚠️ Enter a valid invoice number',
+    notifInvoiceNotFound: '❌ Invoice not found',
+    notifCannotProcessCreditNote: '❌ Cannot process credit note (CN). Only regular invoices can be processed',
+    notifProcessingError: '❌ An error occurred during processing',
+    notifQuotationRestoredSuccess: '✓ Quotation restored successfully',
+    notifCartEmptyHold: '⚠️ Cart is empty - cannot hold empty invoice',
+    notifHoldFailed: 'Failed to save invoice',
+    notifHoldSuccess: '✓ Invoice held successfully',
+    notifRestoreSuccess: '✓ Invoice restored successfully',
+    notifDeleteHoldFailed: 'Failed to delete invoice',
+    notifDeleteHoldSuccess: '✓ Held invoice deleted successfully',
+    notifProductNameRequired: '❌ Please enter product name (Arabic)',
+    notifSalePriceRequired: '❌ Please enter sale price',
+    notifSaveProductFailedDefault: 'Unknown error',
+    notifProductAddedSuccess: '✓ Product added successfully',
+    notifSaveProductErrorPrefix: '❌ Error saving product: ',
+    notifSaveProductFailedPrefix: '❌ Failed to save product: ',
+    toastAddProductsFirst: 'Add products first',
+    toastBarcodeAlreadyUsed: 'This barcode is already used - please change the product barcode',
+    toastItemInactive: 'Item is inactive',
+    toastFetchProductFailed: 'Failed to fetch product by barcode',
+    toastPriceAdjustedToMin: 'Price adjusted to minimum allowed',
+    toastPriceBelowMinPrefix: 'Price is below the minimum for this item which is',
+    toastSalePriceBelowCostPrefix: 'Sale price',
+    toastSalePriceBelowCostMiddle: 'is below purchase price',
+    toastPhoneRequired: 'Phone number is required',
+    toastPhoneDigitsOnly: 'Phone number must contain digits only',
+    toastPhoneMin10: 'Phone number must be at least 10 digits',
+    toastVatMust15: 'VAT number must be exactly 15 digits',
+    toastCrDigitsOnly: 'CR number must contain digits only',
+    toastCustomerAddedSuccess: 'Customer added successfully',
+    toastAddCustomerFailedDefault: 'Failed to add customer',
+    toastSelectCustomerFirst: 'Please select customer before printing invoice',
+    toastRowPriceBelowMinPrefix: 'Row',
+    toastRowPriceBelowMinMiddle: ': Price below minimum',
+    toastSaveInvoiceFailedDefault: 'Failed to save invoice',
+    toastUnknownError: 'Unknown error',
+    promptZatcaInvoiceNo: 'Enter the invoice number to send to ZATCA:',
+    alertZatcaSentSuccess: 'Sent successfully',
+    alertZatcaSentFailed: 'Send failed',
+    alertZatcaSendError: 'Send error'
   };
+  __salesT = t;
   
   try{
-    const labels = document.querySelectorAll('label');
-    labels.forEach(label=>{
+    document.title = t.pageTitle;
+    const headerTitle = document.querySelector('header > div span');
+    if(headerTitle) headerTitle.textContent = t.headerTitle;
+    const btnCloseShift = document.getElementById('btnCloseShift');
+    if(btnCloseShift) btnCloseShift.textContent = t.closeShiftBtn;
+    const btnBackHome = document.getElementById('btnBackHome');
+    if(btnBackHome) btnBackHome.textContent = t.homeBtn;
+    const notifCloseBtns = document.querySelectorAll('.notification-close');
+    notifCloseBtns.forEach(btn => btn.setAttribute('aria-label', t.closeNotificationAria));
+    const lowStockTitleText = document.querySelector('#lowStockTitle .text');
+    if(lowStockTitleText) lowStockTitleText.textContent = t.lowStockTitle;
+    const heldInvoicesModalTitle = document.querySelector('#heldInvoicesModal header div');
+    if(heldInvoicesModalTitle) heldInvoicesModalTitle.textContent = t.heldInvoicesModalTitle;
+    const himCloseBtn = document.getElementById('himCloseBtn');
+    if(himCloseBtn) himCloseBtn.textContent = t.heldInvoicesCloseBtn;
+    const clearConfirmTitleEl = document.querySelector('#confirmClear .head span:not(.icon)');
+    if(clearConfirmTitleEl) clearConfirmTitleEl.textContent = t.clearConfirmTitle;
+    const clearConfirmBodyEl = document.querySelector('#confirmClear .body');
+    if(clearConfirmBodyEl) clearConfirmBodyEl.textContent = t.clearConfirmBody;
+    const clearYes = document.getElementById('confirmYes');
+    if(clearYes) clearYes.textContent = t.yesShort;
+    const clearNo = document.getElementById('confirmNo');
+    if(clearNo) clearNo.textContent = t.noShort;
+    const delHeldTitleEl = document.querySelector('#confirmDeleteHeld .head span:not(.icon)');
+    if(delHeldTitleEl) delHeldTitleEl.textContent = t.deleteHeldConfirmTitle;
+    const delHeldBodyEl = document.querySelector('#confirmDeleteHeld .body');
+    if(delHeldBodyEl) delHeldBodyEl.textContent = t.deleteHeldConfirmBody;
+    const delHeldYes = document.getElementById('confirmDeleteYes');
+    if(delHeldYes) delHeldYes.textContent = t.yesShort;
+    const delHeldNo = document.getElementById('confirmDeleteNo');
+    if(delHeldNo) delHeldNo.textContent = t.noShort;
+
+    // Update all labels - check both Arabic and English text
+    document.querySelectorAll('label').forEach(label=>{
       const text = label.textContent.trim();
-      if(text.includes('طريقة الدفع') || text.includes('Payment method')) label.textContent = t.paymentMethodLabel;
-      else if(text.includes('المبلغ المدفوع') || text.includes('Amount paid')) label.textContent = t.amountPaidLabel;
-      else if(text.includes('الإضافى') || text.includes('Extra')) label.textContent = t.extraValueLabel;
-      else if(text.includes('نوع الخصم') || text.includes('Discount type')) label.textContent = t.discountTypeLabel;
-      else if(text.includes('قيمة الخصم') || text.includes('Discount value')) label.textContent = t.discountValueLabel;
-      else if(text.includes('كوبون') || text.includes('Coupon')) label.textContent = t.couponLabel;
-      else if(text.includes('العميل') || text.includes('Customer')) label.textContent = t.customerLabel;
-      else if(text.includes('السائق') || text.includes('Driver')) label.textContent = t.driverLabel;
-      else if(text.includes('ملاحظات') || text.includes('Notes')) label.textContent = t.notesLabel;
+      
+      if(text.includes('طريقة الدفع') || text.includes('Payment method')) {
+        label.innerHTML = t.paymentMethodLabel;
+      } else if(text.includes('المبلغ المدفوع') || text.includes('Amount paid')) {
+        label.innerHTML = t.amountPaidLabel;
+      } else if(text.includes('الإضافى') || text.includes('Extra')) {
+        label.innerHTML = t.extraValueLabel;
+      } else if(text.includes('نوع الخصم') || text.includes('Discount type')) {
+        label.innerHTML = t.discountTypeLabel;
+      } else if(text.includes('قيمة الخصم') || text.includes('Discount value')) {
+        label.innerHTML = t.discountValueLabel;
+      } else if((text.includes('كوبون') || text.includes('Coupon')) && !text.includes('الكوبون')) {
+        label.innerHTML = t.couponLabel;
+      } else if((text.includes('العميل') || text.includes('Customer')) && !text.includes('اسم') && !text.includes('name') && !text.includes('اختر')) {
+        label.innerHTML = t.customerLabel;
+      } else if(text.includes('السائق') || text.includes('Driver')) {
+        label.innerHTML = t.driverLabel;
+      } else if((text.includes('ملاحظات') || text.includes('Notes')) && (label.getAttribute('for') === 'notes' || label.nextElementSibling?.tagName === 'TEXTAREA')) {
+        label.innerHTML = t.notesLabel;
+      }
     });
     
     const subtotalLabelEl = document.getElementById('subtotalLabel');
@@ -542,30 +720,50 @@ function translateUI(isAr){
   }catch(_){}
 }
 
-(async function initLocale(){
+function isArabicLocale(lang){
+  return String(lang || '').toLowerCase().startsWith('ar');
+}
+
+let __isApplyingSalesLocale = false;
+let __currentSalesLang = 'ar'; // track current language globally
+let __salesT = null;
+function _t(key){ return (__salesT && __salesT[key] !== undefined) ? __salesT[key] : key; }
+
+function applySalesLocale(lang){
+  if(__isApplyingSalesLocale) return;
+  __isApplyingSalesLocale = true;
+  __currentSalesLang = lang || 'ar';
+  const isAr = isArabicLocale(lang);
   try{
-    const r = await window.api.app_get_locale();
-    const lang = (r && r.lang) || 'ar';
-    const isAr = lang === 'ar';
     document.documentElement.lang = isAr ? 'ar' : 'en';
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
     translateUI(isAr);
-  }catch(_){
-    document.documentElement.lang = 'ar';
-    document.documentElement.dir = 'rtl';
-    translateUI(true);
+    // Re-render dynamic cart rows/totals and labels after locale flip
+    try{ renderCart(); }catch(_){}
+    // Run global i18n pass for any text not covered by local translator
+    try{ window.__i18n_burst && window.__i18n_burst(isAr ? 'ar' : 'en'); }catch(_){}
+  } finally {
+    __isApplyingSalesLocale = false;
   }
-  // Listen for locale changes
+}
+
+(async function initLocale(){
+  try{
+    const r = await window.api.app_get_locale();
+    applySalesLocale((r && r.lang) || 'ar');
+  }catch(_){
+    applySalesLocale('ar');
+  }
+  // Listen for locale changes (instant from main screen language switch)
   try{
     window.api.app_on_locale_changed((L)=>{
-      const isAr = L === 'ar';
-      document.documentElement.lang = isAr ? 'ar' : 'en';
-      document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-      translateUI(isAr);
-      try{ renderCart(); }catch(_){}
+      applySalesLocale(L);
     });
   }catch(_){}
 })();
+
+// Important: do not auto-sync locale on every DOM mutation.
+// That behavior can interrupt manual typing in cart inputs (price/qty).
 
 // Permissions helper: read from localStorage once
 let __perms = [];
@@ -954,7 +1152,7 @@ if(btnPayTop){ if(!__perms.includes('sales.print')) btnPayTop.style.display='non
 if(btnQuotation){ 
   btnQuotation.addEventListener('click', ()=>{
     if(cart.length === 0){ 
-      __showSalesToast('أضف منتجات أولاً', { icon:'⚠️', danger:true, ms:5000 }); 
+      __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); 
       return; 
     }
     // تجميع بيانات السلة
@@ -1044,11 +1242,11 @@ if(btnQuotation){
 const btnZatcaSendTop = document.getElementById('btnZatcaSendTop');
 if(btnZatcaSendTop){ if(!__perms.includes('sales.print')) btnZatcaSendTop.style.display='none'; btnZatcaSendTop.addEventListener('click', async ()=>{
   try{
-    const v = prompt('أدخل رقم الفاتورة لإرسالها للهيئة:');
+    const v = prompt(_t('promptZatcaInvoiceNo'));
     if(!v) return;
     const r = await window.zatcaSendByInvoiceNo(v);
-    alert(r.ok ? ('تم الإرسال بنجاح\n' + (r.message||'')) : ('فشل الإرسال\n' + (r.error||'')));
-  }catch(e){ alert('تعذر الإرسال: ' + (e?.message||String(e))); }
+    alert(r.ok ? (_t('alertZatcaSentSuccess') + '\n' + (r.message||'')) : (_t('alertZatcaSentFailed') + '\n' + (r.error||'')));
+  }catch(e){ alert(_t('alertZatcaSendError') + ': ' + (e?.message||String(e))); }
 }); }
 
 // Helper: resolve invoice_no -> sale_id then submit via local bridge
@@ -1202,11 +1400,11 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
         const chk = await window.api.sales_has_credit_for_invoice({ invoice_no: v });
         if(chk && chk.ok){
           if(chk.credit_unpaid){
-            showErrorNotification('❌ هذه فاتورة آجل غير مسددة ولا يمكن عمل معالجة لها قبل السداد');
+            showErrorNotification(_t('notifCreditUnpaid'));
             return;
           }
           if(chk.processed){
-            showErrorNotification('⚠️ تم عمل معالجة لهذه الفاتورة من قبل');
+            showErrorNotification(_t('notifAlreadyProcessed'));
             return;
           }
         }
@@ -1219,11 +1417,11 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
   }
   if(btnProcessFull){
     btnProcessFull.addEventListener('click', async () => {
-      if(!__processedSaleId){ showErrorNotification('⚠️ لا توجد فاتورة مُعالجة'); return; }
+      if(!__processedSaleId){ showErrorNotification(_t('notifNoProcessedInvoice')); return; }
       try{
         const r = await window.api.sales_refund_full({ sale_id: __processedSaleId });
-        if(!r || !r.ok){ showErrorNotification('❌ ' + (r?.error||'تعذر معالجة كامل الفاتورة')); return; }
-        showSuccessNotification('✓ تم إنشاء إشعار دائن وإرجاع المخزون بنجاح', 5000);
+        if(!r || !r.ok){ showErrorNotification('❌ ' + (r?.error||_t('notifCreditNoteFailDefault'))); return; }
+        showSuccessNotification(_t('notifCreditNoteSuccess'), 5000);
         // افتح نافذة الطباعة مباشرة لإشعار الدائن الجديد
         try{
           const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
@@ -1259,13 +1457,13 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
           if(__currentRoomId){ await __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } }
           setTimeout(() => { const barcodeInput = document.getElementById('scanBarcode'); if(barcodeInput) barcodeInput.focus(); }, 300);
         }catch(_){ }
-      }catch(e){ console.error(e); showErrorNotification('❌ تعذر معالجة كامل الفاتورة'); }
+      }catch(e){ console.error(e); showErrorNotification('❌ ' + _t('notifCreditNoteFailDefault')); }
     });
   }
 
   if(btnProcessPartial){
     btnProcessPartial.addEventListener('click', async () => {
-      if(!__processedSaleId){ showErrorNotification('⚠️ لا توجد فاتورة مُعالجة'); return; }
+      if(!__processedSaleId){ showErrorNotification(_t('notifNoProcessedInvoice')); return; }
       
       // التحقق من وجود خصم أو إضافي في الفاتورة
       if(__processedSaleData){
@@ -1273,14 +1471,14 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
         const hasExtra = Number(__processedSaleData.extra_value||0) > 0;
         
         if(hasDiscount || hasExtra){
-          showErrorNotification('⚠️ لا يمكن عمل معالجة جزئية لفاتورة تحتوي على خصم أو إضافي. استخدم معالجة كامل الفاتورة');
+          showErrorNotification(_t('notifPartialNoDiscount'));
           return;
         }
       }
       
       try{
         await showPartialRefundModal(__processedSaleId);
-      }catch(e){ console.error(e); showErrorNotification('❌ تعذر فتح نافذة الإرجاع الجزئي'); }
+      }catch(e){ console.error(e); showErrorNotification(_t('notifCannotOpenPartialRefund')); }
     });
   }
 
@@ -1344,11 +1542,15 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
       settings.low_stock_threshold = Number(it.low_stock_threshold ?? settings.low_stock_threshold ?? 5);
       const btnCloseShift = document.getElementById('btnCloseShift');
       if(btnCloseShift){
-        if(it.show_shifts === 0 || it.show_shifts === false){
-          btnCloseShift.style.display = 'none';
-        } else {
-          btnCloseShift.style.display = '';
-        }
+        // إخفاء الزر دائماً
+        btnCloseShift.style.display = 'none';
+        
+        // أو استخدم المنطق الأصلي:
+        // if(it.show_shifts === 0 || it.show_shifts === false){
+        //   btnCloseShift.style.display = 'none';
+        // } else {
+        //   btnCloseShift.style.display = '';
+        // }
       }
       customerDisplayEnabled = !!it.customer_display_enabled;
       currencyCodeForDisplay = it.currency_code || 'SAR';
@@ -1609,7 +1811,7 @@ async function showPartialRefundModal(saleId){
     if(!modal || !itemsContainer) return;
     
     const det = await window.api.sales_get(saleId);
-    if(!det || !det.ok){ showErrorNotification('❌ تعذر جلب تفاصيل الفاتورة'); return; }
+    if(!det || !det.ok){ showErrorNotification(_t('notifCannotFetchInvoice')); return; }
     
     const sale = det.sale;
     const saleItems = det.items || [];
@@ -1755,7 +1957,7 @@ async function showPartialRefundModal(saleId){
         }
       });
       
-      if(!refundItems.length){ showErrorNotification('⚠️ يرجى اختيار صنف واحد على الأقل للإرجاع'); return; }
+      if(!refundItems.length){ showErrorNotification(_t('notifPartialRefundNoItems')); return; }
       
       confirmBtn.disabled = true;
       confirmBtn.textContent = '⏳ جاري الإصدار...';
@@ -1770,11 +1972,11 @@ async function showPartialRefundModal(saleId){
         });
         
         if(!r || !r.ok){ 
-          showErrorNotification('❌ ' + (r?.error||'تعذر إنشاء إشعار دائن جزئي')); 
+          showErrorNotification('❌ ' + (r?.error||_t('notifPartialCreditNoteFailDefault'))); 
           return; 
         }
         
-        showSuccessNotification('✓ تم إنشاء إشعار دائن جزئي وإرجاع المخزون بنجاح', 5000);
+        showSuccessNotification(_t('notifPartialCreditNoteSuccess'), 5000);
         
         try{
           const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
@@ -1815,7 +2017,7 @@ async function showPartialRefundModal(saleId){
         
       }catch(e){ 
         console.error(e); 
-        showErrorNotification('❌ تعذر إنشاء إشعار دائن جزئي'); 
+        showErrorNotification('❌ ' + _t('notifPartialCreditNoteFailDefault')); 
       } finally {
         confirmBtn.disabled = false;
         confirmBtn.textContent = '✓ إصدار إشعار دائن';
@@ -1841,26 +2043,26 @@ async function showPartialRefundModal(saleId){
     
   }catch(e){
     console.error(e);
-    showErrorNotification('❌ تعذر فتح نافذة الإرجاع الجزئي');
+    showErrorNotification(_t('notifCannotOpenPartialRefund'));
   }
 }
 
 async function loadInvoiceIntoCartByNumber(invNo){
   setError(''); __processedSaleId = null; __processedSaleData = null;
   try{
-    const q = String(invNo||'').trim(); if(!q){ showErrorNotification('⚠️ أدخل رقم فاتورة صحيح'); return; }
+    const q = String(invNo||'').trim(); if(!q){ showErrorNotification(_t('notifEnterValidInvoiceNo')); return; }
     // ابحث عن الفاتورة برقمها بدقة
     const res = await window.api.sales_list({ invoice_no: q });
-    if(!res || !res.ok || !Array.isArray(res.items) || !res.items.length){ showErrorNotification('❌ لم يتم العثور على الفاتورة'); return; }
+    if(!res || !res.ok || !Array.isArray(res.items) || !res.items.length){ showErrorNotification(_t('notifInvoiceNotFound')); return; }
     // اختر أول نتيجة مطابقة تمامًا إن وجدت
     const exact = res.items.find(x => String(x.invoice_no) === q) || res.items[0];
     const gid = exact.id;
     const det = await window.api.sales_get(gid);
-    if(!det || !det.ok){ showErrorNotification('❌ تعذر جلب تفاصيل الفاتورة'); return; }
+    if(!det || !det.ok){ showErrorNotification(_t('notifCannotFetchInvoice')); return; }
     
     // منع معالجة الفواتير الدائنة (credit notes)
     if(det.sale && String(det.sale.doc_type) === 'credit_note'){
-      showErrorNotification('❌ لا يمكن معالجة إشعار دائن (CN). يمكن فقط معالجة الفواتير العادية');
+      showErrorNotification(_t('notifCannotProcessCreditNote'));
       return;
     }
     
@@ -1922,7 +2124,7 @@ async function loadInvoiceIntoCartByNumber(invNo){
     renderCart();
     // اقفل الشاشة
     setProcessingMode(true);
-  }catch(e){ console.error(e); showErrorNotification('❌ حدث خطأ أثناء المعالجة'); }
+  }catch(e){ console.error(e); showErrorNotification(_t('notifProcessingError')); }
 }
 
 function fmt(amount){
@@ -3458,7 +3660,7 @@ async function addToCart(p){
     try{
       const bcCheck = await window.api.products_get_by_barcode(p.barcode);
       if(bcCheck && bcCheck.ok && bcCheck.item && Number(bcCheck.item.barcode_used||0) === 1){
-        __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 });
+        __showSalesToast(_t('toastBarcodeAlreadyUsed'), { icon:'🚫', danger:true, ms:5000 });
         return;
       }
     }catch(_){ }
@@ -3537,7 +3739,7 @@ async function addToCart(p){
       if(mp!=null && !isNaN(mp) && Number(it.price||0) < mp){
         const cidx = cart.indexOf(it);
         if(cidx >= 0) cart.splice(cidx, 1);
-        __showSalesToast(`السعر أقل من الحد الأدنى لهذا الصنف وهو (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
+        __showSalesToast(`${_t('toastPriceBelowMinPrefix')} (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
       }
 
       it.__pending = false;
@@ -3614,8 +3816,8 @@ async function __doScanCode(code){
     const sr = await window.api.products_get_by_barcode(scale.plu);
     if(sr && sr.ok && sr.item){
       const p = sr.item;
-      if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); return; }
-      if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); return; }
+      if(Number(p.is_active||0) === 0){ __showSalesToast(_t('toastItemInactive'), { icon:'⚠️', danger:true, ms:4000 }); return; }
+      if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast(_t('toastBarcodeAlreadyUsed'), { icon:'🚫', danger:true, ms:5000 }); return; }
       const it = {
         id: p.id, name: p.name, name_en: p.name_en || null, barcode: p.barcode || null,
         price: Number(p.price||0), qty: 1, image_path: p.image_path,
@@ -3650,8 +3852,8 @@ async function __doScanCode(code){
     return;
   }
   const p = r.item;
-  if(Number(p.is_active||0) === 0){ __showSalesToast('الصنف غير مفعل', { icon:'⚠️', danger:true, ms:4000 }); return; }
-  if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast('هذا الباركود مستخدم مسبقاً - يرجى تغيير باركود المنتج', { icon:'🚫', danger:true, ms:5000 }); return; }
+  if(Number(p.is_active||0) === 0){ __showSalesToast(_t('toastItemInactive'), { icon:'⚠️', danger:true, ms:4000 }); return; }
+  if(__oneTimeBarcodeMode && Number(p.barcode_used||0) === 1){ __showSalesToast(_t('toastBarcodeAlreadyUsed'), { icon:'🚫', danger:true, ms:5000 }); return; }
   if(p.variant_id){
     const idx = cart.findIndex(x => x.id === p.id && x.variant_id === p.variant_id);
     const forceSeparate = !!settings.cart_separate_duplicate_lines;
@@ -3696,7 +3898,7 @@ async function __processScanQueue(){
       const batch = __scanQueue.splice(0);
       await Promise.all(batch.map(code =>
         __doScanCode(code).catch(() =>
-          __showSalesToast('تعذر جلب الصنف بالباركود', { icon:'⚠️', danger:true, ms:4000 })
+          __showSalesToast(_t('toastFetchProductFailed'), { icon:'⚠️', danger:true, ms:4000 })
         )
       ));
     }
@@ -3968,7 +4170,7 @@ try{
   const btnKitchen = document.getElementById('btnKitchen');
   if(btnKitchen){
     btnKitchen.addEventListener('click', async () => {
-      if(cart.length === 0){ __showSalesToast('أضف منتجات أولاً', { icon:'⚠️', danger:true, ms:5000 }); return; }
+      if(cart.length === 0){ __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); return; }
       setError('');
       const roomMeta = __currentRoomId ? await (async()=>{ try{ const rmeta = await window.api.rooms_list(); if(rmeta.ok){ return (rmeta.items||[]).find(x => String(x.id)===String(__currentRoomId)) || null; } }catch(_){ } return null; })() : null;
       let waiter = null; try{ waiter = JSON.parse(localStorage.getItem('pos_user')||'{}'); }catch(_){ waiter = null; }
@@ -4287,7 +4489,7 @@ tbody.addEventListener('change', async (e) => {
           const pNow0 = Number(it.price||0);
           if(mp!=null && !isNaN(mp) && pNow0 < mp){
             it.price = Number(mp);
-            __showSalesToast('تم تعديل السعر إلى الحد الأدنى المسموح', { icon:'⚠️', danger:true, ms:3500 });
+            __showSalesToast(_t('toastPriceAdjustedToMin'), { icon:'⚠️', danger:true, ms:3500 });
           }
         }
         try{
@@ -4342,7 +4544,7 @@ tbody.addEventListener('change', async (e) => {
             it.__amount = Math.max(0, Number((Number(it.qty||0) * minVal).toFixed(2)));
           }
         }
-        __showSalesToast(`السعر أقل من الحد الأدنى لهذا الصنف وهو (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
+        __showSalesToast(`${_t('toastPriceBelowMinPrefix')} (${mp})`, { icon:'⚠️', danger:true, ms:4000 });
         renderCart();
         return; // لا تعتمد القيمة الأقل المدخلة؛ اعتمد الحد الأدنى
       }
@@ -4351,7 +4553,7 @@ tbody.addEventListener('change', async (e) => {
       if(costVal!=null && costVal > 0 && p < costVal){
         const prevPrice = Number(it.price||0);
         priceInp.value = String(prevPrice.toFixed(2));
-        __showSalesToast(`سعر البيع (${p.toFixed(2)}) أقل من سعر الشراء (${costVal.toFixed(2)})`, { icon:'🚫', danger:true, ms:4000 });
+        __showSalesToast(`${_t('toastSalePriceBelowCostPrefix')} (${p.toFixed(2)}) ${_t('toastSalePriceBelowCostMiddle')} (${costVal.toFixed(2)})`, { icon:'🚫', danger:true, ms:4000 });
         renderCart();
         return;
       }
@@ -4434,11 +4636,11 @@ acmSave.addEventListener('click', async () => {
   const vat = (acmVat.value||'').trim();
   const cr = (acmCr.value||'').trim();
   
-  if(!phone){ __showSalesToast('رقم الجوال مطلوب', { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
-  if(phone && !/^\d+$/.test(phone)){ __showSalesToast('رقم الجوال يجب أن يحتوي على أرقام فقط', { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
-  if(phone && settings.require_phone_min_10 && phone.length < 10){ __showSalesToast('رقم الجوال يجب أن يكون 10 أرقام على الأقل', { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
-  if(vat && !/^\d{15}$/.test(vat)){ __showSalesToast('الرقم الضريبي يجب أن يكون 15 رقماً بالضبط', { icon:'⚠️', danger:true, ms:4000 }); acmVat.focus(); return; }
-  if(cr && !/^\d+$/.test(cr)){ __showSalesToast('رقم السجل التجاري يجب أن يحتوي على أرقام فقط', { icon:'⚠️', danger:true, ms:4000 }); acmCr.focus(); return; }
+  if(!phone){ __showSalesToast(_t('toastPhoneRequired'), { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
+  if(phone && !/^\d+$/.test(phone)){ __showSalesToast(_t('toastPhoneDigitsOnly'), { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
+  if(phone && settings.require_phone_min_10 && phone.length < 10){ __showSalesToast(_t('toastPhoneMin10'), { icon:'⚠️', danger:true, ms:4000 }); acmPhone.focus(); return; }
+  if(vat && !/^\d{15}$/.test(vat)){ __showSalesToast(_t('toastVatMust15'), { icon:'⚠️', danger:true, ms:4000 }); acmVat.focus(); return; }
+  if(cr && !/^\d+$/.test(cr)){ __showSalesToast(_t('toastCrDigitsOnly'), { icon:'⚠️', danger:true, ms:4000 }); acmCr.focus(); return; }
   
   const payload = {
     name: name || null,
@@ -4454,15 +4656,15 @@ acmSave.addEventListener('click', async () => {
   if(res && res.ok){
     await loadSettings();
     if(res.id){ __selectedCustomerId = String(res.id); const c = __allCustomers.find(x=>String(x.id)===String(res.id)); if(c){ selectCustomer(c); } }
-    __showSalesToast('تم إضافة العميل بنجاح', { icon:'✓', ms:3000 });
+    __showSalesToast(_t('toastCustomerAddedSuccess'), { icon:'✓', ms:3000 });
     closeAddCustomer();
   }else{
-    __showSalesToast(res && res.error ? res.error : 'تعذر إضافة العميل', { icon:'❌', danger:true, ms:4000 });
+    __showSalesToast(res && res.error ? res.error : _t('toastAddCustomerFailedDefault'), { icon:'❌', danger:true, ms:4000 });
   }
 });
 
 btnPay.addEventListener('click', async () => {
-  if(cart.length === 0){ __showSalesToast('أضف منتجات أولاً', { icon:'⚠️', danger:true, ms:5000 }); return; }
+  if(cart.length === 0){ __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); return; }
 
   // التحقق من وجود شفت مفتوح
   __currentShiftId = null;
@@ -4486,7 +4688,7 @@ btnPay.addEventListener('click', async () => {
   }
 
   if(settings && settings.require_customer_before_print && !__selectedCustomerId){
-    __showSalesToast('يرجى اختيار العميل قبل طباعة الفاتورة', { icon:'⚠️', danger:true, ms:5000 });
+    __showSalesToast(_t('toastSelectCustomerFirst'), { icon:'⚠️', danger:true, ms:5000 });
     if(customerSearch){ customerSearch.focus(); }
     return;
   }
@@ -4592,7 +4794,7 @@ btnPay.addEventListener('click', async () => {
     const it = cart[i];
     const mp = (typeof it.min_price === 'number') ? Number(it.min_price) : (typeof it.product_min_price === 'number' ? Number(it.product_min_price) : (typeof it.min_price === 'string' ? Number(it.min_price) : null));
     if(mp!=null && !isNaN(mp) && Number(it.price||0) < mp){
-      __showSalesToast(`سطر ${i+1}: السعر أقل من الحد الأدنى (${mp.toFixed(2)})`, { icon:'⚠️', danger:true, ms:5000 });
+      __showSalesToast(`${_t('toastRowPriceBelowMinPrefix')} ${i+1}${_t('toastRowPriceBelowMinMiddle')} (${mp.toFixed(2)})`, { icon:'⚠️', danger:true, ms:5000 });
       try{
         // ركّز على حقل السعر للسطر المخالف إن وُجد
         const row = tbody.querySelectorAll('tr')[i*2]; // الصف الرئيسي للسطر i
@@ -4606,7 +4808,7 @@ btnPay.addEventListener('click', async () => {
   const r = await window.api.sales_create(payload);
   if(!r.ok){
     // إظهار توست علوي صغير يختفي خلال 5 ثوانٍ (أعلى يمين)
-    __showSalesToast(r.error || 'فشل حفظ الفاتورة', { icon:'⚠️', danger:true, ms:5000 });
+    __showSalesToast(r.error || _t('toastSaveInvoiceFailedDefault'), { icon:'⚠️', danger:true, ms:5000 });
     setError('');
     return;
   }
@@ -5032,7 +5234,7 @@ async function processPrint(){
     const it = cart[i];
     const mp = (typeof it.min_price === 'number') ? Number(it.min_price) : (typeof it.product_min_price === 'number' ? Number(it.product_min_price) : (typeof it.min_price === 'string' ? Number(it.min_price) : null));
     if(mp!=null && !isNaN(mp) && Number(it.price||0) < mp){
-      __showSalesToast(`سطر ${i+1}: السعر أقل من الحد الأدنى (${mp.toFixed(2)})`, { icon:'⚠️', danger:true, ms:5000 });
+      __showSalesToast(`${_t('toastRowPriceBelowMinPrefix')} ${i+1}${_t('toastRowPriceBelowMinMiddle')} (${mp.toFixed(2)})`, { icon:'⚠️', danger:true, ms:5000 });
       try{
         // ركّز على حقل السعر للسطر المخالف إن وُجد
         const row = tbody.querySelectorAll('tr')[i*2]; // الصف الرئيسي للسطر i
@@ -5046,7 +5248,7 @@ async function processPrint(){
   const r = await window.api.sales_create(payload);
   if(!r.ok){
     // إظهار توست علوي صغير يختفي خلال 5 ثوانٍ (أعلى يمين)
-    __showSalesToast(r.error || 'فشل حفظ الفاتورة', { icon:'⚠️', danger:true, ms:5000 });
+    __showSalesToast(r.error || _t('toastSaveInvoiceFailedDefault'), { icon:'⚠️', danger:true, ms:5000 });
     setError('');
     return;
   }
@@ -5385,7 +5587,7 @@ async function populateCategories(){
     if(restoreCart){
       renderCart();
       computeTotals();
-      showSuccessNotification('✓ تم استعادة عرض السعر بنجاح');
+      showSuccessNotification(_t('notifQuotationRestoredSuccess'));
     }
   }catch(e){
     console.error('Error restoring quotation:', e);
@@ -5456,7 +5658,7 @@ function setupHeldInvoices(){
   if(btnHoldInvoice){
     btnHoldInvoice.addEventListener('click', async ()=>{
       if(!cart || cart.length === 0){
-        showErrorNotification('⚠️ السلة فارغة - لا يمكن تعليق فاتورة فارغة', 3000);
+        showErrorNotification(_t('notifCartEmptyHold'), 3000);
         return;
       }
       
@@ -5477,7 +5679,7 @@ function setupHeldInvoices(){
       
       const result = await window.api.held_invoices_add(heldInvoice);
       if(!result.ok){
-        showErrorNotification('⚠️ فشل حفظ الفاتورة: ' + (result.error || 'خطأ غير معروف'), 3000);
+        showErrorNotification('⚠️ ' + _t('notifHoldFailed') + ': ' + (result.error || _t('toastUnknownError')), 3000);
         return;
       }
       
@@ -5504,7 +5706,7 @@ function setupHeldInvoices(){
       
       try{ await loadCatalog(); }catch(_){}
       
-      showSuccessNotification('✓ تم تعليق الفاتورة بنجاح');
+      showSuccessNotification(_t('notifHoldSuccess'));
     });
   }
 
@@ -5704,7 +5906,7 @@ function setupHeldInvoices(){
       window.heldInvoicesModal.style.display = 'none';
     }, 500);
     
-    showSuccessNotification('✓ تم استرجاع الفاتورة بنجاح');
+    showSuccessNotification(_t('notifRestoreSuccess'));
   }
 
   function confirmDeleteHeldInvoice(){
@@ -5737,13 +5939,13 @@ function setupHeldInvoices(){
     }
     const result = await window.api.held_invoices_delete(dbId);
     if(!result.ok){
-      showErrorNotification('⚠️ فشل حذف الفاتورة: ' + (result.error || 'خطأ غير معروف'), 3000);
+      showErrorNotification('⚠️ ' + _t('notifDeleteHoldFailed') + ': ' + (result.error || _t('toastUnknownError')), 3000);
       return;
     }
     
     await loadHeldInvoicesList();
     
-    showSuccessNotification('✓ تم حذف الفاتورة المعلقة');
+    showSuccessNotification(_t('notifDeleteHoldSuccess'));
   }
 }
 
@@ -5897,18 +6099,30 @@ async function openAddProductModal(barcode){
 
   function renderApmOpList(){
     if(!apmOpList) return;
+    const isAr = isArabicLocale(__currentSalesLang);
+    const deleteText = isAr ? '🗑️ حذف' : '🗑️ Delete';
     apmOpList.innerHTML = '';
     apmProdOps.forEach((it, idx) => {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex; gap:8px; align-items:center; padding:4px 0; border-bottom:1px solid #e2e8f0;';
       row.innerHTML = `<div style="flex:1; font-weight:500;">${it.name}</div>
         <div style="width:100px; text-align:left; color:#0f172a;">${Number(it.price).toFixed(2)}</div>
-        <button type="button" style="padding:4px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;" data-rmidx="${idx}">🗑️ حذف</button>`;
+        <button type="button" style="padding:4px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;" data-rmidx="${idx}">${deleteText}</button>`;
       apmOpList.appendChild(row);
     });
   }
 
   if(!modal) return;
+  
+  // Use the globally tracked language - synchronous, no delay
+  const isAr = isArabicLocale(__currentSalesLang);
+  
+  if(categorySelect && categorySelect.options[0]) {
+    categorySelect.options[0].textContent = isAr ? 'اختر الفئة...' : 'Select category...';
+  }
+  if(apmOpSelect && apmOpSelect.options[0]) {
+    apmOpSelect.options[0].textContent = isAr ? 'اختر عملية' : 'Select operation';
+  }
   
   // Reset form
   if(nameInput) nameInput.value = '';
@@ -5932,7 +6146,8 @@ async function openAddProductModal(barcode){
   try{
     const categoriesResult = await window.api.types_list();
     if(categorySelect && categoriesResult && categoriesResult.ok){
-      categorySelect.innerHTML = '<option value="">اختر الفئة...</option>';
+      const catPlaceholder = isAr ? 'اختر الفئة...' : 'Select category...';
+      categorySelect.innerHTML = `<option value="">${catPlaceholder}</option>`;
       (categoriesResult.items || []).forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat.name;
@@ -6051,15 +6266,13 @@ async function openAddProductModal(barcode){
       
       // Validation
       if(!name){
-        const isAr = document.documentElement.lang === 'ar';
-        showErrorNotification(isAr ? '❌ يرجى إدخال اسم المنتج (عربي)' : '❌ Please enter product name (Arabic)');
+        showErrorNotification(_t('notifProductNameRequired'));
         if(nameInput) nameInput.focus();
         return;
       }
       
       if(price <= 0){
-        const isAr = document.documentElement.lang === 'ar';
-        showErrorNotification(isAr ? '❌ يرجى إدخال سعر البيع' : '❌ Please enter sale price');
+        showErrorNotification(_t('notifSalePriceRequired'));
         if(priceInput) priceInput.focus();
         return;
       }
@@ -6086,8 +6299,7 @@ async function openAddProductModal(barcode){
       const result = await window.api.products_add(productData);
       
       if(!result || !result.ok){
-        const isAr = document.documentElement.lang === 'ar';
-        showErrorNotification(isAr ? '❌ فشل حفظ المنتج: ' + (result?.error || 'خطأ غير معروف') : '❌ Failed to save product: ' + (result?.error || 'Unknown error'));
+        showErrorNotification(_t('notifSaveProductFailedPrefix') + (result?.error || _t('notifSaveProductFailedDefault')));
         return;
       }
 
@@ -6099,9 +6311,7 @@ async function openAddProductModal(barcode){
         }
       }catch(_){}
       
-      // Success
-      const isAr = document.documentElement.lang === 'ar';
-      showSuccessNotification(isAr ? '✓ تم إضافة المنتج بنجاح' : '✓ Product added successfully');
+      showSuccessNotification(_t('notifProductAddedSuccess'));
       modal.style.display = 'none';
       
       // Reload catalog to show new product (reset state to force full reload)
@@ -6112,8 +6322,7 @@ async function openAddProductModal(barcode){
       }catch(_){}
       
     }catch(err){
-      const isAr = document.documentElement.lang === 'ar';
-      showErrorNotification(isAr ? '❌ حدث خطأ أثناء حفظ المنتج: ' + (err?.message || String(err)) : '❌ Error saving product: ' + (err?.message || String(err)));
+      showErrorNotification(_t('notifSaveProductErrorPrefix') + (err?.message || String(err)));
     }
   };
   
@@ -6154,7 +6363,8 @@ async function __apmLoadGlobalOps(){
 
 function __apmPopulateOpSelect(selectEl, selectValueId){
   if(!selectEl) return;
-  selectEl.innerHTML = '<option value="">اختر عملية</option>';
+  const opPlaceholder = isArabicLocale(__currentSalesLang) ? 'اختر عملية' : 'Select operation';
+  selectEl.innerHTML = `<option value="">${opPlaceholder}</option>`;
   __apmGlobalAllOps.forEach(o => {
     const opt = document.createElement('option');
     opt.value = String(o.id);

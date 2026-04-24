@@ -64,7 +64,69 @@ const TR_PRODUCTS = {
     'العملية': 'Operation',
     'لا توجد عمليات': 'No operations',
     'تعذر إنشاء PDF': 'Failed to create PDF',
-    'تعذر إنشاء PDF للمنتج': 'Failed to create product PDF'
+    'تعذر إنشاء PDF للمنتج': 'Failed to create product PDF',
+    'إدارة المنتجات': 'Manage products',
+    '⬅ العودة': '⬅ Back',
+    'جاري...': 'Loading...',
+    'صفحة': 'Page',
+    'من': 'of',
+    'منتج': 'product',
+    'منتجات': 'products',
+    'تعديل': 'Edit',
+    'حذف': 'Delete',
+    'باركود': 'Barcode',
+    'إيقاف': 'Disable',
+    'تفعيل': 'Enable',
+    'مخفي': 'Hidden',
+    'جاري الحفظ...': 'Saving...',
+    'تعذر تحميل المنتجات': 'Failed to load products',
+    'حدث خطأ غير متوقع أثناء تحميل المنتجات': 'An unexpected error occurred while loading products',
+    'فشل حفظ ترتيب المنتجات': 'Failed to save products order',
+    'تم حفظ الترتيب بنجاح': 'Order saved successfully',
+    'تعذر حفظ الترتيب': 'Failed to save order',
+    'تعذر جلب المنتج': 'Failed to fetch product',
+    'حدث خطأ غير متوقع': 'An unexpected error occurred',
+    'فشل تحديث الحالة': 'Failed to update status',
+    'فشل الحذف': 'Delete failed',
+    'تعذر إنشاء CSV': 'Failed to create CSV',
+    'جاري التصدير...': 'Exporting...',
+    'تم!': 'Done!',
+    'فشل قراءة الملف': 'Failed to read file',
+    'جاري قراءة الملف...': 'Reading file...',
+    'فشل قراءة ملف Excel': 'Failed to read Excel file',
+    'فشل الاستيراد': 'Import failed',
+    'خطأ غير معروف': 'Unknown error',
+    'جاري الاستيراد...': 'Importing...',
+    'التحقق من البيانات': 'Validating data',
+    'إضافة المنتجات': 'Adding products',
+    'اكتمل': 'Completed',
+    '✓ تم حفظ الملف النموذجي بنجاح': '✓ Template file saved successfully',
+    'جاري التحميل...': 'Downloading...',
+    'فشل تحميل الملف النموذجي': 'Failed to download template file',
+    'فشل تحميل الملف النموذجي:': 'Failed to download template file:',
+    'تم الإلغاء': 'Cancelled',
+    'لا يوجد منتج محدد': 'No selected product',
+    'جاري الطباعة...': 'Printing...',
+    'فشل طباعة الباركود:': 'Barcode printing failed:',
+    'تعذر جلب بيانات المنتج': 'Failed to fetch product data',
+    'حدث خطأ أثناء فتح شاشة الباركود:': 'Error opening barcode screen:',
+    'تم طباعة': 'Printed',
+    'من': 'of',
+    'استيكر. فشل': 'labels. Failed',
+    'استيكر.': 'labels.',
+    'حجم الصورة أكبر من 1 ميجابايت. يرجى اختيار صورة أصغر.': 'Image size is larger than 1MB. Please choose a smaller image.',
+    'تم إضافة النوع الرئيسي': 'Main type added',
+    'بنجاح': 'successfully',
+    'تم إضافة العملية': 'Operation added',
+    'استيراد من Excel': 'Import from Excel',
+    'نموذج Excel': 'Excel template',
+    'تم استيراد': 'Imported',
+    'فشل': 'Failed',
+    'المنتجات الفاشلة': 'Failed products',
+    'طباعة': 'Print'
+    ,
+    'اختر النوع الرئيسي': 'Select main type',
+    'اختر عملية': 'Select operation'
   }
 };
 
@@ -80,6 +142,11 @@ async function getAppLang() {
 function t(key) {
   const lang = document.documentElement.lang === 'en' ? 'en' : 'ar';
   return (TR_PRODUCTS[lang] && TR_PRODUCTS[lang][key]) || key;
+}
+
+function productCountLabel(count) {
+  if (document.documentElement.lang !== 'en') return count === 1 ? t('منتج') : t('منتج');
+  return count === 1 ? t('منتج') : t('منتجات');
 }
 
 // Settings: show/hide selling units section
@@ -532,7 +599,7 @@ function renderPager(total){
   const html = [
     btn('⏮️', __page<=1, 'first'),
     btn('◀️', __page<=1, 'prev'),
-    `<span class="text-gray-600 font-medium px-2">صفحة ${__page} من ${pages} (${total} منتج)</span>`,
+    `<span class="text-gray-600 font-medium px-2">${t('صفحة')} ${__page} ${t('من')} ${pages} (${total} ${productCountLabel(total)})</span>`,
     btn('▶️', __page>=pages, 'next'),
     btn('⏭️', __page>=pages, 'last')
   ].join(' ');
@@ -720,10 +787,10 @@ function renderRows(list){
 
     const priceExportBtn = '';
     const rowActions = [
-      hasProd('products.edit') ? `<button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-id="${p.id}">✏️ تعديل</button>` : '',
-      `<button class="px-3 py-1.5 bg-green-700 text-white rounded-lg text-sm font-medium" data-act="barcode" data-id="${p.id}">🏷️ باركود</button>`,
-      hasProd('products.toggle') ? `<button class="px-3 py-1.5 ${p.is_active? 'bg-red-600':'bg-green-600'} text-white rounded-lg text-sm font-medium" data-act="toggle" data-id="${p.id}">${p.is_active? '❌ إيقاف':'✅ تفعيل'}</button>` : '',
-      hasProd('products.delete') ? `<button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="delete" data-id="${p.id}">🗑️ حذف</button>` : ''
+      hasProd('products.edit') ? `<button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" data-act="edit" data-id="${p.id}">✏️ ${t('تعديل')}</button>` : '',
+      `<button class="px-3 py-1.5 bg-green-700 text-white rounded-lg text-sm font-medium" data-act="barcode" data-id="${p.id}">🏷️ ${t('باركود')}</button>`,
+      hasProd('products.toggle') ? `<button class="px-3 py-1.5 ${p.is_active? 'bg-red-600':'bg-green-600'} text-white rounded-lg text-sm font-medium" data-act="toggle" data-id="${p.id}">${p.is_active? `❌ ${t('إيقاف')}`:`✅ ${t('تفعيل')}`}</button>` : '',
+      hasProd('products.delete') ? `<button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" data-act="delete" data-id="${p.id}">🗑️ ${t('حذف')}</button>` : ''
     ].join(' ');
     
     const priceVal = Number(p.price||0);
@@ -746,11 +813,11 @@ function renderRows(list){
     
     const statusBadge = p.is_active 
       ? (isHidden 
-          ? '<div><span class="status-active">✓ نشط</span><br/><span style="font-size:11px; color:#92400e; background:#fbbf24; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">🔒 مخفي</span></div>' 
-          : '<span class="status-active">✓ نشط</span>')
+          ? `<div><span class="status-active">✓ ${t('نشط')}</span><br/><span style="font-size:11px; color:#92400e; background:#fbbf24; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">🔒 ${t('مخفي')}</span></div>` 
+          : `<span class="status-active">✓ ${t('نشط')}</span>`)
       : (isHidden
-          ? '<div><span class="status-inactive">✕ موقوف</span><br/><span style="font-size:11px; color:#92400e; background:#fbbf24; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">🔒 مخفي</span></div>'
-          : '<span class="status-inactive">✕ موقوف</span>');
+          ? `<div><span class="status-inactive">✕ ${t('موقوف')}</span><br/><span style="font-size:11px; color:#92400e; background:#fbbf24; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">🔒 ${t('مخفي')}</span></div>`
+          : `<span class="status-inactive">✕ ${t('موقوف')}</span>`);
 
     const expiryDateText = p.expiry_date ? (function(){
       try {
@@ -801,7 +868,7 @@ async function loadProducts(resetPage = true, clearError = true){
   const originalBtnText = refreshBtn?.innerHTML;
   if(refreshBtn) {
     refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '⟳ جاري...';
+    refreshBtn.innerHTML = `⟳ ${t('جاري...')}`;
   }
   
   try {
@@ -833,7 +900,7 @@ async function loadProducts(resetPage = true, clearError = true){
     
     const res = await window.api.products_list(query);
     if(!res.ok){ 
-      setError(res.error || 'تعذر تحميل المنتجات'); 
+      setError(res.error || t('تعذر تحميل المنتجات')); 
       return; 
     }
     
@@ -851,7 +918,7 @@ async function loadProducts(resetPage = true, clearError = true){
     renderRows(__allProducts);
     renderPager(__totalProducts);
   } catch(err) {
-    setError('حدث خطأ غير متوقع أثناء تحميل المنتجات');
+    setError(t('حدث خطأ غير متوقع أثناء تحميل المنتجات'));
   } finally {
     if(refreshBtn) {
       refreshBtn.disabled = false;
@@ -884,9 +951,9 @@ if(saveOrderBtn){
     try{
       const ids = __allProducts.map(p => p.id);
       const r = await window.api.products_reorder(ids);
-      if(!r.ok){ setError(r.error||'فشل حفظ ترتيب المنتجات'); return; }
-      setError('تم حفظ الترتيب بنجاح');
-    }catch(_){ setError('تعذر حفظ الترتيب'); }
+      if(!r.ok){ setError(r.error||t('فشل حفظ ترتيب المنتجات')); return; }
+      setError(t('تم حفظ الترتيب بنجاح'));
+    }catch(_){ setError(t('تعذر حفظ الترتيب')); }
   });
 }
 
@@ -1258,10 +1325,10 @@ tbody.addEventListener('click', async (e) => {
   if(act==='edit'){
     try {
       const res = await cachedRequest(`product_${id}`, () => window.api.products_get(id), 10000);
-      if(!res.ok){ setError(res.error || 'تعذر جلب المنتج'); return; }
+      if(!res.ok){ setError(res.error || t('تعذر جلب المنتج')); return; }
       openEditDialog(res.item);
     } catch(err) {
-      setError('حدث خطأ غير متوقع');
+      setError(t('حدث خطأ غير متوقع'));
     }
   }
   
@@ -1273,14 +1340,14 @@ tbody.addEventListener('click', async (e) => {
       pendingOps.set(opKey, true);
       const res = await window.api.products_toggle(id);
       if(!res.ok){ 
-        setError(res.error || 'فشل تحديث الحالة');
+        setError(res.error || t('فشل تحديث الحالة'));
         btn.disabled = false;
         return;
       }
       // Quick reload without full page refresh
       await loadProducts();
     } catch(err) {
-      setError('حدث خطأ غير متوقع');
+      setError(t('حدث خطأ غير متوقع'));
       btn.disabled = false;
     } finally {
       pendingOps.delete(opKey);
@@ -1301,13 +1368,13 @@ tbody.addEventListener('click', async (e) => {
       pendingOps.set(opKey, true);
       const res = await window.api.products_delete(id);
       if(!res.ok){ 
-        setError(res.error || 'فشل الحذف');
+        setError(res.error || t('فشل الحذف'));
         btn.disabled = false;
         return;
       }
       await loadProducts();
     } catch(err) {
-      setError('حدث خطأ غير متوقع');
+      setError(t('حدث خطأ غير متوقع'));
       btn.disabled = false;
     } finally {
       pendingOps.delete(opKey);
@@ -1317,17 +1384,17 @@ tbody.addEventListener('click', async (e) => {
   if(act==='export_pdf_product'){
     btn.disabled = true;
     const originalText = btn.innerHTML;
-    btn.innerHTML = '⟳ جاري...';
+    btn.innerHTML = `⟳ ${t('جاري...')}`;
     
     try{
       const res = await window.api.products_get(id);
-      if(!res.ok){ setError(res.error || 'تعذر جلب المنتج'); return; }
+      if(!res.ok){ setError(res.error || t('تعذر جلب المنتج')); return; }
       const p = res.item;
       const rpo = await cachedRequest(`prod_ops_${id}`, () => window.api.prod_ops_list(id), 15000);
       const ops = (rpo && rpo.ok ? (rpo.items||[]) : []);
       await exportProductPdf(p, ops);
     } catch(_){ 
-      await customAlert('تعذر إنشاء PDF للمنتج'); 
+      await customAlert(t('تعذر إنشاء PDF للمنتج')); 
     } finally {
       btn.disabled = false;
       btn.innerHTML = originalText;
@@ -1360,17 +1427,17 @@ btnExportProductsPdf?.addEventListener('click', async () => {
     const btn = btnExportProductsPdf;
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ جاري التصدير...';
+    btn.textContent = `⏳ ${t('جاري التصدير...')}`;
     
     const withOps = await fetchProductsWithOpsUsingCurrentFilters();
     await exportProductsPdf(withOps);
     
-    btn.textContent = '✓ تم!';
+    btn.textContent = `✓ ${t('تم!')}`;
     setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
   }catch(e){ 
     btnExportProductsPdf.disabled = false;
     btnExportProductsPdf.textContent = '🧾 PDF';
-    alert('تعذر إنشاء PDF: ' + (e?.message || '')); 
+    alert(`${t('تعذر إنشاء PDF')}: ` + (e?.message || '')); 
   }
 });
 
@@ -1380,17 +1447,17 @@ btnExportProductsCsv?.addEventListener('click', async () => {
     const btn = btnExportProductsCsv;
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ جاري التصدير...';
+    btn.textContent = `⏳ ${t('جاري التصدير...')}`;
     
     const withOps = await fetchProductsWithOpsUsingCurrentFilters();
     exportProductsCsv(withOps);
     
-    btn.textContent = '✓ تم!';
+    btn.textContent = `✓ ${t('تم!')}`;
     setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
   }catch(e){ 
     btnExportProductsCsv.disabled = false;
     btnExportProductsCsv.textContent = '📄 CSV';
-    alert('تعذر إنشاء CSV: ' + (e?.message || '')); 
+    alert(`${t('تعذر إنشاء CSV')}: ` + (e?.message || '')); 
   }
 });
 
@@ -1740,9 +1807,9 @@ window.api.on_products_import_progress((data) => {
   if(progressText) progressText.textContent = percent + '%';
   
   let phaseText = '';
-  if(phase === 'validation') phaseText = 'التحقق من البيانات';
-  else if(phase === 'inserting') phaseText = 'إضافة المنتجات';
-  else if(phase === 'complete') phaseText = 'اكتمل';
+  if(phase === 'validation') phaseText = t('التحقق من البيانات');
+  else if(phase === 'inserting') phaseText = t('إضافة المنتجات');
+  else if(phase === 'complete') phaseText = t('اكتمل');
   
   if(progressDetails) progressDetails.textContent = `${phaseText}: ${current} / ${total}`;
 });
@@ -1758,9 +1825,9 @@ if(btnImportExcel){
       if(!file) return;
       
       try {
-        errorDiv.textContent = 'جاري قراءة الملف...';
+        errorDiv.textContent = t('جاري قراءة الملف...');
         btnImportExcel.disabled = true;
-        btnImportExcel.textContent = 'جاري الاستيراد...';
+        btnImportExcel.textContent = t('جاري الاستيراد...');
         
         if(importProgressDiv) {
           importProgressDiv.classList.remove('hidden');
@@ -1772,10 +1839,10 @@ if(btnImportExcel){
         const readResult = await window.api.products_read_excel_file(file.path);
         
         if(!readResult || !readResult.ok){
-          errorDiv.textContent = readResult?.error || 'فشل قراءة ملف Excel';
+          errorDiv.textContent = readResult?.error || t('فشل قراءة ملف Excel');
           if(importProgressDiv) importProgressDiv.classList.add('hidden');
           btnImportExcel.disabled = false;
-          btnImportExcel.textContent = '📥 استيراد من Excel';
+          btnImportExcel.textContent = `📥 ${t('استيراد من Excel')}`;
           return;
         }
         
@@ -1788,11 +1855,11 @@ if(btnImportExcel){
         }
         
         if(result && result.ok){
-          let msg = `✓ تم استيراد ${result.successCount} منتج بنجاح`;
+          let msg = `✓ ${t('تم استيراد')} ${result.successCount} ${t('منتج')} ${t('بنجاح')}`;
           if(result.errorCount > 0){
-            msg += ` - فشل ${result.errorCount} منتج`;
+            msg += ` - ${t('فشل')} ${result.errorCount} ${t('منتج')}`;
             if(result.errors && result.errors.length > 0){
-              msg += '\n\nالمنتجات الفاشلة:\n' + result.errors.join('\n');
+              msg += `\n\n${t('المنتجات الفاشلة')}:\n` + result.errors.join('\n');
             }
           }
           
@@ -1823,15 +1890,15 @@ if(btnImportExcel){
           }, 15000);
         } else {
           errorDiv.style.display = 'block';
-          errorDiv.textContent = result?.error || 'فشل الاستيراد';
+          errorDiv.textContent = result?.error || t('فشل الاستيراد');
         }
       } catch(err) {
         console.error('Error importing:', err);
-        errorDiv.textContent = 'فشل الاستيراد: ' + (err.message || 'خطأ غير معروف');
+        errorDiv.textContent = `${t('فشل الاستيراد')}: ` + (err.message || t('خطأ غير معروف'));
         if(importProgressDiv) importProgressDiv.classList.add('hidden');
       } finally {
         btnImportExcel.disabled = false;
-        btnImportExcel.textContent = '📥 استيراد من Excel';
+        btnImportExcel.textContent = `📥 ${t('استيراد من Excel')}`;
       }
     };
     input.click();
@@ -2077,7 +2144,7 @@ async function openBarcodeDialog(productId){
     if(!barcodeQtyInput) return;
     // Load full product details if not already cached
     const r = await window.api.products_get(productId);
-    if(!r.ok){ setBarcodeError(r.error || 'تعذر جلب بيانات المنتج'); return; }
+    if(!r.ok){ setBarcodeError(r.error || t('تعذر جلب بيانات المنتج')); return; }
     currentBarcodeProduct = r.item;
     
     // Always reload settings to get latest values
@@ -2101,7 +2168,7 @@ async function openBarcodeDialog(productId){
     renderBarcodePreview(currentBarcodeProduct, st && st.ok ? st.item : barcodeSettings);
     try{ barcodeDlg.showModal(); }catch(_){ try{ barcodeDlg.close(); barcodeDlg.showModal(); }catch(__){} }
   }catch(e){
-    setBarcodeError('حدث خطأ أثناء فتح شاشة الباركود: ' + (e && e.message ? e.message : ''));
+    setBarcodeError(`${t('حدث خطأ أثناء فتح شاشة الباركود:')} ` + (e && e.message ? e.message : ''));
   }
 }
 
@@ -2110,13 +2177,13 @@ barcodeCancelBtn?.addEventListener('click', () => {
 });
 
 barcodePrintBtn?.addEventListener('click', async () => {
-  if(!currentBarcodeProduct){ setBarcodeError('لا يوجد منتج محدد'); return; }
+  if(!currentBarcodeProduct){ setBarcodeError(t('لا يوجد منتج محدد')); return; }
   const rawQty = Number(barcodeQtyInput?.value || 1);
   const qty = Math.max(1, isFinite(rawQty) ? Math.floor(rawQty) : 1);
   try{
     setBarcodeError('');
     barcodePrintBtn.disabled = true;
-    barcodePrintBtn.textContent = 'جاري الطباعة...';
+    barcodePrintBtn.textContent = t('جاري الطباعة...');
     
     // Reload settings to ensure latest values
     const st = await window.api.settings_get();
@@ -2194,18 +2261,18 @@ barcodePrintBtn?.addEventListener('click', async () => {
     }
     
     if(errorCount > 0){
-      setBarcodeError(`تم طباعة ${successCount} من ${qty} استيكر. فشل ${errorCount} استيكر.`);
+      setBarcodeError(`${t('تم طباعة')} ${successCount} ${t('من')} ${qty} ${t('استيكر.')} ${t('فشل')} ${errorCount} ${t('استيكر.')}`);
     } else {
       try{ barcodeDlg.close(); }catch(_){}
     }
     
     barcodePrintBtn.disabled = false;
-    barcodePrintBtn.textContent = '🖨️ طباعة';
+    barcodePrintBtn.textContent = `🖨️ ${t('طباعة')}`;
   }catch(e){
-    setBarcodeError('فشل طباعة الباركود: ' + (e && e.message ? e.message : ''));
+    setBarcodeError(`${t('فشل طباعة الباركود:')} ` + (e && e.message ? e.message : ''));
     console.error('Barcode print error:', e);
     barcodePrintBtn.disabled = false;
-    barcodePrintBtn.textContent = '🖨️ طباعة';
+    barcodePrintBtn.textContent = `🖨️ ${t('طباعة')}`;
   }
 });
 
@@ -2214,12 +2281,12 @@ if(btnDownloadTemplate){
   btnDownloadTemplate.addEventListener('click', async () => {
     try {
       btnDownloadTemplate.disabled = true;
-      btnDownloadTemplate.textContent = 'جاري التحميل...';
+      btnDownloadTemplate.textContent = t('جاري التحميل...');
       
       const result = await window.api.products_download_template();
       
       if(result && result.ok){
-        errorDiv.textContent = '✓ تم حفظ الملف النموذجي بنجاح';
+        errorDiv.textContent = t('✓ تم حفظ الملف النموذجي بنجاح');
         errorDiv.className = 'text-green-700 bg-green-50 border border-green-200 px-4 py-2.5 rounded-lg min-h-[22px] my-2 text-center font-medium';
         setTimeout(() => { 
           errorDiv.textContent = ''; 
@@ -2227,15 +2294,15 @@ if(btnDownloadTemplate){
         }, 3000);
       } else {
         if(result?.error !== 'تم الإلغاء'){
-          errorDiv.textContent = result?.error || 'فشل تحميل الملف النموذجي';
+          errorDiv.textContent = result?.error || t('فشل تحميل الملف النموذجي');
         }
       }
     } catch(err) {
       console.error('Error downloading template:', err);
-      errorDiv.textContent = 'فشل تحميل الملف النموذجي: ' + (err.message || 'خطأ غير معروف');
+      errorDiv.textContent = `${t('فشل تحميل الملف النموذجي:')} ` + (err.message || t('خطأ غير معروف'));
     } finally {
       btnDownloadTemplate.disabled = false;
-      btnDownloadTemplate.textContent = '📋 نموذج Excel';
+      btnDownloadTemplate.textContent = `📋 ${t('نموذج Excel')}`;
     }
   });
 }

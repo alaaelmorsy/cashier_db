@@ -26,12 +26,12 @@
           <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30 flex items-center justify-center">
             <span class="text-white font-bold text-lg">POS</span>
           </div>
-          <span class="text-xl font-bold text-slate-800">الرئيسية</span>
+          <span id="pageBrand" class="text-xl font-bold text-slate-800">الرئيسية</span>
         </div>
         <div class="flex-1 flex justify-center">
           <button id="posBtn" class="rounded-xl bg-green-600 text-white font-bold shadow-lg shadow-green-500/30 hover:bg-green-700 transition-all" title="اختصار: F1" style="padding: 10px 24px 10px 24px; min-height: 65px; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important;">
-            <div style="margin-bottom: 2px; white-space: nowrap;">🛒 نقطة البيع</div>
-            <div style="font-size: 12px; font-weight: normal; opacity: 0.95; white-space: nowrap;">F1</div>
+            <div id="posBtnLabel" style="margin-bottom: 2px; white-space: nowrap;">🛒 نقطة البيع</div>
+            <div id="posBtnHotkey" style="font-size: 12px; font-weight: normal; opacity: 0.95; white-space: nowrap;">F1</div>
           </button>
         </div>
         <nav class="flex gap-3 items-center">
@@ -438,7 +438,7 @@
       </div>
 
       <div class="mt-12 text-center text-slate-500 text-sm py-6 px-4 rounded-xl bg-white/60 border border-slate-200/40 shadow-sm">
-        <p class="font-semibold">نظام الرابط</p>
+        <p id="footerNote" class="font-semibold">نظام الرابط</p>
       </div>
     </div>
     <!-- Zoom Toggle Button (right edge) -->

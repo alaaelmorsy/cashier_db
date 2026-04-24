@@ -216,10 +216,15 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/credit-notes', async (req, res) => {
     let conn;
     try {
-      const { limit = 200, offset = 0 } = req.query;
+      const { limit = 999999, offset = 0, date_from, date_to } = req.query;
       conn = await dbAdapter.getConnection();
-      const sql = 'SELECT * FROM sales WHERE doc_type="credit_note" ORDER BY id DESC LIMIT ? OFFSET ?';
-      const [rows] = await conn.query(sql, [parseInt(limit), parseInt(offset)]);
+      const terms = ["doc_type='credit_note'"];
+      const params = [];
+      if (date_from) { terms.push('created_at >= ?'); params.push(date_from); }
+      if (date_to) { terms.push('created_at <= ?'); params.push(date_to); }
+      const where = 'WHERE ' + terms.join(' AND ');
+      const lim = Math.min(parseInt(limit) || 999999, 999999);
+      const [rows] = await conn.query(`SELECT * FROM sales ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
       res.json({ ok: true, credit_notes: rows });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -1299,7 +1304,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (to) { terms.push('COALESCE(purchase_at, created_at) <= ?'); params.push(to); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM purchases ${where}`, params);
-      const lim = Math.min(parseInt(limit) || 50, 500);
+      const lim = Math.min(parseInt(limit) || 50, 999999);
       const [rows] = await conn.query(`SELECT * FROM purchases ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
       res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
     } catch (err) {
@@ -1323,7 +1328,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (to) { terms.push('DATE(pi.invoice_at) <= ?'); params.push(to); }
       if (search) { terms.push('(pi.invoice_no LIKE ? OR s.name LIKE ?)'); const sq = `%${search}%`; params.push(sq, sq); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
-      const lim = Math.min(parseInt(limit) || 50, 500);
+      const lim = Math.min(parseInt(limit) || 50, 999999);
       const [[cntRow]] = await conn.query(
         `SELECT COUNT(*) AS total FROM purchase_invoices pi LEFT JOIN suppliers s ON s.id=pi.supplier_id ${where}`, params
       );
