@@ -46,14 +46,14 @@ function renderTable(items, reportType) {
 
   if (thead) {
     thead.innerHTML = isSold
-      ? '<th>الصنف</th><th>التصنيف</th><th>الكمية المباعة</th><th>الكمية الحالية</th>'
-      : '<th>الصنف</th><th>التصنيف</th><th>الكمية الحالية</th>';
+      ? '<th>باركود الصنف</th><th>الصنف</th><th>التصنيف</th><th>الكمية المباعة</th><th>الكمية الحالية</th>'
+      : '<th>باركود الصنف</th><th>الصنف</th><th>التصنيف</th><th>الكمية الحالية</th>';
   }
 
   if (!tbody) return;
 
   if (!items || items.length === 0) {
-    const cols = isSold ? 4 : 3;
+    const cols = isSold ? 5 : 4;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:20px">لا توجد بيانات للفترة المحددة</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
     return;
@@ -69,6 +69,7 @@ function renderTable(items, reportType) {
     totalStock += stock;
     if (isSold) {
       return `<tr>
+        <td>${item.barcode || '-'}</td>
         <td>${item.name || ''}</td>
         <td>${item.category || '-'}</td>
         <td>${fmtQty(sold)}</td>
@@ -76,6 +77,7 @@ function renderTable(items, reportType) {
       </tr>`;
     } else {
       return `<tr>
+        <td>${item.barcode || '-'}</td>
         <td>${item.name || ''}</td>
         <td>${item.category || '-'}</td>
         <td>${fmtQty(stock)}</td>
@@ -86,13 +88,13 @@ function renderTable(items, reportType) {
   if (tfoot) {
     if (isSold) {
       tfoot.innerHTML = `<tr>
-        <th colspan="2">الإجمالي</th>
+        <th colspan="3">الإجمالي</th>
         <th>${fmtQty(totalSold)}</th>
         <th>${fmtQty(totalStock)}</th>
       </tr>`;
     } else {
       tfoot.innerHTML = `<tr>
-        <th colspan="2">الإجمالي</th>
+        <th colspan="3">الإجمالي</th>
         <th>${fmtQty(totalStock)}</th>
       </tr>`;
     }
@@ -102,7 +104,7 @@ function renderTable(items, reportType) {
 async function loadReport(fromDate, toDate) {
   const reportType = reportTypeEl?.value || 'sold';
   const tbody = document.getElementById('inventoryTbody');
-  const cols = reportType === 'not_sold' ? 3 : 4;
+  const cols = reportType === 'not_sold' ? 4 : 5;
   if (tbody) tbody.innerHTML = `<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:20px">جاري التحميل...</td></tr>`;
 
   if (rangeEl) {
@@ -216,15 +218,15 @@ async function loadReport(fromDate, toDate) {
         const excelType = reportTypeEl?.value || 'sold';
         const isSoldExcel = excelType !== 'not_sold';
         if (isSoldExcel) {
-          lines.push(['الصنف', 'التصنيف', 'الكمية المباعة', 'الكمية الحالية'].map(esc).join(','));
+          lines.push(['باركود الصنف', 'الصنف', 'التصنيف', 'الكمية المباعة', 'الكمية الحالية'].map(esc).join(','));
         } else {
-          lines.push(['الصنف', 'التصنيف', 'الكمية الحالية'].map(esc).join(','));
+          lines.push(['باركود الصنف', 'الصنف', 'التصنيف', 'الكمية الحالية'].map(esc).join(','));
         }
         currentItems.forEach((item) => {
           if (isSoldExcel) {
-            lines.push([item.name || '', item.category || '-', Number(item.qty_sold || 0), Number(item.stock_qty || 0)].map(esc).join(','));
+            lines.push([item.barcode || '-', item.name || '', item.category || '-', Number(item.qty_sold || 0), Number(item.stock_qty || 0)].map(esc).join(','));
           } else {
-            lines.push([item.name || '', item.category || '-', Number(item.stock_qty || 0)].map(esc).join(','));
+            lines.push([item.barcode || '-', item.name || '', item.category || '-', Number(item.stock_qty || 0)].map(esc).join(','));
           }
         });
 
@@ -232,9 +234,9 @@ async function loadReport(fromDate, toDate) {
           const totalSold = currentItems.reduce((s, it) => s + Number(it.qty_sold || 0), 0);
           const totalStock = currentItems.reduce((s, it) => s + Number(it.stock_qty || 0), 0);
           if (isSoldExcel) {
-            lines.push(['الإجمالي', '', totalSold, totalStock].map(esc).join(','));
+            lines.push(['الإجمالي', '', '', totalSold, totalStock].map(esc).join(','));
           } else {
-            lines.push(['الإجمالي', '', totalStock].map(esc).join(','));
+            lines.push(['الإجمالي', '', '', totalStock].map(esc).join(','));
           }
         }
 

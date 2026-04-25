@@ -1627,7 +1627,7 @@ function registerSalesIPC(){
         let sql;
         if(reportType === 'not_sold'){
           sql = `
-            SELECT p.id, p.name, COALESCE(p.category,'') AS category,
+            SELECT p.id, p.name, COALESCE(p.barcode,'') AS barcode, COALESCE(p.category,'') AS category,
                    COALESCE(p.stock, 0) AS stock_qty,
                    0 AS qty_sold
             FROM products p
@@ -1639,14 +1639,14 @@ function registerSalesIPC(){
             ORDER BY p.name ASC`;
         } else {
           sql = `
-            SELECT p.id, p.name, COALESCE(p.category,'') AS category,
+            SELECT p.id, p.name, COALESCE(p.barcode,'') AS barcode, COALESCE(p.category,'') AS category,
                    COALESCE(p.stock, 0) AS stock_qty,
                    COALESCE(SUM(si.qty), 0) AS qty_sold
             FROM products p
             INNER JOIN sales_items si ON si.product_id = p.id
               AND si.sale_id IN (${salesSubquery})
             WHERE p.is_active = 1
-            GROUP BY p.id, p.name, p.category, p.stock
+            GROUP BY p.id, p.name, p.barcode, p.category, p.stock
             ORDER BY p.name ASC`;
         }
         const [rows] = await conn.query(sql, params);

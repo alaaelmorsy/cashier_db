@@ -497,8 +497,8 @@ async function createMainWindow() {
         const testPromise = new Promise((resolve, reject) => {
           const net = require('net');
           const socket = new net.Socket();
-          const timeout = setTimeout(() => { socket.destroy(); reject(new Error('timeout')); }, 3000);
-          socket.setTimeout(3000);
+          const timeout = setTimeout(() => { socket.destroy(); reject(new Error('timeout')); }, 10000);
+          socket.setTimeout(10000);
           socket.once('connect', () => { clearTimeout(timeout); socket.destroy(); resolve(true); });
           socket.once('error', () => { clearTimeout(timeout); reject(new Error('connection failed')); });
           socket.connect(cfg.port || 3306, cfg.host);
@@ -1033,35 +1033,64 @@ async function createMainWindow() {
     }
   });
 
-  // CSV export handler
+  // Central export handler for report data (CSV input -> real XLSX file)
   ipcMain.handle('csv:export', async (_e, { csv, options }) => {
     try{
       const { app, shell, dialog } = require('electron');
-      const fs = require('fs');
       const path = require('path');
-      const os = require('os');
-      const bom = Buffer.from('\uFEFF', 'utf-8'); // UTF-8 BOM for Excel
-      const data = Buffer.concat([bom, Buffer.from(String(csv||''), 'utf-8')]);
+      const XLSX = require('xlsx');
+
+      const rawCsv = String(csv || '').replace(/^\uFEFF/, '');
+      const normalizedCsv = rawCsv.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const csvWithoutSep = normalizedCsv.replace(/^\s*sep\s*=\s*[,;\t]\s*\n/i, '');
+
+      let workbook;
+      try{
+        workbook = XLSX.read(csvWithoutSep, {
+          type: 'string',
+          raw: true,
+          FS: ',',
+          dense: true,
+          cellText: true
+        });
+      }catch(_){
+        const ws = XLSX.utils.aoa_to_sheet([[csvWithoutSep]]);
+        workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, ws, 'Report');
+      }
+
+      const firstSheetName = (workbook && workbook.SheetNames && workbook.SheetNames[0]) || 'Report';
+      const firstSheet = workbook.Sheets[firstSheetName];
+      if(firstSheet){
+        firstSheet['!rtl'] = true;
+      }
+
       const { saveMode, filename } = options || {};
+      const requestedName = filename && String(filename).trim() ? filename.trim() : `report-${Date.now()}.xlsx`;
+      const outName = /\.xlsx$/i.test(requestedName)
+        ? requestedName
+        : /\.(csv|xls)$/i.test(requestedName)
+          ? requestedName.replace(/\.(csv|xls)$/i, '.xlsx')
+          : `${requestedName}.xlsx`;
+
       if(saveMode === 'auto'){
-        const outName = filename && String(filename).trim() ? filename.trim() : `report-${Date.now()}.csv`;
         const outPath = path.join(app.getPath('downloads'), outName);
-        fs.writeFileSync(outPath, data);
+        XLSX.writeFile(workbook, outPath, { bookType: 'xlsx', compression: true });
         await shell.openPath(outPath);
         return { ok:true, path: outPath };
       }
-      const tmpPath = path.join(os.tmpdir(), `report-${Date.now()}.csv`);
-      fs.writeFileSync(tmpPath, data);
+
       const { canceled, filePath } = await dialog.showSaveDialog({
-        title: 'حفظ ملف CSV',
-        defaultPath: filename && String(filename).trim() ? filename.trim() : 'report.csv',
-        filters: [{ name: 'CSV', extensions: ['csv'] }]
+        title: 'حفظ ملف Excel',
+        defaultPath: outName,
+        filters: [{ name: 'Excel', extensions: ['xlsx'] }]
       });
-      if(canceled){ return { ok:false, canceled:true, tmpPath }; }
-      fs.copyFileSync(tmpPath, filePath);
+      if(canceled){ return { ok:false, canceled:true }; }
+
+      XLSX.writeFile(workbook, filePath, { bookType: 'xlsx', compression: true });
       await shell.openPath(filePath);
       return { ok:true, path: filePath };
-    }catch(e){ console.error('csv:export error', e); return { ok:false, error:'تعذر إنشاء CSV' }; }
+    }catch(e){ console.error('csv:export error', e); return { ok:false, error:'تعذر إنشاء Excel' }; }
   });
 
   // Print raw HTML to system printer (silent, configurable page size, no margins) — aligned with invoice printing
