@@ -758,7 +758,7 @@ async function exportPeriodReportPDF() {
         addTable(soldProductsText, document.querySelector('table tbody#soldItemsTbody')?.closest('table'));
         const csv = lines.join('\n');
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `period-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `period-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(csv, { saveMode:'auto', filename });
       }catch(e){ 
         console.error(e); 

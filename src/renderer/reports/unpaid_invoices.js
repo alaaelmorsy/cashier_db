@@ -148,7 +148,7 @@ async function loadRange(startStr, endStr){
           lines.push([esc('عدد الفواتير'), esc(sumCount), esc('إجمالي المبالغ'), esc(sumGrand)].join(','));
         }
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `unpaid-invoices-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `unpaid-invoices-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(lines.join('\n'), { saveMode:'auto', filename });
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }
       finally{ exporting = false; btnExcel.disabled = false; }

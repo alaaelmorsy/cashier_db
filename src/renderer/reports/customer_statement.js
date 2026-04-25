@@ -516,7 +516,7 @@ async function loadCustomerInfo(customerId){
           lines.push([esc('الرصيد النهائي المستحق من العميل (الفواتير الآجلة - سندات القبض)'), '', esc(balancePre), esc(balanceVat), esc(balanceGrand)].join(','));
         }
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `customer-statement-c${selectedCustomerId||'all'}-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `customer-statement-c${selectedCustomerId||'all'}-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(lines.join('\n'), { saveMode:'auto', filename });
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }
       finally{ exporting = false; btnExcel.disabled = false; }

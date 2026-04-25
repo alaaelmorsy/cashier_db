@@ -602,7 +602,7 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
         addTable(soldProductsText, document.querySelector('table tbody#soldItemsTbody')?.closest('table'));
         const csv = lines.join('\n');
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `daily-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `daily-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(csv, { saveMode:'auto', filename });
         // no success alert per requirement
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }

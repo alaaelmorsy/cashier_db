@@ -204,7 +204,7 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
         addTable('المصروفات ضمن الفترة', document.querySelector('table tbody#purTbody')?.closest('table'));
         const csv = lines.join('\n');
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `purchases-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `purchases-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(csv, { saveMode:'auto', filename });
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }
       finally{ exporting = false; btnExcel.disabled = false; }

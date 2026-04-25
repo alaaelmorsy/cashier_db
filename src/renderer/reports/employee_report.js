@@ -492,7 +492,7 @@ function labelPaymentMethod(method){
         
         const csv = lines.join('\n');
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `employee-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `employee-report-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(csv, { saveMode:'auto', filename });
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }
       finally{ exporting = false; btnExcel.disabled = false; }

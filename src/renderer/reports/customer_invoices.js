@@ -269,7 +269,7 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
           lines.push([esc('الإجماليات'), '', '', '', esc(sumPre), esc(sumVat), esc(sumGrand)].join(','));
         }
         const period = (rangeEl && rangeEl.textContent) ? rangeEl.textContent.replace(/[^0-9_\-–: ]+/g,'').replace(/\s+/g,' ').trim() : '';
-        const filename = `customer-invoices-c${selectedCustomerId||'all'}-${(period||'').replace(/[: ]/g,'_')||Date.now()}.csv`;
+        const filename = `customer-invoices-c${selectedCustomerId||'all'}-${(period||'').replace(/[: ]/g,'_')||Date.now()}.xlsx`;
         await window.api.csv_export(lines.join('\n'), { saveMode:'auto', filename });
       }catch(e){ console.error(e); alert('تعذر إنشاء Excel'); }
       finally{ exporting = false; btnExcel.disabled = false; }

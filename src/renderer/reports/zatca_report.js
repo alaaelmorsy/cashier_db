@@ -976,7 +976,7 @@ async function exportZatcaExcel() {
   lines.push([esc(_t('finalTotal')), esc(fmt(netPre)), esc(fmt(netVat)), esc(fmt(netGrand))].join(','));
 
   const period = (rangeEl?.textContent || '').replace(/[^0-9_\-–: ]+/g, '').replace(/\s+/g, ' ').trim();
-  const filename = `zatca-report-${String(period || '').replace(/[: ]/g, '_') || Date.now()}.csv`;
+  const filename = `zatca-report-${String(period || '').replace(/[: ]/g, '_') || Date.now()}.xlsx`;
   await window.api.csv_export(lines.join('\n'), { saveMode: 'auto', filename });
 }
 
