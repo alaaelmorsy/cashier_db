@@ -46,10 +46,14 @@ const __settingsReady = (async()=>{
 })();
 
 function renderInvPager(){
+  const isAr = (document.documentElement.lang || 'ar') !== 'en';
   const top=document.getElementById('pagerTop'); const bottom=document.getElementById('pagerBottom');
   const pages = (__invPageSize > 0) ? Math.max(1, Math.ceil(__totalInvoices / __invPageSize)) : 1;
   const btn=(l,d,g)=>`<button class="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium" ${d?'disabled':''} data-go="${g}">${l}</button>`;
-  const html=[btn('⏮️',__invPage<=1,'first'),btn('◀️',__invPage<=1,'prev'),`<span class="text-gray-600 font-medium px-2">صفحة ${__invPage} من ${pages} (إجمالي: ${__totalInvoices})</span>`,btn('▶️',__invPage>=pages,'next'),btn('⏭️',__invPage>=pages,'last')].join(' ');
+  const pageLabel = isAr
+    ? `صفحة ${__invPage} من ${pages} (إجمالي: ${__totalInvoices})`
+    : `Page ${__invPage} of ${pages} (Total: ${__totalInvoices})`;
+  const html=[btn('⏮️',__invPage<=1,'first'),btn('◀️',__invPage<=1,'prev'),`<span class="text-gray-600 font-medium px-2">${pageLabel}</span>`,btn('▶️',__invPage>=pages,'next'),btn('⏭️',__invPage>=pages,'last')].join(' ');
   if(top) top.innerHTML=html; if(bottom) bottom.innerHTML=html;
   const onClick=(e)=>{
     const b=e.target.closest('button'); if(!b) return;
@@ -73,7 +77,27 @@ function renderInvPager(){
 }
 
 function renderRows(list){
-  const PMETH = {cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'};
+  const isAr = (document.documentElement.lang || 'ar') !== 'en';
+  const PMETH = isAr
+    ? {cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'}
+    : {cash:'Cash',card:'Network',credit:'Credit',mixed:'Mixed',tamara:'Tamara',tabby:'Tabby'};
+  const T = isAr ? {
+    disabled: 'غير مفعل',
+    sent: '✅ تم الإرسال',
+    failed: '❌ فشل',
+    notSent: '⏳ لم يتم الإرسال',
+    viewInvoice: 'عرض الفاتورة',
+    sendZatca: '📤 إرسال للهيئة',
+    zatcaResp: '📄 رد الهيئة',
+  } : {
+    disabled: 'Disabled',
+    sent: '✅ Sent',
+    failed: '❌ Failed',
+    notSent: '⏳ Not Sent',
+    viewInvoice: 'View invoice',
+    sendZatca: '📤 Send to ZATCA',
+    zatcaResp: '📄 ZATCA Response',
+  };
   const canView = hasInvoice('invoices.view');
   const frag = document.createDocumentFragment();
   list.forEach((row) => {
@@ -82,17 +106,17 @@ function renderRows(list){
     const rejected = row.zatca_status==='rejected';
     const sent = !rejected && (row.zatca_status==='submitted'||row.zatca_status==='accepted'||row.zatca_submitted);
     const zatcaStatusCell = !__zatcaEnabled
-      ? '<td class="px-4 py-3 text-center text-gray-400 text-sm">غير مفعل</td>'
+      ? `<td class="px-4 py-3 text-center text-gray-400 text-sm">${T.disabled}</td>`
       : sent
-        ? '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-bold">✅ تم الإرسال</span></td>'
+        ? `<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-bold">${T.sent}</span></td>`
         : rejected
-          ? '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-bold">❌ فشل</span></td>'
-          : '<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">⏳ لم يتم الإرسال</span></td>';
+          ? `<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-bold">${T.failed}</span></td>`
+          : `<td class="px-4 py-3 text-center"><span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">${T.notSent}</span></td>`;
     const pmeth = PMETH[String(row.payment_method||'').toLowerCase()] || (row.payment_method||'');
     let zatcaBtns = '';
     if(canView && __zatcaEnabled){
-      const sendBtn = sent ? '' : `<button class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium" data-act="send" data-id="${row.id}">📤 إرسال للهيئة</button>`;
-      const viewBtn = (row.zatca_response||row.zatca_rejection_reason) ? `<button class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium" data-act="show_zresp" data-id="${row.id}">📄 رد الهيئة</button>` : '';
+      const sendBtn = sent ? '' : `<button class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium" data-act="send" data-id="${row.id}">${T.sendZatca}</button>`;
+      const viewBtn = (row.zatca_response||row.zatca_rejection_reason) ? `<button class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium" data-act="show_zresp" data-id="${row.id}">${T.zatcaResp}</button>` : '';
       zatcaBtns = sendBtn + ' ' + viewBtn;
     }
     tr.innerHTML = `
@@ -105,7 +129,7 @@ function renderRows(list){
       ${zatcaStatusCell}
       <td class="px-4 py-3">
         <div class="flex flex-wrap gap-2 items-center">
-          ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">عرض الفاتورة</button>` : ''}
+          ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">${T.viewInvoice}</button>` : ''}
           ${zatcaBtns}
         </div>
       </td>
@@ -142,8 +166,9 @@ function onTableAction(e){
   }
   if(act==='send'){
     const id = Number(b.getAttribute('data-id'));
+    const isAr = (document.documentElement.lang || 'ar') !== 'en';
     const oldLabel = b.textContent;
-    b.disabled = true; b.textContent = '⏳ جاري الإرسال...'; b.className = 'px-3 py-1.5 bg-gray-400 text-white rounded-lg text-sm font-medium cursor-wait'; setError('⏳ جاري الإرسال...');
+    b.disabled = true; b.textContent = isAr ? '⏳ جاري الإرسال...' : '⏳ Sending...'; b.className = 'px-3 py-1.5 bg-gray-400 text-white rounded-lg text-sm font-medium cursor-wait'; setError(isAr ? '⏳ جاري الإرسال...' : '⏳ Sending...');
     (async () => {
       try{
         const resp = await window.electronAPI.localZatca.submitBySaleId(id);
@@ -154,12 +179,12 @@ function onTableAction(e){
         const notReported = /NOT[_\s-]?REPORTED/i.test(asStr) || (obj && (obj.statusCode==='NOT_REPORTED' || obj.status==='NOT_REPORTED' || obj?.data?.status==='NOT_REPORTED'));
         if(resp && resp.success && !notReported){
           const msg = (typeof resp.data === 'string') ? resp.data : JSON.stringify(resp.data);
-          setError('✅ تم الإرسال بنجاح');
+          setError(isAr ? '✅ تم الإرسال بنجاح' : '✅ Sent successfully');
           // عرض رد الهيئة تلقائياً في نافذة منبثقة صغيرة
           try{ showZatcaResponseModal(raw || msg); }catch(_){ }
         } else {
-          const msg = resp?.message || asStr || 'غير معروف';
-          setError('❌ فشل الإرسال');
+          const msg = resp?.message || asStr || (isAr ? 'غير معروف' : 'Unknown');
+          setError(isAr ? '❌ فشل الإرسال' : '❌ Send failed');
           // عرض رد الهيئة/الرسالة تلقائياً في نفس النافذة المنبثقة
           try{ showZatcaResponseModal(msg); }catch(_){ }
         }
@@ -167,7 +192,7 @@ function onTableAction(e){
         await load(false);
       }catch(e){
         const emsg = (e?.message || String(e));
-        setError('❌ تعذر الإرسال: ' + emsg);
+        setError((isAr ? '❌ تعذر الإرسال: ' : '❌ Failed to send: ') + emsg);
         try{ showZatcaResponseModal(emsg); }catch(_){ }
       } finally {
         // Restore button quickly if still present (list may rerender)
@@ -218,7 +243,7 @@ async function load(resetPage = true, beforeId = null){
   if(beforeId){ query.before_id = beforeId; }
 
   const r = await window.api.sales_list(query);
-  if(!r.ok){ setError(r.error || 'تعذر تحميل الفواتير'); return; }
+  if(!r.ok){ setError(r.error || ((document.documentElement.lang||'ar')!=='en' ? 'تعذر تحميل الفواتير' : 'Failed to load invoices')); return; }
   __allInvoices = r.items || [];
   __totalInvoices = r.total || 0;
   __invPage = r.page || __invPage;
@@ -245,3 +270,11 @@ if(pageSizeSel){
 }
 
 load();
+
+// Re-render rows when language changes so dynamic content updates immediately
+try {
+  window.api.app_on_locale_changed(() => {
+    if(__allInvoices.length) renderRows(__allInvoices);
+    else renderInvPager();
+  });
+} catch(_) {}

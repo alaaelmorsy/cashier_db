@@ -565,9 +565,53 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
       }); TR.en_to_ar = Object.fromEntries(Object.entries(TR.ar_to_en).map(([a, e]) => [e, a]));
     } catch (_) { }
 
+    // Invoices screen translations
+    try {
+      Object.assign(TR.ar_to_en, {
+        // Invoices list screen
+        'الفواتير - الرابط': 'Invoices - POS SA',
+        '📄 الفواتير': '📄 Invoices',
+        'بحث برقم الفاتورة فقط': 'Search by invoice number only',
+        'بحث بالعميل (جوال/اسم/رقم ضريبي)': 'Search by customer (Phone/Name/VAT)',
+        'عدد الصفوف في الصفحة:': 'Rows per page:',
+        'رقم الفاتورة': 'Invoice No.',
+        'العميل': 'Customer',
+        'رقم الجوال': 'Phone',
+        'طريقة الدفع': 'Payment Method',
+        'الإجمالي': 'Total',
+        'تاريخ': 'Date',
+        'حالة الزكاة': 'ZATCA Status',
+        'إجراءات': 'Actions',
+        // ZATCA statuses
+        'غير مفعل': 'Disabled',
+        '✅ تم الإرسال': '✅ Sent',
+        '❌ فشل': '❌ Failed',
+        '⏳ لم يتم الإرسال': '⏳ Not Sent',
+        // Action buttons
+        'عرض الفاتورة': 'View invoice',
+        '📤 إرسال للهيئة': '📤 Send to ZATCA',
+        '📄 رد الهيئة': '📄 ZATCA Response',
+        // Loading states
+        '⏳ جاري الإرسال...': '⏳ Sending...',
+        '✅ تم الإرسال بنجاح': '✅ Sent successfully',
+        '❌ فشل الإرسال': '❌ Send failed',
+        // Payment methods
+        'كاش': 'Cash',
+        'شبكة': 'Network',
+        'آجل': 'Credit',
+        'مختلط': 'Mixed',
+        'تمارا': 'Tamara',
+        'تابي': 'Tabby',
+        // ZATCA modal
+        'تفاصيل رد هيئة الزكاة': 'ZATCA Response Details',
+        'إغلاق': 'Close',
+      }); TR.en_to_ar = Object.fromEntries(Object.entries(TR.ar_to_en).map(([a, e]) => [e, a]));
+    } catch (_) { }
+
     // Pattern translations for dynamic strings (Arabic -> English)
     TR.patterns_ar_en = [
       { re: /^صفحة\s+(\d+)\s+من\s+(\d+)\s+\((\d+)\s+منتج\)$/u, to: (_m, a, b, c) => `Page ${a} of ${b} (${c} products)` },
+      { re: /^صفحة\s+(\d+)\s+من\s+(\d+)\s+\(إجمالي:\s*(\d+)\)$/u, to: (_m, a, b, c) => `Page ${a} of ${b} (Total: ${c})` },
       { re: /^صفحة\s+(\d+)\s+من\s+(\d+)$/u, to: (_m, a, b) => `Page ${a} of ${b}` },
       { re: /^تم اختيار:\s*(.+)$/u, to: (_m, x) => `Selected: ${x}` },
       { re: /^(\d+)\s+\/\s+(\d+)\s+منتج$/u, to: (_m, a, b) => `${a} / ${b} products` },
@@ -578,6 +622,7 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
     ];
     TR.patterns_en_ar = [
       { re: /^Page\s+(\d+)\s+of\s+(\d+)\s+\((\d+)\s+products\)$/u, to: (_m, a, b, c) => `صفحة ${a} من ${b} (${c} منتج)` },
+      { re: /^Page\s+(\d+)\s+of\s+(\d+)\s+\(Total:\s*(\d+)\)$/u, to: (_m, a, b, c) => `صفحة ${a} من ${b} (إجمالي: ${c})` },
       { re: /^Page\s+(\d+)\s+of\s+(\d+)$/u, to: (_m, a, b) => `صفحة ${a} من ${b}` },
       { re: /^Selected:\s*(.+)$/u, to: (_m, x) => `تم اختيار: ${x}` },
       { re: /^(\d+)\s+Invoices$/u, to: (_m, n) => `${n} فاتورة` },

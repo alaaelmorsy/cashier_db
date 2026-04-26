@@ -60,6 +60,8 @@ function translateDailyUI(isAr){
     profit: 'الربح',
     availableQty: 'الكمية المتوفرة',
     purchasesDetail: 'المصروفات',
+    expensesTotal: 'إجمالي المصروفات',
+    purchaseInvoicesTotal: 'إجمالي فواتير الشراء',
     statement: 'البيان',
     date: 'التاريخ',
     notes: 'ملاحظات',
@@ -112,6 +114,8 @@ function translateDailyUI(isAr){
     profit: 'Profit',
     availableQty: 'Available qty',
     purchasesDetail: 'Purchases',
+    expensesTotal: 'Total expenses',
+    purchaseInvoicesTotal: 'Total purchase invoices',
     statement: 'Description',
     date: 'Date',
     notes: 'Notes',
@@ -213,6 +217,11 @@ function translateDailyUI(isAr){
         summary.textContent = t.returns;
       }
     });
+    
+    const simplePurLabel = document.getElementById('simplePurLabel');
+    if(simplePurLabel) simplePurLabel.textContent = t.expensesTotal;
+    const invoicePurLabel = document.getElementById('invoicePurLabel');
+    if(invoicePurLabel) invoicePurLabel.textContent = t.purchaseInvoicesTotal;
     
     const payMethodsTable = document.querySelectorAll('.section h3');
     payMethodsTable.forEach(h3 => {
@@ -791,6 +800,12 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
           .profitability-section .kpi{ padding:2px 4px !important; min-width:auto !important; flex:1 !important; border:1px solid #ccc !important; }
           .profitability-section .kpi .value{ font-size:9px !important; }
           .profitability-section .kpi .label{ font-size:7px !important; margin-top:1px !important; line-height:1.1 !important; }
+
+          /* بطاقات ملخص المصروفات للطباعة الحرارية */
+          details .kpis{ display:flex !important; flex-wrap:nowrap !important; gap:3px !important; margin:4px 0 !important; }
+          details .kpis .kpi{ padding:3px 5px !important; min-width:auto !important; flex:1 !important; border:1px solid #ccc !important; border-radius:4px !important; text-align:center !important; }
+          details .kpis .kpi .value{ font-size:10px !important; }
+          details .kpis .kpi .label{ font-size:6.5px !important; margin-top:1px !important; line-height:1.1 !important; }
         `;
         clone.querySelector('head')?.appendChild(style);
         // Split period label into two lines: من ... ثم إلى ...
@@ -1008,7 +1023,9 @@ async function load(){
     // Merge and apply credit rules: exclude unpaid credit invoices, include only paid amount for partial credit
     const purchases = [...simplePurchases, ...invoicePurchases];
     let purchasesTotal = 0;
-    purchases.forEach(p => {
+    let simplePurTotal = 0;
+    let invoicePurTotal = 0;
+    simplePurchases.forEach(p => {
       const methodRaw = (p.payment_method==null?'':String(p.payment_method));
       const isCredit = (methodRaw.toLowerCase()==='credit' || methodRaw==='آجل' || methodRaw==='اجل');
       const sub = Number(p.sub_total||0);
@@ -1016,8 +1033,19 @@ async function load(){
       const grand = (priceMode === 'zero_vat') ? sub : Number(p.grand_total||0);
       const paid = (priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(p.amount_paid||0);
       const effectiveAfter = isCredit ? Math.min(paid, grand) : grand;
-      if(!isCredit || effectiveAfter>0){ purchasesTotal += effectiveAfter; }
+      if(!isCredit || effectiveAfter>0){ simplePurTotal += effectiveAfter; }
     });
+    invoicePurchases.forEach(p => {
+      const methodRaw = (p.payment_method==null?'':String(p.payment_method));
+      const isCredit = (methodRaw.toLowerCase()==='credit' || methodRaw==='آجل' || methodRaw==='اجل');
+      const sub = Number(p.sub_total||0);
+      const priceMode = String(p.price_mode||'inclusive');
+      const grand = (priceMode === 'zero_vat') ? sub : Number(p.grand_total||0);
+      const paid = (priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(p.amount_paid||0);
+      const effectiveAfter = isCredit ? Math.min(paid, grand) : grand;
+      if(!isCredit || effectiveAfter>0){ invoicePurTotal += effectiveAfter; }
+    });
+    purchasesTotal = simplePurTotal + invoicePurTotal;
 
     // Build detailed summary rows (scaled: include only collected portion for partial-credit invoices)
     const scaleForPartial = (sale) => {
@@ -1109,6 +1137,8 @@ async function load(){
       set('purPre', purPre);
       set('purVat', purVat);
       set('purAfter', purAfter);
+      set('simplePurTotal', simplePurTotal);
+      set('invoicePurTotal', invoicePurTotal);
 
       // إضافة صف "المبيعات بعد الخصم" (VAT after discount from invoices)
       const salesAfterDiscPre = (salesPre - discTotal);
