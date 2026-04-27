@@ -62,25 +62,31 @@ class ZatcaInvoiceGenerator {
                     ...(function(ctx){
                         const lines = [];
                         let sumLineNet = 0;
-                        let sumVat = 0;
                         (invoiceData.items||[]).forEach((item, index) => {
                             const line = ctx.buildInvoiceLine(item, index + 1);
                             const ln = Number(line?.['cbc:LineExtensionAmount']?.['#text'] || 0);
-                            const lvat = Number(line?.['cac:TaxTotal']?.['cbc:TaxAmount']?.['#text'] || 0);
                             sumLineNet += ln;
-                            sumVat += lvat;
                             lines.push(line);
                         });
                         sumLineNet = Number(sumLineNet.toFixed(2));
-                        sumVat = Number(sumVat.toFixed(2));
                         const docDiscount = Math.abs(Number(invoiceData.totals?.discount || 0));
                         const docCharges = Math.abs(Number(invoiceData.totals?.charges || 0));
+                        // Tax-exclusive base = sum of line nets - doc allowances + doc charges
+                        const taxExclusive = Number((sumLineNet - docDiscount + docCharges).toFixed(2));
+                        // Derive VAT from the actual sale total to ensure BT-112 = BT-109 + BT-110 (BR-CO-15)
+                        const actualTotalWithVAT = Math.abs(Number(invoiceData.totals?.totalWithVAT || 0));
+                        const vatToUse = actualTotalWithVAT > 0
+                            ? Number(Math.max(0, actualTotalWithVAT - taxExclusive).toFixed(2))
+                            : Number((taxExclusive * (Number(invoiceData.items?.[0]?.vatRate ?? 15) / 100)).toFixed(2));
+                        const totalToUse = actualTotalWithVAT > 0
+                            ? actualTotalWithVAT
+                            : Number((taxExclusive + vatToUse).toFixed(2));
                         const totalsRecalc = {
                             subtotal: sumLineNet,
                             discount: docDiscount,
                             charges: docCharges,
-                            vatTotal: sumVat,
-                            totalWithVAT: Number((sumLineNet - docDiscount + docCharges + sumVat).toFixed(2))
+                            vatTotal: vatToUse,
+                            totalWithVAT: totalToUse
                         };
                         return {
                             'cac:TaxTotal': ctx.buildTaxTotal(totalsRecalc, invoiceData.taxBreakdown),

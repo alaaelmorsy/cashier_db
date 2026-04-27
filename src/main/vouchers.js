@@ -245,11 +245,45 @@ function registerVouchersIPC() {
     const conn = await dbAdapter.getConnection();
     try {
       await ensureTable(conn);
-      
+
+      const [vRows] = await conn.query('SELECT * FROM vouchers WHERE id = ?', [id]);
+      if (vRows.length === 0) {
+        return { ok: false, error: 'السند غير موجود' };
+      }
+      const voucher = vRows[0];
+
+      await conn.beginTransaction();
+
+      if (voucher.voucher_type === 'payment' && voucher.entity_type === 'supplier' && voucher.invoice_no && voucher.entity_id) {
+        const supplierId = Number(voucher.entity_id);
+        const amount = Number(voucher.amount);
+        const invoiceNo = String(voucher.invoice_no);
+
+        const [[inv]] = await conn.query('SELECT * FROM purchase_invoices WHERE invoice_no = ? LIMIT 1', [invoiceNo]);
+        if (inv) {
+          const [[payment]] = await conn.query(
+            'SELECT * FROM purchase_payments WHERE purchase_id = ? AND amount = ? ORDER BY paid_at DESC LIMIT 1',
+            [inv.id, amount]
+          );
+          if (payment) {
+            await conn.query('DELETE FROM purchase_payments WHERE id = ?', [payment.id]);
+            const newPaid = Math.max(0, Number(inv.amount_paid || 0) - amount);
+            const newDue = Number((Number(inv.grand_total || 0) - newPaid).toFixed(2));
+            await conn.query('UPDATE purchase_invoices SET amount_paid = ?, amount_due = ? WHERE id = ?', [newPaid, newDue, inv.id]);
+            const payMethod = String(inv.payment_method || '').toLowerCase();
+            if (payMethod === 'credit' || payMethod === 'آجل' || payMethod === 'اجل') {
+              await conn.query('UPDATE suppliers SET balance = balance + ? WHERE id = ?', [amount, supplierId]);
+            }
+          }
+        }
+      }
+
       await conn.query('DELETE FROM vouchers WHERE id = ?', [id]);
-      
+      await conn.commit();
+
       return { ok: true };
     } catch (error) {
+      try { await conn.rollback(); } catch (_) {}
       console.error('Delete voucher error:', error);
       return { ok: false, error: error.message };
     } finally {
