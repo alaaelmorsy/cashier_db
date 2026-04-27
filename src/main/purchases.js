@@ -109,7 +109,8 @@ function registerPurchasesIPC(){
       else if(q.to_date){ where = 'WHERE purchase_date <= ?'; params.push(q.to_date); }
     }
     
-    // Pagination parameters
+    // Pagination parameters (only apply when page is explicitly requested)
+    const usePagination = !!q.page;
     const page = Math.max(1, Number(q.page || 1));
     const pageSize = Math.max(1, Math.min(1000, Number(q.pageSize || 20)));
     const offset = (page - 1) * pageSize;
@@ -123,12 +124,20 @@ function registerPurchasesIPC(){
         const countParams = [...params];
         const [[{total}]] = await conn.query(`SELECT COUNT(*) as total FROM purchases ${where}`, countParams);
         
-        // Get paginated results
+        // Get results (all records when page not specified, paginated otherwise)
         const queryParams = [...params];
-        const [rows] = await conn.query(
-          `SELECT * FROM purchases ${where} ORDER BY COALESCE(purchase_at, created_at) DESC, id DESC LIMIT ? OFFSET ?`, 
-          [...queryParams, pageSize, offset]
-        );
+        let rows;
+        if (usePagination) {
+          [rows] = await conn.query(
+            `SELECT * FROM purchases ${where} ORDER BY COALESCE(purchase_at, created_at) DESC, id DESC LIMIT ? OFFSET ?`,
+            [...queryParams, pageSize, offset]
+          );
+        } else {
+          [rows] = await conn.query(
+            `SELECT * FROM purchases ${where} ORDER BY COALESCE(purchase_at, created_at) DESC, id DESC`,
+            queryParams
+          );
+        }
         
         return { ok:true, items: rows, total: Number(total || 0), page, pageSize };
       } finally { conn.release(); }
