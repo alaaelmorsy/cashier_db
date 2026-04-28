@@ -895,9 +895,11 @@ async function load(){
       }catch(_){ }
     }
     // Enforce strict in-range filtering to avoid showing old invoices when day is empty
+    // For settled invoices (settled_at IS NOT NULL), use settled_at for range check
     try{
       const inRange = (rec) => {
-        const d = new Date(rec.created_at || rec.settled_at || rec.invoice_date);
+        const useSettled = rec.settled_at != null;
+        const d = new Date(useSettled ? rec.settled_at : (rec.created_at || rec.invoice_date));
         return d >= start && d < end;
       };
       allSales = Array.isArray(allSales) ? allSales.filter(inRange) : [];
@@ -1017,6 +1019,38 @@ async function load(){
         payByMethod.set(k, prev + val);
         const sid = Number(tx.sale_id||0);
         if(sid>0){ paidBySale.set(sid, Number(paidBySale.get(sid)||0) + val); }
+      });
+    }catch(_){ }
+
+    // Remove double-counting for invoices settled via settle_partial (multiple installments):
+    // These invoices appear in allSales (via settled_at) AND also have transactions in paidBySale.
+    // Their invoice grand_total was already added to payByMethod; now subtract it so only
+    // the transaction amounts remain (avoiding counting the same amount twice).
+    try{
+      invoices.forEach(dedup => {
+        if(!dedup.settled_at) return;
+        const sid = Number(dedup.id||0);
+        if(!paidBySale.has(sid)) return;
+        const dpm = String(dedup.payment_method||'').toLowerCase();
+        const dCash = Number(dedup.settled_cash || 0);
+        const dCashPart = Number(dedup.pay_cash_amount || 0);
+        const dCardPart = Number(dedup.pay_card_amount || 0);
+        const dGrand = Number(dedup.grand_total||0);
+        const sub = (method, amount)=>{
+          if(!method) return;
+          const k = (method==='network') ? 'card' : String(method).toLowerCase();
+          payByMethod.set(k, (Number(payByMethod.get(k)||0)) - Number(amount||0));
+        };
+        if(dpm==='mixed'){
+          sub('cash', dCashPart);
+          sub('card', dCardPart);
+        } else if(dpm==='cash'){
+          sub('cash', dCash>0 ? dCash : (dCashPart>0?dCashPart:dGrand));
+        } else if(['card','network','tamara','tabby','bank_transfer'].includes(dpm)){
+          sub(dpm, dCardPart>0 ? dCardPart : dGrand);
+        } else if(dpm){
+          sub(dpm, dGrand);
+        }
       });
     }catch(_){ }
 

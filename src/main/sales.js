@@ -935,8 +935,18 @@ function registerSalesIPC(){
         }
 
         // datetime filters (from/to). Accepts 'YYYY-MM-DD' or full 'YYYY-MM-DD HH:MM' formats
-        if(q.date_from){ terms.push('s.created_at >= ?'); params.push(q.date_from); }
-        if(q.date_to){ terms.push('s.created_at <= ?'); params.push(q.date_to); }
+        // For settled credit invoices (settled_at IS NOT NULL), filter by settled_at so they appear
+        // in the report of the day they were paid, not the day they were created.
+        if(q.date_from && q.date_to){
+          terms.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
+          params.push(q.date_from, q.date_to, q.date_from, q.date_to);
+        } else if(q.date_from){
+          terms.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
+          params.push(q.date_from, q.date_from);
+        } else if(q.date_to){
+          terms.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
+          params.push(q.date_to, q.date_to);
+        }
         const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
         
         // Optimized count strategy for large tables (300k+ records)
@@ -973,8 +983,16 @@ function registerSalesIPC(){
           if(q.customer_id){ countTerms.push('s.customer_id = ?'); countParams.push(Number(q.customer_id)); }
           if(q.user_id){ countTerms.push('s.created_by_user_id = ?'); countParams.push(Number(q.user_id)); }
           if(q.customers_only){ countTerms.push('(s.customer_id IS NOT NULL OR s.customer_name IS NOT NULL)'); }
-          if(q.date_from){ countTerms.push('s.created_at >= ?'); countParams.push(q.date_from); }
-          if(q.date_to){ countTerms.push('s.created_at <= ?'); countParams.push(q.date_to); }
+          if(q.date_from && q.date_to){
+            countTerms.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
+            countParams.push(q.date_from, q.date_to, q.date_from, q.date_to);
+          } else if(q.date_from){
+            countTerms.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
+            countParams.push(q.date_from, q.date_from);
+          } else if(q.date_to){
+            countTerms.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
+            countParams.push(q.date_to, q.date_to);
+          }
           
           // Add free-text search if exists (only sales fields)
           if(q.q){
