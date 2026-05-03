@@ -863,24 +863,26 @@ async function load(){
     const { start, end, startStr, endStr } = computeDailyRange(closingHour);
     rangeEl.textContent = `الفترة: ${startStr} — ${endStr}`;
 
-    // Load sold items summary grouped by product
+    // Load all data in parallel for maximum performance
     let soldItems = [];
+    let salesRes, purRes0, invRes0, payRes0;
     try{
-      const sumRes = await window.api.sales_items_summary({ date_from: startStr, date_to: endStr });
+      const [sumRes, _salesRes, _purRes, _invRes, _payRes] = await Promise.all([
+        window.api.sales_items_summary({ date_from: startStr, date_to: endStr }),
+        window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 }),
+        window.api.purchases_list({ from_at: startStr, to_at: endStr }),
+        window.api.purchase_invoices_list({ from: startStr, to: endStr }),
+        window.api.sales_list_payments({ date_from: startStr, date_to: endStr })
+      ]);
       soldItems = (sumRes && sumRes.ok) ? (sumRes.items||[]) : [];
-    }catch(_){ soldItems = []; }
+      salesRes = _salesRes;
+      purRes0 = _purRes;
+      invRes0 = _invRes;
+      payRes0 = _payRes;
+    }catch(_){ salesRes = null; purRes0 = null; invRes0 = null; payRes0 = null; }
 
-    // Load sales within range
-    let salesRes = await window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 });
     let allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
     
-    // For profitability: load current product catalog to get cost per product
-    let __prodById = new Map();
-    try{
-      const prodsRes = await window.api.products_list({ limit: 0 });
-      const products = (prodsRes && prodsRes.ok) ? (prodsRes.items||[]) : [];
-      __prodById = new Map(products.map(p => [Number(p.id), p]));
-    }catch(_){ __prodById = new Map(); }
     // If empty and we're close to edges, retry with 1-hour padding on both sides to avoid timezone/seconds mismatch
     if(!allSales.length){
       try{
@@ -997,12 +999,8 @@ async function load(){
     const netAfterPretax = grossAfter - disc; // pre-VAT net after discount
     const netAfterWithVat = netAfterPretax + vatAfter; // after-VAT net
 
-    // Load purchases (simple + invoices) and collect partial payments within same range
-    const [purRes, invRes, payRes] = await Promise.all([
-      window.api.purchases_list({ from_at: startStr, to_at: endStr }),
-      window.api.purchase_invoices_list({ from: startStr, to: endStr }),
-      window.api.sales_list_payments({ date_from: startStr, date_to: endStr })
-    ]);
+    // Use already-fetched purchases data (loaded in parallel at the start)
+    const purRes = purRes0, invRes = invRes0, payRes = payRes0;
     const simplePurchases = (purRes && purRes.ok) ? (purRes.items||[]) : [];
     const invoicePurchases = (invRes && invRes.ok) ? (invRes.items||[]) : [];
 

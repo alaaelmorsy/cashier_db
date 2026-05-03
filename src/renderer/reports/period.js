@@ -1035,24 +1035,24 @@ async function loadRange(startStr, endStr){
     // show range text
     if(rangeEl){ rangeEl.textContent = `الفترة: ${startStr} — ${endStr}`; }
 
-    // queries
-    // Sold items summary (for sales/qty)
+    // Load all data in parallel for maximum performance
     let soldItems = [];
+    let allSales = [], settings = {};
+    let purRes0, invRes0;
     try{
-      const sumRes = await window.api.sales_items_summary({ date_from: startStr, date_to: endStr });
+      const [sumRes, salesRes, _purRes, _invRes, settingsRes] = await Promise.all([
+        window.api.sales_items_summary({ date_from: startStr, date_to: endStr }),
+        window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 }),
+        window.api.purchases_list({ from_at: startStr, to_at: endStr }),
+        window.api.purchase_invoices_list({ from: startStr, to: endStr }),
+        window.api.settings_get()
+      ]);
       soldItems = (sumRes && sumRes.ok) ? (sumRes.items||[]) : [];
-    }catch(_){ soldItems = []; }
-
-    // Products map (id -> cost) for cost computations
-    let __prodById = new Map();
-    try{
-      const prodsRes = await window.api.products_list({ limit: 0 });
-      const products = (prodsRes && prodsRes.ok) ? (prodsRes.items||[]) : [];
-      __prodById = new Map(products.map(p => [Number(p.id), p]));
-    }catch(_){ __prodById = new Map(); }
-
-    let salesRes = await window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 });
-    let allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
+      allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
+      settings = (settingsRes && settingsRes.ok) ? settingsRes.item : {};
+      purRes0 = _purRes;
+      invRes0 = _invRes;
+    }catch(_){ }
     // Removed fallback padding and unbounded fetch: show exactly the selected period
     // Keep allSales as returned by the API within [startStr, endStr] only
 
@@ -1130,11 +1130,8 @@ async function loadRange(startStr, endStr){
     const netAfterPretax = grossAfter - disc;
     const netAfter = netAfterPretax + vatAfter;
 
-    // Load purchases (simple + invoices) within same range
-    const [purRes, invRes] = await Promise.all([
-      window.api.purchases_list({ from_at: startStr, to_at: endStr }),
-      window.api.purchase_invoices_list({ from: startStr, to: endStr })
-    ]);
+    // Use already-fetched purchases data (loaded in parallel at the start)
+    const purRes = purRes0, invRes = invRes0;
     const simplePurchases = (purRes && purRes.ok) ? (purRes.items||[]) : [];
     const invoicePurchases = (invRes && invRes.ok) ? (invRes.items||[]) : [];
     const purchases = [...simplePurchases, ...invoicePurchases];
@@ -1169,8 +1166,7 @@ async function loadRange(startStr, endStr){
     try{ tobCN = creditNotes.reduce((a,s)=> a + Number(s.tobacco_fee||0), 0); }catch(_){ tobCN = 0; }
     const salesTob = Math.max(0, tobInv);
     const retTob = Math.max(0, Math.abs(tobCN));
-    const settingsRes = await window.api.settings_get();
-    const settings = (settingsRes && settingsRes.ok) ? settingsRes.item : {};
+    // settings already fetched in parallel at the start
     // استخدم صافي ضريبة الفواتير (التي تحسبها الفاتورة نفسها عبر is_vat_exempt)
     const salesVatBefore = invoices.reduce((acc,s)=> acc + Number(s.vat_total||0), 0);
 
