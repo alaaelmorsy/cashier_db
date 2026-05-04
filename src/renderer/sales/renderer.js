@@ -2631,7 +2631,7 @@ function renderCart(){
     td.colSpan = 6; // امتداد بعد إضافة عمود العملية
     const descVal = escapeHtml(it.description||'');
     td.innerHTML = `
-      <textarea data-idx="${idx}" class="desc" placeholder="${__isAr ? 'وصف الصنف (اختياري)' : 'Item description (optional)'}" rows="1"
+      <textarea data-idx="${idx}" class="desc" dir="auto" placeholder="${__isAr ? 'وصف الصنف (اختياري)' : 'Item description (optional)'}" rows="1"
         style="width:100%; font-size:12px; line-height:1.3; padding:4px 6px; min-height:32px; resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere;" ${__isProcessingOld?'disabled':''}>${descVal}</textarea>
     `;
     trDesc.appendChild(td);
@@ -4318,6 +4318,15 @@ tbody.addEventListener('input', async (e) => {
     if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); }
     return;
   }
+  const descInp = e.target.closest('textarea.desc');
+  if(descInp){
+    const idx = Number(descInp.dataset.idx);
+    if(cart[idx] !== undefined){
+      cart[idx].description = descInp.value || '';
+      if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); }
+    }
+    return;
+  }
   const numInp = e.target.closest('input.qty, input.op-price, input.amount-paid');
   if(numInp){
     const cur = numInp.value;
@@ -4665,6 +4674,12 @@ acmSave.addEventListener('click', async () => {
 
 btnPay.addEventListener('click', async () => {
   if(cart.length === 0){ __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); return; }
+
+  // مزامنة حقول الوصف من DOM قبل الدفع
+  document.querySelectorAll('textarea.desc').forEach(ta => {
+    const idx = Number(ta.dataset.idx);
+    if(cart[idx] !== undefined){ cart[idx].description = ta.value || ''; }
+  });
 
   // التحقق من وجود شفت مفتوح
   __currentShiftId = null;
