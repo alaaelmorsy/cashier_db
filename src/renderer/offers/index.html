@@ -461,6 +461,7 @@
             🔄 تحديث
           </button>
         </div>
+
       </div>
 
       <!-- Tabs Navigation -->
@@ -477,6 +478,9 @@
           </button>
           <button class="tab-btn px-6 py-3 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="coupons">
             🎟️ الكوبونات
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="cust-discounts">
+            👤 خصم عميل
           </button>
         </nav>
       </div>
@@ -582,6 +586,32 @@
               </tr>
             </thead>
             <tbody id="couponsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Customer Discounts Tab -->
+      <div class="tab-content" id="cust-discounts-tab">
+        <div class="flex gap-2 mb-4">
+          <button id="addCustDiscountBtn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium">
+            ➕ إضافة خصم عميل
+          </button>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-gray-200">
+          <table class="w-full bg-white">
+            <thead>
+              <tr class="bg-blue-50">
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الاسم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العميل</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">نوع الخصم</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">القيمة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الفترة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">الحالة</th>
+                <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات</th>
+              </tr>
+            </thead>
+            <tbody id="custDiscountsTbody"></tbody>
           </table>
         </div>
       </div>

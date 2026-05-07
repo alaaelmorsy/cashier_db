@@ -8,6 +8,7 @@ const elements = {
   addGlobalOfferBtn: document.getElementById('addGlobalOfferBtn'),
   addCouponBtn: document.getElementById('addCouponBtn'),
   addQtyOfferBtn: document.getElementById('addQtyOfferBtn'),
+  addCustDiscountBtn: document.getElementById('addCustDiscountBtn'),
   globalOfferTab: document.getElementById('globalOfferTab'),
   searchBox: document.getElementById('searchBox'),
   searchBtn: document.getElementById('searchBtn'),
@@ -16,6 +17,7 @@ const elements = {
   globalOffersTbody: document.getElementById('globalOffersTbody'),
   qtyOffersTbody: document.getElementById('qtyOffersTbody'),
   couponsTbody: document.getElementById('couponsTbody'),
+  custDiscountsTbody: document.getElementById('custDiscountsTbody'),
   modalBackdrop: document.getElementById('modalBackdrop'),
   modalTitle: document.getElementById('modalTitle'),
   modalContent: document.getElementById('modalContent'),
@@ -30,6 +32,7 @@ const state = {
   editingIsGlobal: 0,
   offerProducts: [], // {product_id, product_name, operation_id, operation_name}
   offerExcludedProducts: [], // {product_id, product_name, operation_id, operation_name}
+  selectedCustomer: null, // {id, name, phone} for customer discount
   isLoading: false
 };
 
@@ -56,7 +59,7 @@ function hasPermission(key) {
 }
 
 function showLoading(tbody) {
-  const colCount = tbody === elements.offersTbody || tbody === elements.globalOffersTbody ? 8 : (tbody === elements.qtyOffersTbody ? 10 : 7);
+  const colCount = tbody === elements.offersTbody || tbody === elements.globalOffersTbody ? 8 : (tbody === elements.qtyOffersTbody ? 10 : (tbody === elements.custDiscountsTbody ? 8 : 7));
   tbody.innerHTML = `
     <tr>
       <td colspan="${colCount}" class="px-4 py-8 text-center text-gray-600">
@@ -70,6 +73,7 @@ function showEmpty(tbody, message = 'لا توجد بيانات') {
   let colCount = 7;
   if(tbody === elements.offersTbody || tbody === elements.globalOffersTbody) colCount = 8;
   else if (tbody === elements.qtyOffersTbody) colCount = 10;
+  else if (tbody === elements.custDiscountsTbody) colCount = 8;
   tbody.innerHTML = `
     <tr>
       <td colspan="${colCount}" class="px-4 py-8 text-center text-gray-500">
@@ -334,12 +338,14 @@ async function loadData() {
     showLoading(elements.offersTbody);
     if(elements.qtyOffersTbody) showLoading(elements.qtyOffersTbody);
     showLoading(elements.couponsTbody);
+    if(elements.custDiscountsTbody) showLoading(elements.custDiscountsTbody);
     
     // Load data in parallel
-    const [offersResult, qtyOffersResult, couponsResult] = await Promise.all([
+    const [offersResult, qtyOffersResult, couponsResult, custDiscountsResult] = await Promise.all([
       window.api.offers_list(query),
       window.api.offers_qty_list(query),
-      window.api.coupons_list(query)
+      window.api.coupons_list(query),
+      window.api.cust_discounts_list(query)
     ]);
     
     // Render offers
@@ -348,15 +354,48 @@ async function loadData() {
     renderQtyOffers(qtyOffersResult);
     // Render coupons
     renderCoupons(couponsResult);
+    // Render customer discounts
+    renderCustDiscounts(custDiscountsResult);
     
   } catch (error) {
     console.error('Error loading data:', error);
     showEmpty(elements.offersTbody, 'حدث خطأ في تحميل البيانات');
     if(elements.qtyOffersTbody) showEmpty(elements.qtyOffersTbody, 'حدث خطأ في تحميل البيانات');
     showEmpty(elements.couponsTbody, 'حدث خطأ في تحميل البيانات');
+    if(elements.custDiscountsTbody) showEmpty(elements.custDiscountsTbody, 'حدث خطأ في تحميل البيانات');
   } finally {
     state.isLoading = false;
   }
+}
+
+function renderCustDiscounts(result){
+  if(!elements.custDiscountsTbody){ return; }
+  const items = (result && result.ok) ? (result.items || []) : [];
+  if(!items.length){
+    showEmpty(elements.custDiscountsTbody, 'لا توجد خصومات عملاء');
+    return;
+  }
+  elements.custDiscountsTbody.innerHTML = items.map((d, index) => `
+    <tr class="border-b border-gray-100 last:border-b-0">
+      <td class="px-4 py-3 text-gray-700 font-medium">${index + 1}</td>
+      <td class="px-4 py-3 text-gray-900 font-semibold">${d.name || ''}</td>
+      <td class="px-4 py-3">
+        <div class="text-gray-900 font-semibold">${d.customer_name || ''}</div>
+        ${d.customer_phone ? `<div class="text-xs text-gray-500">${d.customer_phone}</div>` : ''}
+      </td>
+      <td class="px-4 py-3 text-gray-700">${formatMode(d.mode)}</td>
+      <td class="px-4 py-3 text-gray-700">${Number(d.value || 0).toFixed(2)}</td>
+      <td class="px-4 py-3">${formatDateRange(d.start_date, d.end_date)}</td>
+      <td class="px-4 py-3">${formatStatus(d.is_active)}</td>
+      <td class="px-4 py-3">
+        <div class="flex flex-wrap gap-2">
+          ${hasPermission('offers.edit') ? `<button class="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium" onclick="editCustDiscount(${d.id})">✏️ تعديل</button>` : ''}
+          ${hasPermission('offers.toggle') ? `<button class="px-3 py-1.5 ${d.is_active ? 'bg-red-600' : 'bg-green-600'} text-white rounded-lg text-sm font-medium" onclick="toggleCustDiscount(${d.id})">${d.is_active ? '❌ إيقاف' : '✅ تفعيل'}</button>` : ''}
+          ${hasPermission('offers.delete') ? `<button class="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" onclick="deleteCustDiscount(${d.id})">🗑️ حذف</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
 }
 
 function renderOffers(result) {
@@ -967,8 +1006,217 @@ async function saveForm() {
     await saveCoupon();
   } else if (state.editingType === 'qty_offer') {
     await saveQtyOffer();
+  } else if (state.editingType === 'cust_discount') {
+    await saveCustDiscount();
   }
 }
+
+function generateCustDiscountForm(initialData = {}) {
+  const data = {
+    name: '',
+    mode: 'percent',
+    value: '',
+    start_date: '',
+    end_date: '',
+    is_active: 1,
+    ...initialData
+  };
+
+  const selected = state.selectedCustomer;
+  const selectedHtml = selected && selected.id ? `
+    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div class="font-semibold text-gray-900">${selected.name || ''}</div>
+      ${selected.phone ? `<div class="text-xs text-gray-600">${selected.phone}</div>` : ''}
+      <button type="button" class="mt-2 px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" onclick="clearCustDiscountCustomer()">إزالة</button>
+    </div>
+  ` : '<div class="text-center text-gray-500 py-2">لم يتم اختيار عميل بعد</div>';
+
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">اسم الخصم *</label>
+        <input id="cd_name" type="text" value="${data.name}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">بحث عن عميل *</label>
+        <input id="cd_cust_search" type="text" placeholder="اكتب اسم/جوال العميل" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div id="cd_cust_suggest" class="hidden border border-gray-200 bg-white rounded-lg shadow-lg mt-1 max-h-60 overflow-auto"></div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">العميل المختار</label>
+        <div id="cd_cust_selected">${selectedHtml}</div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">نوع الخصم</label>
+        <select id="cd_mode" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="percent" ${data.mode === 'percent' ? 'selected' : ''}>نسبة %</option>
+          <option value="cash" ${data.mode === 'cash' ? 'selected' : ''}>نقدي</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">قيمة الخصم *</label>
+        <input id="cd_value" type="number" step="0.01" min="0" value="${data.value}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div class="text-xs text-gray-600 mt-1">سيتم تطبيق الخصم على جميع المنتجات</div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">الحالة</label>
+        <select id="cd_active" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="1" ${Number(data.is_active) ? 'selected' : ''}>نشط</option>
+          <option value="0" ${!Number(data.is_active) ? 'selected' : ''}>موقوف</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">من تاريخ</label>
+        <input id="cd_start" type="datetime-local" lang="en" value="${data.start_date ? new Date(data.start_date).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">إلى تاريخ</label>
+        <input id="cd_end" type="datetime-local" lang="en" value="${data.end_date ? new Date(data.end_date).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+    </div>
+  `;
+}
+
+function initCustDiscountForm() {
+  const custSearch = document.getElementById('cd_cust_search');
+  const custSuggest = document.getElementById('cd_cust_suggest');
+  if (!custSearch || !custSuggest) return;
+
+  let custSearchTimeout = null;
+  custSearch.addEventListener('input', function() {
+    const query = this.value.trim();
+    clearTimeout(custSearchTimeout);
+    if (!query) {
+      custSuggest.classList.add('hidden');
+      return;
+    }
+    custSearchTimeout = setTimeout(async () => {
+      try {
+        const result = await window.api.customers_list({ q: query });
+        const customers = (result && result.ok) ? (result.items || []) : [];
+        if (!customers.length) {
+          custSuggest.innerHTML = '<div class="px-4 py-3 text-gray-500 text-sm">لا توجد نتائج</div>';
+          custSuggest.classList.remove('hidden');
+          return;
+        }
+        custSuggest.innerHTML = customers.map(c => `
+          <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick="selectCustDiscountCustomer(${c.id}, '${String(c.name||'').replace(/'/g, "&#39;")}', '${String(c.phone||'').replace(/'/g, "&#39;")}')">
+            <div class="font-semibold text-gray-900">${c.name || ''}</div>
+            ${c.phone ? `<div class="text-xs text-gray-500">${c.phone}</div>` : ''}
+          </div>
+        `).join('');
+        custSuggest.classList.remove('hidden');
+      } catch (_) {}
+    }, 250);
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!custSearch.contains(e.target) && !custSuggest.contains(e.target)) {
+      custSuggest.classList.add('hidden');
+    }
+  });
+}
+
+window.selectCustDiscountCustomer = function(id, name, phone) {
+  state.selectedCustomer = { id, name, phone };
+  const custSelected = document.getElementById('cd_cust_selected');
+  if (custSelected) {
+    custSelected.innerHTML = `
+      <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="font-semibold text-gray-900">${name || ''}</div>
+        ${phone ? `<div class="text-xs text-gray-600">${phone}</div>` : ''}
+        <button type="button" class="mt-2 px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm font-medium" onclick="clearCustDiscountCustomer()">إزالة</button>
+      </div>
+    `;
+  }
+  const custSuggest = document.getElementById('cd_cust_suggest');
+  if (custSuggest) custSuggest.classList.add('hidden');
+};
+
+window.clearCustDiscountCustomer = function() {
+  state.selectedCustomer = null;
+  const custSelected = document.getElementById('cd_cust_selected');
+  if (custSelected) {
+    custSelected.innerHTML = '<div class="text-center text-gray-500 py-2">لم يتم اختيار عميل بعد</div>';
+  }
+};
+
+async function saveCustDiscount() {
+  const nameEl = document.getElementById('cd_name');
+  const modeEl = document.getElementById('cd_mode');
+  const valueEl = document.getElementById('cd_value');
+  const startEl = document.getElementById('cd_start');
+  const endEl = document.getElementById('cd_end');
+  const activeEl = document.getElementById('cd_active');
+
+  if (!nameEl?.value?.trim()) { await customAlert('اسم الخصم مطلوب'); nameEl?.focus(); return; }
+  if (!state.selectedCustomer || !state.selectedCustomer.id) { await customAlert('يرجى اختيار العميل'); return; }
+  if (!valueEl?.value || Number(valueEl.value) <= 0) { await customAlert('قيمة الخصم مطلوبة ويجب أن تكون أكبر من صفر'); valueEl?.focus(); return; }
+
+  const payload = {
+    name: nameEl.value.trim(),
+    customer_id: state.selectedCustomer.id,
+    mode: modeEl?.value || 'percent',
+    value: Number(valueEl?.value || 0),
+    apply_to: 'all',
+    start_date: startEl?.value || null,
+    end_date: endEl?.value || null,
+    is_active: Number(activeEl?.value || 1)
+  };
+
+  try {
+    let result;
+    if (state.editingId) result = await window.api.cust_discounts_update(state.editingId, payload);
+    else result = await window.api.cust_discounts_add(payload);
+    if (!result || result.ok !== true) { await customAlert(result?.error || 'فشل الحفظ'); return; }
+    closeModal();
+    await loadData();
+  } catch (error) {
+    console.error('Error saving customer discount:', error);
+    await customAlert('حدث خطأ في حفظ خصم العميل');
+  }
+}
+
+window.editCustDiscount = async function(id) {
+  if (!hasPermission('offers.edit')) return;
+  try {
+    const lr = await window.api.cust_discounts_list({});
+    const it = (lr && lr.ok) ? (lr.items || []).find(x => Number(x.id) === Number(id)) : null;
+    if (!it) { await customAlert('خصم العميل غير موجود'); return; }
+    state.editingType = 'cust_discount';
+    state.editingId = id;
+    state.selectedCustomer = { id: it.customer_id, name: it.customer_name || '', phone: it.customer_phone || '' };
+    openModal('تعديل خصم عميل', generateCustDiscountForm(it));
+    initCustDiscountForm();
+  } catch (e) { console.error(e); await customAlert('حدث خطأ'); }
+};
+
+window.toggleCustDiscount = async function(id) {
+  if (!hasPermission('offers.toggle')) return;
+  try {
+    const r = await window.api.cust_discounts_toggle(id);
+    if (!r || r.ok !== true) { await customAlert(r?.error || 'فشل تغيير الحالة'); return; }
+    await loadData();
+  } catch (e) { console.error(e); await customAlert('حدث خطأ'); }
+};
+
+window.deleteCustDiscount = async function(id) {
+  if (!hasPermission('offers.delete')) return;
+  const ok = await customConfirm('حذف', 'هل تريد حذف خصم العميل؟');
+  if (!ok) return;
+  try {
+    const r = await window.api.cust_discounts_delete(id);
+    if (!r || r.ok !== true) { await customAlert(r?.error || 'فشل الحذف'); return; }
+    await loadData();
+  } catch (e) { console.error(e); await customAlert('حدث خطأ'); }
+};
 
 // Qty offers actions
 window.toggleQtyOffer = async function(id){
@@ -1766,6 +2014,15 @@ function setupEventHandlers() {
     
     openModal('إضافة عرض كمي', generateQtyOfferForm({ mode: 'percent', is_active: 1, per_group: 1, buy_qty: 3, nth: 1 }));
     initOfferForm();
+  });
+  
+  elements.addCustDiscountBtn?.addEventListener('click', () => {
+    if (!hasPermission('offers.add')) return;
+    state.editingType = 'cust_discount';
+    state.editingId = null;
+    state.selectedCustomer = null;
+    openModal('إضافة خصم عميل', generateCustDiscountForm({ mode: 'percent', is_active: 1 }));
+    initCustDiscountForm();
   });
 }
 

@@ -1097,6 +1097,7 @@ const applyCouponBtn = null; // زر التطبيق لم يعد مستخدمًا
 const couponInfoEl = document.getElementById('couponInfo');
 let __coupon = null; // { code, mode, value, amount }
 let __globalOffer = null; // { mode, value }
+let __custDiscount = null; // { id, mode, value }
 if(cashReceived){
   cashReceived.addEventListener('input', () => {
     const s = (cashReceived.value||'').trim();
@@ -2272,22 +2273,24 @@ function computeTotals(){
   const manualPct = (dtype === 'percent') ? Math.min(100, Math.max(0, dval)) : 0;
   const couponPct = (__coupon && String(__coupon.mode)==='percent') ? Math.max(0, Number(__coupon.value||0)) : 0;
   const offerPct  = (__globalOffer && String(__globalOffer.mode)==='percent') ? Math.max(0, Number(__globalOffer.value||0)) : 0;
+  const custPct = (__custDiscount && String(__custDiscount.mode)==='percent') ? Math.max(0, Number(__custDiscount.value||0)) : 0;
   
   // Calculate percent discount respecting exclusions
   let percentDiscountAmount = 0;
   if (!__globalOffer?.excluded || __globalOffer.excluded.size === 0) {
-      const combinedPct = Math.min(100, manualPct + couponPct + offerPct);
+      const combinedPct = Math.min(100, manualPct + couponPct + offerPct + custPct);
       percentDiscountAmount = sub * (combinedPct/100);
   } else {
       const subIneligible = Math.max(0, sub - subEligibleForOffer);
-      const eligiblePct = Math.min(100, manualPct + couponPct + offerPct);
-      const ineligiblePct = Math.min(100, manualPct + couponPct);
+      const eligiblePct = Math.min(100, manualPct + couponPct + offerPct + custPct);
+      const ineligiblePct = Math.min(100, manualPct + couponPct + custPct);
       percentDiscountAmount = (subEligibleForOffer * (eligiblePct/100)) + (subIneligible * (ineligiblePct/100));
   }
 
   // خصومات بمبالغ ثابتة
   const manualAmt = (dtype === 'amount') ? Math.max(0, Math.min(sub, Number(dval||0))) : 0;
   const couponAmt = (__coupon && String(__coupon.mode)!=='percent') ? Math.max(0, Math.min(sub, Number(__coupon.value||0))) : 0;
+  const custAmt = (__custDiscount && String(__custDiscount.mode)!=='percent') ? Math.max(0, Math.min(sub, Number(__custDiscount.value||0))) : 0;
   // Offer amount capped at eligible sub if exclusions exist
   let offerAmt = 0;
   if (__globalOffer && String(__globalOffer.mode)!=='percent') {
@@ -2297,7 +2300,7 @@ function computeTotals(){
   }
 
   // إجمالي الخصم لا يتجاوز قيمة المجموع الفرعي — يشمل خصم عروض الكمية الآن
-  const totalDiscount = Math.min(sub, Number((qtyOffersDiscount + percentDiscountAmount + manualAmt + couponAmt + offerAmt).toFixed(2)));
+  const totalDiscount = Math.min(sub, Number((qtyOffersDiscount + percentDiscountAmount + manualAmt + couponAmt + offerAmt + custAmt).toFixed(2)));
   const itemsSubAfterDiscount = Math.max(0, itemsSub - (totalDiscount * (itemsSub>0 ? (itemsSub/sub) : 0))); // خصم جزء من الإضافى لا يؤثر على شرط 25
   let subAfterDiscount = Math.max(0, sub - totalDiscount); // بعد الخصم على الأصناف + الإضافى
 
@@ -2394,14 +2397,15 @@ function computeTotals(){
       // أولوية التسمية: كوبون ثم عرض عام ثم نوع الخصم اليدوي
       const isAr = document.documentElement.lang === 'ar';
       let label = getDiscountLabel('default', '', isAr);
-      if(couponAmount > 0){ label = getDiscountLabel('coupon', couponLabel, isAr); }
-      else if(offerAmount > 0){ 
-        if(String(__globalOffer?.mode)==='percent'){
-          label = isAr ? `${Math.round(Number(__globalOffer?.value||0))}%` : `${Math.round(Number(__globalOffer?.value||0))}% off`;
-        } else {
-          label = getDiscountLabel('offer', '', isAr);
+      if(__custDiscount){
+        if(String(__custDiscount.mode) === 'percent') label = isAr ? `خصم عميل ${Math.round(Number(__custDiscount.value||0))}%` : `Customer ${Math.round(Number(__custDiscount.value||0))}% off`;
+        else {
+          const v = Number(__custDiscount.value||0);
+          label = isAr ? `خصم عميل ${Number.isInteger(v) ? v : v.toFixed(2)}` : `Customer -${Number.isInteger(v) ? v : v.toFixed(2)}`;
         }
       }
+      if(couponAmount > 0){ label = couponLabel; }
+      else if(offerAmount > 0){ label = isAr ? `عرض عام ${offerLabel}` : `Global Offer ${offerLabel}`; }
       else if(dtype === 'percent'){ label = getDiscountLabel('percent', dval, isAr); }
       else if(dtype === 'amount'){ label = getDiscountLabel('amount', '', isAr); }
       if(discountLabelEl) discountLabelEl.textContent = label;
@@ -2507,7 +2511,7 @@ function computeTotals(){
     vat_total: Number(vat.toFixed(2)),
     grand_total: Number(grand.toFixed(2)),
     tobacco_fee: Number((tobaccoFee||0).toFixed(2)),
-    coupon: __coupon || null,
+    customer_discount: (__custDiscount ? { id: __custDiscount.id, mode: __custDiscount.mode, value: __custDiscount.value } : null),
   };
   if(grand > 0) cdTotal(Number(grand.toFixed(2)));
 }
@@ -2883,6 +2887,7 @@ async function selectCustomer(c){
   await updatePricesForCustomer();
   // حدّث أسعار بطاقات الكتالوج لتناسب العميل
   await loadCatalog();
+  await loadCustDiscount();
 }
 
 function debounce(fn, delay=200){
@@ -2916,6 +2921,7 @@ if(customerSearch){
       triggerCustomerSearch(q);
     } else {
       __selectedCustomerId = '';
+      __custDiscount = null;
       __customerSearchResults = [];
       customerList.innerHTML='';
       customerList.style.display='none';
@@ -3540,6 +3546,18 @@ async function applyBasePricingForItem(it){
 async function revertPricesToBase(){
   for(const it of cart){ await applyBasePricingForItem(it); }
   renderCart();
+}
+
+async function loadCustDiscount(){
+  __custDiscount = null;
+  if(!__selectedCustomerId){ computeTotals(); return; }
+  try{
+    const r = await window.api.cust_discounts_find_for_customer({ customer_id: Number(__selectedCustomerId) });
+    if(r && r.ok && r.item){
+      __custDiscount = { id: r.item.id, mode: r.item.mode, value: r.item.value };
+    }
+  }catch(_){ /* ignore */ }
+  computeTotals();
 }
 
 // Remember last selected unit per product during session
@@ -4794,6 +4812,7 @@ btnPay.addEventListener('click', async () => {
     notes: (notes.value||'').trim(),
     coupon: (__coupon ? { code: __coupon.code, mode: __coupon.mode, value: __coupon.value } : null),
     global_offer: (__globalOffer ? { mode: __globalOffer.mode, value: __globalOffer.value } : null),
+    customer_discount: (window.__sale_calcs?.customer_discount || null),
     // pass split amounts for mixed
     pay_cash_amount: (paymentMethod.value==='mixed' && window.__mixed_payment) ? Number(window.__mixed_payment.cash||0) : (paymentMethod.value==='cash' ? (cashStr===''?0:Number(cashStr)) : null),
     pay_card_amount: (paymentMethod.value==='mixed' && window.__mixed_payment) ? Number(window.__mixed_payment.card||0) : (paymentMethod.value==='card' ? Number((window.__sale_calcs?.grand_total ?? grand).toFixed(2)) : null),
@@ -4947,6 +4966,7 @@ btnPay.addEventListener('click', async () => {
   computeTotals();
   // تفريغ اختيار العميل لبدء فاتورة جديدة بعميل جديد
   __selectedCustomerId = '';
+  __custDiscount = null;
   customerSearch.value = '';
   customerList.style.display = 'none';
   // تفريغ اختيار السائق بعد الطباعة
@@ -5234,6 +5254,7 @@ async function processPrint(){
     notes: (notes.value||'').trim(),
     coupon: (__coupon ? { code: __coupon.code, mode: __coupon.mode, value: __coupon.value } : null),
     global_offer: (__globalOffer ? { mode: __globalOffer.mode, value: __globalOffer.value } : null),
+    customer_discount: (window.__sale_calcs?.customer_discount || null),
     // pass split amounts for mixed
     pay_cash_amount: (paymentMethod.value==='mixed' && window.__mixed_payment) ? Number(window.__mixed_payment.cash||0) : (paymentMethod.value==='cash' ? (cashStr===''?0:Number(cashStr)) : null),
     pay_card_amount: (paymentMethod.value==='mixed' && window.__mixed_payment) ? Number(window.__mixed_payment.card||0) : (paymentMethod.value==='card' ? Number((window.__sale_calcs?.grand_total ?? grand).toFixed(2)) : null),
@@ -5387,6 +5408,7 @@ async function processPrint(){
   computeTotals();
   // تفريغ اختيار العميل لبدء فاتورة جديدة بعميل جديد
   __selectedCustomerId = '';
+  __custDiscount = null;
   customerSearch.value = '';
   customerList.style.display = 'none';
   // تفريغ اختيار السائق بعد الطباعة

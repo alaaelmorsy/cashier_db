@@ -1319,6 +1319,14 @@ contextBridge.exposeInMainWorld('api', {
   offers_qty_get_products: (id) => ipcRenderer.invoke('offers_qty:get_products', { id }),
   offers_qty_find_for_product: (payload) => ipcRenderer.invoke('offers_qty:find_for_product', payload),
 
+  // Customer Discounts
+  cust_discounts_list: (q) => ipcRenderer.invoke('cust_discounts:list', q),
+  cust_discounts_add: (payload) => ipcRenderer.invoke('cust_discounts:add', payload),
+  cust_discounts_update: (id, payload) => ipcRenderer.invoke('cust_discounts:update', { id }, payload),
+  cust_discounts_delete: (id) => ipcRenderer.invoke('cust_discounts:delete', { id }),
+  cust_discounts_toggle: (id) => ipcRenderer.invoke('cust_discounts:toggle', { id }),
+  cust_discounts_find_for_customer: (payload) => ipcRenderer.invoke('cust_discounts:find_for_customer', payload),
+
   coupons_validate: (payload) => ipcRenderer.invoke('coupons:validate', payload),
 
   // Coupons

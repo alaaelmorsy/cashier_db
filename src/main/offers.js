@@ -89,6 +89,22 @@ async function ensureTables(conn){
       KEY idx_product (product_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS customer_discounts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(150) NOT NULL,
+      customer_id INT NOT NULL,
+      mode ENUM('percent','cash') NOT NULL,
+      value DECIMAL(10,2) NOT NULL,
+      apply_to ENUM('all','products') NOT NULL DEFAULT 'all',
+      start_date DATETIME NULL,
+      end_date DATETIME NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_customer (customer_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
 }
 
 function sanitizeModeAndValue(payload){
@@ -126,6 +142,125 @@ function registerOffersIPC(){
         return { ok:true, items: rows };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'تعذر تحميل العروض' }; }
+  });
+
+  // Customer Discounts
+  ipcMain.handle('cust_discounts:list', async (_e, q) => {
+    const query = q || {};
+    const params = [];
+    const where = [];
+    if(query.q){ where.push('(cd.name LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)'); const s = `%${query.q}%`; params.push(s, s, s); }
+    if(query.active != null){ where.push('cd.is_active = ?'); params.push(String(query.active)==='1'?1:0); }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        const [rows] = await conn.query(`
+          SELECT cd.*, c.name AS customer_name, c.phone AS customer_phone
+          FROM customer_discounts cd
+          LEFT JOIN customers c ON c.id = cd.customer_id
+          ${whereSql}
+          ORDER BY cd.id DESC
+          LIMIT 500
+        `, params);
+        return { ok:true, items: rows };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'تعذر تحميل خصومات العملاء' }; }
+  });
+
+  ipcMain.handle('cust_discounts:add', async (_e, payload) => {
+    const name = (payload && payload.name || '').trim();
+    const customer_id = Number(payload && payload.customer_id || 0);
+    if(!name) return { ok:false, error:'اسم الخصم مطلوب' };
+    if(!customer_id) return { ok:false, error:'customer_id مفقود' };
+    const { mode, value } = sanitizeModeAndValue(payload);
+    const start_date = payload && payload.start_date ? new Date(payload.start_date) : null;
+    const end_date = payload && payload.end_date ? new Date(payload.end_date) : null;
+    const is_active = (payload && String(payload.is_active) === '0') ? 0 : 1;
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        const [res] = await conn.query(
+          'INSERT INTO customer_discounts(name, customer_id, mode, value, apply_to, start_date, end_date, is_active) VALUES (?,?,?,?,?,?,?,?)',
+          [name, customer_id, mode, value, 'all', start_date, end_date, is_active]
+        );
+        return { ok:true, id: res.insertId };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'فشل إضافة خصم العميل' }; }
+  });
+
+  ipcMain.handle('cust_discounts:update', async (_e, idObj, payload) => {
+    const id = (idObj && idObj.id) ? idObj.id : idObj;
+    if(!id) return { ok:false, error:'معرّف مفقود' };
+    const name = (payload && payload.name || '').trim();
+    const customer_id = Number(payload && payload.customer_id || 0);
+    if(!name) return { ok:false, error:'اسم الخصم مطلوب' };
+    if(!customer_id) return { ok:false, error:'customer_id مفقود' };
+    const { mode, value } = sanitizeModeAndValue(payload);
+    const start_date = payload && payload.start_date ? new Date(payload.start_date) : null;
+    const end_date = payload && payload.end_date ? new Date(payload.end_date) : null;
+    const is_active = (payload && String(payload.is_active) === '0') ? 0 : 1;
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        await conn.query(
+          'UPDATE customer_discounts SET name=?, customer_id=?, mode=?, value=?, apply_to=?, start_date=?, end_date=?, is_active=? WHERE id=?',
+          [name, customer_id, mode, value, 'all', start_date, end_date, is_active, id]
+        );
+        return { ok:true };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'فشل تعديل خصم العميل' }; }
+  });
+
+  ipcMain.handle('cust_discounts:delete', async (_e, idObj) => {
+    const id = (idObj && idObj.id) ? idObj.id : idObj;
+    if(!id) return { ok:false, error:'معرّف مفقود' };
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        await conn.query('DELETE FROM customer_discounts WHERE id=?', [id]);
+        return { ok:true };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'فشل حذف خصم العميل' }; }
+  });
+
+  ipcMain.handle('cust_discounts:toggle', async (_e, idObj) => {
+    const id = (idObj && idObj.id) ? idObj.id : idObj;
+    if(!id) return { ok:false, error:'معرّف مفقود' };
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        const [[row]] = await conn.query('SELECT is_active FROM customer_discounts WHERE id=?', [id]);
+        if(!row) return { ok:false, error:'خصم العميل غير موجود' };
+        const next = row.is_active ? 0 : 1;
+        await conn.query('UPDATE customer_discounts SET is_active=? WHERE id=?', [next, id]);
+        return { ok:true, is_active: next };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'فشل تغيير الحالة' }; }
+  });
+
+  ipcMain.handle('cust_discounts:find_for_customer', async (_e, payload) => {
+    const customer_id = Number(payload && payload.customer_id || 0);
+    if(!customer_id) return { ok:false, error:'customer_id مفقود' };
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        const nowCond = ' (start_date IS NULL OR NOW() >= start_date) AND (end_date IS NULL OR NOW() <= end_date) ';
+        const [rows] = await conn.query(
+          `SELECT * FROM customer_discounts WHERE customer_id=? AND is_active=1 AND ${nowCond} ORDER BY id DESC LIMIT 1`,
+          [customer_id]
+        );
+        const item = (rows && rows[0]) ? rows[0] : null;
+        if(item){ item.apply_to = 'all'; }
+        return { ok:true, item };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'تعذر البحث عن خصم العميل' }; }
   });
 
   ipcMain.handle('offers:add', async (_e, payload) => {

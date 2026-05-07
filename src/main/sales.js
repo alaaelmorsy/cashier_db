@@ -621,6 +621,9 @@ function registerSalesIPC(){
             ["SHOW COLUMNS FROM sales LIKE 'driver_phone'", "ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"],
             ["SHOW COLUMNS FROM sales_items LIKE 'operation_id'", "ALTER TABLE sales_items ADD COLUMN operation_id INT NULL AFTER line_total"],
             ["SHOW COLUMNS FROM sales_items LIKE 'operation_name'", "ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"],
+            ["SHOW COLUMNS FROM sales LIKE 'cust_discount_id'", "ALTER TABLE sales ADD COLUMN cust_discount_id INT NULL AFTER global_offer_value"],
+            ["SHOW COLUMNS FROM sales LIKE 'cust_discount_mode'", "ALTER TABLE sales ADD COLUMN cust_discount_mode VARCHAR(16) NULL AFTER cust_discount_id"],
+            ["SHOW COLUMNS FROM sales LIKE 'cust_discount_value'", "ALTER TABLE sales ADD COLUMN cust_discount_value DECIMAL(12,2) NULL AFTER cust_discount_mode"],
           ];
           for(const [sh,al] of _sc){ const [c]=await conn.query(sh); if(!c.length) await conn.query(al); }
           __saleColumnsEnsured = true;
@@ -696,7 +699,7 @@ function registerSalesIPC(){
           }catch(_){}
         }
 
-        const [res] = await conn.query(`INSERT INTO sales (shift_id, invoice_no, order_no, created_by_user_id, created_by_username, customer_id, customer_name, customer_phone, customer_vat, customer_email, customer_address, customer_cr_number, customer_national_address, customer_postal_code, customer_street_number, customer_sub_number, customer_notes, driver_id, driver_name, driver_phone, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, global_offer_mode, global_offer_value, pay_cash_amount, pay_card_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+        const [res] = await conn.query(`INSERT INTO sales (shift_id, invoice_no, order_no, created_by_user_id, created_by_username, customer_id, customer_name, customer_phone, customer_vat, customer_email, customer_address, customer_cr_number, customer_national_address, customer_postal_code, customer_street_number, customer_sub_number, customer_notes, driver_id, driver_name, driver_phone, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, global_offer_mode, global_offer_value, cust_discount_id, cust_discount_mode, cust_discount_value, pay_cash_amount, pay_card_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
           shiftId,
           finalInvoiceNo,
           Number(orderNo||1),
@@ -734,6 +737,9 @@ function registerSalesIPC(){
           (p.coupon?.value != null ? Number(p.coupon.value) : null),
           (p.global_offer?.mode || null),
           (p.global_offer?.value != null ? Number(p.global_offer.value) : null),
+          (p.customer_discount?.id != null ? Number(p.customer_discount.id) : null),
+          (p.customer_discount?.mode || null),
+          (p.customer_discount?.value != null ? Number(p.customer_discount.value) : null),
           (p.pay_cash_amount != null ? Number(p.pay_cash_amount) : null),
           (p.pay_card_amount != null ? Number(p.pay_card_amount) : null)
         ]);
