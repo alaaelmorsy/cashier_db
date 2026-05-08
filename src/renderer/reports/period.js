@@ -444,10 +444,10 @@ async function exportPeriodReportPDF() {
     `;
   }
   
-  // Extract profitability section
+  // Extract profitability section (only if visible/not hidden by permission)
   let profitabilityHTML = '';
   const profitSection = document.querySelector('.profitability-section');
-  if (profitSection) {
+  if (profitSection && profitSection.style.display !== 'none') {
     const kpis = Array.from(profitSection.querySelectorAll('.kpi')).map(kpi => {
       const label = kpi.querySelector('.label')?.textContent.trim() || '';
       const value = kpi.querySelector('.value')?.textContent.trim() || '';
@@ -812,6 +812,13 @@ async function exportPeriodReportPDF() {
             }
           });
         }catch(_){ }
+        // Remove hidden profitability section
+        try{
+          const hiddenProfit = clone.querySelector('.profitability-section');
+          if(hiddenProfit && hiddenProfit.style.display === 'none'){
+            hiddenProfit.parentNode.removeChild(hiddenProfit);
+          }
+        }catch(_){ }
         // Remove non-print action columns ("عرض") to save width for content
         try{
           const removeLastCol = (tbodyId) => {
@@ -1084,8 +1091,8 @@ async function loadRange(startStr, endStr){
         add('cash', payCashPart);
         add('card', payCardPart);
       } else if(pm==='cash'){
-        const settledCash = Number(sale.settled_cash || 0);
-        add('cash', (settledCash>0 ? settledCash : (payCashPart>0?payCashPart:grand)));
+        // Always use grand total for cash — pay_cash_amount may include change (overpayment)
+        add('cash', grand);
       } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         add(pm==='network' ? 'card' : pm, (payCardPart>0 ? payCardPart : grand));
       } else {
@@ -1117,7 +1124,7 @@ async function loadRange(startStr, endStr){
         sub('cash', cCash);
         sub('card', cCard);
       } else if(pm==='cash'){
-        sub('cash', (cCash>0 ? cCash : Math.abs(grand)));
+        sub('cash', Math.abs(grand));
       } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
         sub(pm==='network' ? 'card' : pm, (cCard>0 ? cCard : Math.abs(grand)));
       } else if(pm){
@@ -1487,6 +1494,22 @@ async function applyRange(){
 
 const applyBtn = document.getElementById('applyRangeBtn');
 if(applyBtn){ applyBtn.addEventListener('click', applyRange); }
+
+// Check profitability permission and hide section if not allowed
+(async function checkProfitPerm(){
+  try{
+    const u = JSON.parse(localStorage.getItem('pos_user')||'null');
+    if(!u || !u.id) return;
+    const r = await window.api.perms_get_for_user(u.id);
+    if(r && r.ok){
+      const keys = new Set(r.keys||[]);
+      if(!keys.has('reports') || !keys.has('reports.view_profitability')){
+        const sec = document.querySelector('.profitability-section');
+        if(sec){ sec.style.display = 'none'; }
+      }
+    }
+  }catch(_){}
+})();
 
 // init
 initDefaultRange();

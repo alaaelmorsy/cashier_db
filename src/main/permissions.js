@@ -59,6 +59,10 @@ async function ensureDefaultPermissions() {
         { perm_key: 'shifts.open', name: 'فتح شفت', parent: 'shifts' },
         { perm_key: 'shifts.close', name: 'إغلاق شفت', parent: 'shifts' },
         { perm_key: 'shifts.print', name: 'طباعة تفاصيل الشفت', parent: 'shifts' },
+
+        { perm_key: 'reports.view_profitability', name: 'عرض الربحية', parent: 'reports' },
+        { perm_key: 'reports.view_employee', name: 'تقرير الموظفين', parent: 'reports' },
+        { perm_key: 'reports.view_zatca', name: 'تقرير هيئة الزكاة', parent: 'reports' },
       ];
 
       for (const p of perms) {

@@ -744,9 +744,8 @@ function registerPurchaseInvoicesIPC(){
     const p = payload || {};
     const purchaseId = Number(p.purchase_id||0);
     const amount = Number(p.amount||0);
-    const invoiceNo = (p.invoice_no||'').trim();
     const note = (p.note||null) ? String(p.note).trim() : null;
-    if(!purchaseId || !invoiceNo) return { ok:false, error:'معرّف الفاتورة ورقمها مطلوبان' };
+    if(!purchaseId) return { ok:false, error:'معرّف الفاتورة مطلوب' };
     if(!(amount>0)) return { ok:false, error:'المبلغ غير صحيح' };
     try{
       const conn = await dbAdapter.getConnection();
@@ -755,6 +754,8 @@ function registerPurchaseInvoicesIPC(){
         await conn.beginTransaction();
         const [[inv]] = await conn.query('SELECT * FROM purchase_invoices WHERE id=? LIMIT 1', [purchaseId]);
         if(!inv) { await conn.rollback(); return { ok:false, error:'الفاتورة غير موجودة' }; }
+        const invoiceNo = String(inv.invoice_no || '').trim();
+        if(!invoiceNo) { await conn.rollback(); return { ok:false, error:'رقم الفاتورة غير موجود' }; }
         const supplierId = Number(inv.supplier_id);
         const dueBefore = Number(inv.amount_due||0);
         if(dueBefore <= 0){ await conn.rollback(); return { ok:false, error:'لا يوجد رصيد مستحق على هذه الفاتورة' }; }

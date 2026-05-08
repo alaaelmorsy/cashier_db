@@ -323,6 +323,9 @@ async function getPool() {
           ('reports.view_supplier_statement','كشف حساب مورد'),
           ('reports.view_expiry','تقرير المنتجات المنتهية الصلاحية'),
           ('reports.view_inventory','تقرير الجرد'),
+          ('reports.view_profitability','عرض الربحية'),
+          ('reports.view_employee','تقرير الموظفين'),
+          ('reports.view_zatca','تقرير هيئة الزكاة'),
           -- payments
           ('payments.settle_full','سداد كامل'),
           ('payments.view_invoice','عرض الفاتورة'),

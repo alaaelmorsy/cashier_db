@@ -332,7 +332,8 @@ async function openPayDialog(supplier){
 function closePayDialog(){ try{ payDlg && payDlg.close && payDlg.close(); }catch(_){ } }
 if(payCancel) payCancel.addEventListener('click', closePayDialog);
 
-paySave && paySave.addEventListener('click', async () => {
+ paySave && paySave.addEventListener('click', async () => {
+  if(paySave) paySave.disabled = true;
   try{
     const selId = Number(payInvoiceSelect?.value||0);
     if(!selId){ showToast('يرجى اختيار فاتورة', '#ef4444', 4000); return; }
@@ -344,13 +345,14 @@ paySave && paySave.addEventListener('click', async () => {
     if(!(amount>0)){ showToast('المبلغ غير صحيح', '#ef4444', 4000); return; }
     const due = Number(inv.amount_due||0);
     if(amount > due){ amount = due; }
-    const res = await window.api.purchase_invoices_pay({ purchase_id: inv.id, invoice_no: String(inv.invoice_no||''), amount, note });
+    const res = await window.api.purchase_invoices_pay({ purchase_id: inv.id, amount, note });
     if(!res || !res.ok){ showToast('فشل تسجيل السداد', '#ef4444', 4000); return; }
     showToast('✓ تم تسجيل السداد بنجاح', '#16a34a');
     closePayDialog();
     printPaymentVoucher(inv, amount, note);
     await loadSuppliers();
   }catch(e){ showToast('حدث خطأ أثناء السداد', '#ef4444', 4000); }
+  finally{ if(paySave) paySave.disabled = false; }
 });
 
 async function printPaymentVoucher(invoice, amount, note){
@@ -362,6 +364,7 @@ async function printPaymentVoucher(invoice, amount, note){
     const raw = String(invoice.invoice_no||'');
     const m = raw.match(/^PI-\d{6}-(\d+)$/);
     const displayInvoiceNo = m ? String(Number(m[1])) : (raw || String(invoice.id||''));
+    const dbInvoiceNo = raw || String(invoice.id||'');
     const result = await window.api.vouchers_get_next_number('payment');
     if (!result || !result.ok || !result.voucher_no) {
       showToast('فشل في توليد رقم السند', '#ef4444', 3000);
@@ -395,7 +398,7 @@ async function printPaymentVoucher(invoice, amount, note){
         entity_name: supplier.name || '',
         entity_phone: supplier.phone || '',
         entity_tax_number: supplier.vat_number || '',
-        invoice_no: displayInvoiceNo,
+        invoice_no: dbInvoiceNo,
         user_id: null,
         user_name: userName
       }).catch(err => console.error('Failed to save payment voucher:', err));

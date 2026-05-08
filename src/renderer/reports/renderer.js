@@ -155,6 +155,8 @@ function hide(id){ const el=document.getElementById(id); if(el){ el.classList.ad
   if(!canReport('reports.view_supplier_statement')) hide('supplierStatementReport');
   if(!canReport('reports.view_expiry')) hide('expiryReport');
   if(!canReport('reports.view_inventory')) hide('inventoryReport');
+  if(!canReport('reports.view_employee')) hide('employeeReport');
+  if(!canReport('reports.view_zatca')) hide('zatcaReport');
 })();
 
 const dailyCard = document.getElementById('dailyReport');
