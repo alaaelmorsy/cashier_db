@@ -329,9 +329,8 @@ async function exportAllInvoicesPDF() {
       addAmt('cash', cashPart > 0 ? cashPart : (grand > 0 ? grand / 2 : 0));
       addAmt('card', cardPart > 0 ? cardPart : (grand > 0 ? grand / 2 : 0));
     } else if (pm === 'cash') {
-      const settledCash = Number(s.settled_cash || 0);
-      const cashPart = Number(s.pay_cash_amount || 0);
-      addAmt('cash', settledCash > 0 ? settledCash : (cashPart > 0 ? cashPart : grand));
+      // المبلغ الفعلي للفاتورة هو grand_total — لا تستخدم settled_cash لأنه قد يشمل الباقي المُعاد للعميل
+      addAmt('cash', grand);
     } else if (pm === 'card' || pm === 'network' || pm === 'tamara' || pm === 'tabby' || pm === 'bank_transfer') {
       const cardPart = Number(s.pay_card_amount || 0);
       addAmt(pm, cardPart > 0 ? cardPart : grand);
@@ -850,28 +849,32 @@ async function loadRange(startStr, endStr, page = 1){
   const periodLabel = userId ? `${t.periodLabel || 'الفترة:'} ${startStr} — ${endStr} — ${t.userFilterLabel || 'المستخدم:'} ${userText}` : `${t.periodLabel || 'الفترة:'} ${startStr} — ${endStr}`;
   if(rangeEl){ rangeEl.textContent = periodLabel; }
   try{
-    const payload = { date_from: startStr, date_to: endStr, pageSize: PAGE_SIZE, page: currentPage, ...(userId ? { user_id: userId } : {}) };
-    const res = await window.api.sales_list(payload);
-    const items = (res && res.ok) ? (res.items||[]) : [];
+    // (1) الصفحة الحالية فقط — لرسم صفوف الجدول
+    const pagedPayload = { date_from: startStr, date_to: endStr, pageSize: PAGE_SIZE, page: currentPage, ...(userId ? { user_id: userId } : {}) };
+    // (2) كل فواتير الفترة — لاحتساب الإجماليات وإجماليات طرق الدفع بدقّة
+    const allPayload   = { date_from: startStr, date_to: endStr, pageSize: 0, page: 1, ...(userId ? { user_id: userId } : {}) };
+    const [pagedRes, allRes] = await Promise.all([
+      window.api.sales_list(pagedPayload),
+      window.api.sales_list(allPayload),
+    ]);
+    const items    = (pagedRes && pagedRes.ok) ? (pagedRes.items||[]) : [];
+    const allItems = (allRes   && allRes.ok)   ? (allRes.items||[])   : items;
 
     const invTbody = document.getElementById('invTbody');
     const invCount = document.getElementById('invCount');
 
-    let sumPre = 0, sumVat = 0, sumGrand = 0;
-    const payTotals = new Map(); // key: normalized method, value: total grand
-
+    // ====== صفوف الجدول من الصفحة الحالية فقط ======
     const rows = items.map(s=>{
       const isCN = (String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-'));
       const docType = isCN ? (t.creditNote || 'إشعار دائن') : (t.invoice || 'فاتورة');
       let created = s.created_at ? new Date(s.created_at) : null;
       if(!created || isNaN(created.getTime())){ try{ created = new Date(String(s.created_at).replace(' ', 'T')); }catch(_){ created = new Date(); } }
       const dateStr = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
-      // split date/time for print: wrap into two spans we can stack in print
       const [datePart, timePart] = (function(){
         try{
           const d = new Intl.DateTimeFormat('en-GB', {year:'numeric', month:'2-digit', day:'2-digit'}).format(created);
-          const t = new Intl.DateTimeFormat('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
-          return [d, t];
+          const tt = new Intl.DateTimeFormat('en-GB', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
+          return [d, tt];
         }catch(_){
           const m = String(dateStr).split(',');
           if(m.length>=2){ return [m[0].trim(), m.slice(1).join(',').trim()]; }
@@ -883,30 +886,7 @@ async function loadRange(startStr, endStr, page = 1){
       const pre = Number(s.sub_total||0);
       const vat = Number(s.vat_total||0);
       const grand = Number(s.grand_total||0);
-      sumPre += pre; sumVat += vat; sumGrand += grand;
       const pm = String(s.payment_method || '').toLowerCase();
-      // accumulate totals by payment method with mixed split
-      const addAmt = (key, amount)=>{
-        if(!key) return;
-        const k = (key==='network' ? 'card' : key);
-        const prev = Number(payTotals.get(k)||0);
-        payTotals.set(k, prev + Number(amount||0) * (isCN ? -1 : 1));
-      };
-      if(pm==='mixed'){
-        const cashPart = Number(s.pay_cash_amount || 0);
-        const cardPart = Number(s.pay_card_amount || 0);
-        addAmt('cash', cashPart>0 ? cashPart : (grand>0 ? grand/2 : 0));
-        addAmt('card', cardPart>0 ? cardPart : (grand>0 ? grand/2 : 0));
-      } else if(pm==='cash'){
-        const settledCash = Number(s.settled_cash || 0);
-        const cashPart = Number(s.pay_cash_amount || 0);
-        addAmt('cash', settledCash>0 ? settledCash : (cashPart>0 ? cashPart : grand));
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
-        const cardPart = Number(s.pay_card_amount || 0);
-        addAmt(pm, cardPart>0 ? cardPart : grand);
-      } else if(pm){
-        addAmt(pm, grand);
-      }
       const payLabel = labelPaymentMethod(pm);
       const pmLower = pm;
       const settledCash = Number(s.settled_cash || 0);
@@ -921,25 +901,63 @@ async function loadRange(startStr, endStr, page = 1){
         if(baseNo) attrs.push(`data-base-no=\"${baseNo}\"`);
       }
       const viewBtn = `<button class=\"btn\" ${attrs.join(' ')}>${t.view || 'عرض'}</button>`;
-      // اعرض اسم المستخدم من الخريطة حسب المعرف لضمان التطابق مع الفلتر
       const uid = (s.created_by_user_id != null ? Number(s.created_by_user_id) : null);
       const userDisp = (uid!=null && __usersById.get(uid)) || s.created_by_username || (uid!=null ? ('#'+uid) : '');
       return `<tr><td class=\"num\">${s.invoice_no||''}</td><td>${docType}</td><td>${userDisp}</td><td dir=\"ltr\" style=\"text-align:left\">${cust}</td><td class=\"num date-cell\"><span class=\"date-part\">${datePart}</span><span class=\"time-part\">${timePart}</span></td><td>${payLabel}</td><td class=\"num\">${fmt(pre)}</td><td class=\"num\">${fmt(vat)}</td><td class=\"num\">${fmt(grand)}</td><td>${viewBtn}</td></tr>`;
     }).join('');
 
     if(invTbody){ invTbody.innerHTML = rows || `<tr><td colspan="10" class="muted">${t.noData || 'لا توجد مستندات ضمن الفترة'}</td></tr>`; }
-    if(invCount){ invCount.textContent = String(items.length||0); }
+    if(invCount){ invCount.textContent = String(allItems.length||0); }
+
+    // ====== الإجماليات من كامل الفترة (allItems) ======
+    let sumPre = 0, sumVat = 0, sumGrand = 0;
+    const payTotals = new Map(); // key: normalized method, value: total grand
+
+    const addAmt = (key, amount)=>{
+      if(!key) return;
+      const k = (key==='network' ? 'card' : key);
+      const prev = Number(payTotals.get(k)||0);
+      payTotals.set(k, prev + Number(amount||0));
+    };
+
+    allItems.forEach(s => {
+      const isCN = (String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-'));
+      const sign = isCN ? -1 : 1;
+      const pre = Number(s.sub_total||0) * sign;
+      const vat = Number(s.vat_total||0) * sign;
+      const grand = Number(s.grand_total||0) * sign;
+      sumPre += pre; sumVat += vat; sumGrand += grand;
+
+      const pm = String(s.payment_method || '').toLowerCase();
+      if(pm==='mixed'){
+        const cashPart = Number(s.pay_cash_amount || 0);
+        const cardPart = Number(s.pay_card_amount || 0);
+        const fallback = Math.abs(grand) > 0 ? Math.abs(grand)/2 : 0;
+        addAmt('cash', (cashPart>0 ? cashPart : fallback) * sign);
+        addAmt('card', (cardPart>0 ? cardPart : fallback) * sign);
+      } else if(pm==='cash'){
+        // المبلغ الفعلي للفاتورة هو grand_total — لا تستخدم settled_cash لأنه قد يشمل الباقي المُعاد للعميل
+        addAmt('cash', grand);
+      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
+        const cardPart = Number(s.pay_card_amount || 0);
+        addAmt(pm, (cardPart>0 ? cardPart*sign : grand));
+      } else if(pm){
+        addAmt(pm, grand);
+      }
+    });
+
     const set = (id, v)=>{ const el = document.getElementById(id); if(!el) return; el.textContent = (id==='sumCount') ? String(v) : fmt(v); };
     set('sumPre', sumPre);
     set('sumVat', sumVat);
     set('sumGrand', sumGrand);
-    set('sumCount', items.length||0);
+    set('sumCount', allItems.length||0);
 
-    const total = (res && res.total != null) ? res.total : items.length;
+    // ====== التصفّح (pagination) يبقى مبنياً على الـ res الخاص بالصفحة الحالية ======
+    const total = (pagedRes && pagedRes.total != null) ? pagedRes.total : items.length;
     const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
     updatePagination(currentPage, totalPages, total, startStr, endStr);
 
-    // render payment totals
+    // ====== رسم بطاقات إجماليات طرق الدفع ======
     try{
       const container = document.getElementById('payTotals');
       if(container){
@@ -961,13 +979,11 @@ async function loadRange(startStr, endStr, page = 1){
         btn.addEventListener('click', async () => {
           const id = Number(btn.getAttribute('data-view'));
           const type = btn.getAttribute('data-type');
-          // Honor default_print_format from settings
           let __defPrintFormat = 'thermal';
           try{ const r = await window.api.settings_get(); if(r && r.ok && r.item){ __defPrintFormat = (r.item.default_print_format === 'a4') ? 'a4' : 'thermal'; } }catch(_){ }
           const page = (__defPrintFormat === 'a4') ? '../sales/print-a4.html' : '../sales/print.html';
           const pay = btn.getAttribute('data-pay') || '';
           const cash = btn.getAttribute('data-cash') || '';
-          // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
           const qsObj = { id: String(id), ...(pay?{pay}:{}) , ...(cash?{cash}:{}), refresh: '1' };
           if(type==='credit'){
             const base = btn.getAttribute('data-base') || '';
@@ -975,7 +991,6 @@ async function loadRange(startStr, endStr, page = 1){
             if(base) qsObj.base = base;
             if(baseNo) qsObj.base_no = baseNo;
           }
-          // مرّر اسم مدخل الفاتورة حسب المعرف لضمان التطابق مع الفلتر
           try{
             const r = await window.api.sales_get(id);
             const sale = (r && r.ok) ? (r.sale || {}) : {};
