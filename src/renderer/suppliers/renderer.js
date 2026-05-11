@@ -168,6 +168,13 @@ function renderRows(allItems){
   }
   
   renderSupPager(__allSuppliers.length);
+  renderTotalDue();
+}
+
+function renderTotalDue(){
+  const total = __allSuppliers.reduce((sum, s) => sum + Number(s.total_due || 0), 0);
+  const el = document.getElementById('totalDueValue');
+  if(el) el.textContent = total.toFixed(2);
 }
 
 if(addBtn) addBtn.addEventListener('click', () => { if(!canSup('suppliers.add')) return; openAddDialog(); });

@@ -170,19 +170,28 @@ function applySellingUnitsVisibility(){
 
 // VAT price display in dialog
 let __vatPercent = 0;
+let __pricesIncludeVat = false;
 async function loadVatSetting(){
   try{
     const r = await __prodInitPromise;
     const s = r && r.ok ? (r.settings || {}) : {};
     __vatPercent = Number(s.vat_percent || 0);
-  }catch(_){ __vatPercent = 0; }
-  const wrap = document.getElementById('vatPriceWrap');
+    __pricesIncludeVat = s.prices_include_vat === 1 || s.prices_include_vat === true || s.prices_include_vat === '1';
+  }catch(_){ __vatPercent = 0; __pricesIncludeVat = false; }
   const label = document.getElementById('vatPercentLabel');
   if(label) label.textContent = __vatPercent;
-  if(wrap) wrap.classList.toggle('hidden', __vatPercent <= 0);
+  refreshVatPriceVisibility();
+}
+function refreshVatPriceVisibility(){
+  const wrap = document.getElementById('vatPriceWrap');
+  if(!wrap) return;
+  const isExempt = (typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) ? f_is_vat_exempt.checked : false;
+  const shouldShow = __vatPercent > 0 && !__pricesIncludeVat && !isExempt;
+  wrap.classList.toggle('hidden', !shouldShow);
+  if(shouldShow) updateVatPriceDisplay();
 }
 function updateVatPriceDisplay(){
-  if(__vatPercent <= 0) return;
+  if(__vatPercent <= 0 || __pricesIncludeVat) return;
   const price = Number(document.getElementById('f_price')?.value || 0);
   const withVat = price * (1 + __vatPercent / 100);
   const el = document.getElementById('f_price_with_vat');
@@ -314,6 +323,7 @@ const f_is_vat_exempt = document.getElementById('f_is_vat_exempt');
 const f_hide_from_sales = document.getElementById('f_hide_from_sales');
 
 if(f_price) f_price.addEventListener('input', updateVatPriceDisplay);
+if(f_is_vat_exempt) f_is_vat_exempt.addEventListener('change', refreshVatPriceVisibility);
 
 // Toggle barcode field visibility (hide in Add, show in Edit)
 const barcodeWrap = f_barcode ? f_barcode.closest('div') : null;
@@ -513,7 +523,7 @@ function renderProdVariants(){
   });
 }
 
-function clearDialog(){ f_name.value=''; f_name_en.value=''; if(f_barcode) f_barcode.value=''; f_price.value=''; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el) f_min_price_el.value=''; f_cost.value=''; f_stock.value=''; f_category.value=''; f_description.value=''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el) f_expiry_date_el.value=''; pickedImagePath=null; f_thumb.src=''; prodOps=[]; renderProdOps(); prodUnits=[]; renderProdUnits(); prodVariants=[]; renderProdVariants(); if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value='0'; if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked=false; if(f_hide_from_sales) f_hide_from_sales.checked=false; try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; delete window.__removeImage; }catch(_){ } }
+function clearDialog(){ f_name.value=''; f_name_en.value=''; if(f_barcode) f_barcode.value=''; f_price.value=''; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el) f_min_price_el.value=''; f_cost.value=''; f_stock.value=''; f_category.value=''; f_description.value=''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el) f_expiry_date_el.value=''; pickedImagePath=null; f_thumb.src=''; prodOps=[]; renderProdOps(); prodUnits=[]; renderProdUnits(); prodVariants=[]; renderProdVariants(); if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value='0'; if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked=false; refreshVatPriceVisibility(); if(f_hide_from_sales) f_hide_from_sales.checked=false; try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; delete window.__removeImage; }catch(_){ } }
 
 function openAddDialog(){ editId=null; dlgTitle.textContent=t('إضافة منتج'); clearDialog(); setBarcodeVisible(true); populateCategories(); loadAllOps(); applySellingUnitsVisibility(); safeShowModal(dlg); focusFirstField(); }
 async function openEditDialog(item){
@@ -523,7 +533,8 @@ async function openEditDialog(item){
   window.__removeImage = false;
   f_name.value=item.name||''; f_name_en.value=item.name_en||''; if(f_barcode) f_barcode.value=item.barcode||''; f_price.value=item.price; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el){ if(item.min_price!=null && item.min_price!==''){ const mp=Number(item.min_price); f_min_price_el.value = isNaN(mp) ? '' : String(mp.toFixed(2)); } else { f_min_price_el.value=''; } } f_cost.value=item.cost; f_stock.value=item.stock; f_description.value=item.description||''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el){ if(item.expiry_date){ const dt=new Date(item.expiry_date); if(!isNaN(dt.getTime())){ const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); f_expiry_date_el.value=`${y}-${m}-${d}`; } else { f_expiry_date_el.value=''; } } else { f_expiry_date_el.value=''; } } if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value = (item.is_tobacco ? '1' : '0'); if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked = !!item.is_vat_exempt; if(f_hide_from_sales) f_hide_from_sales.checked = (item.hide_from_sales === 1);
   
-  updateVatPriceDisplay();
+updateVatPriceDisplay();
+  refreshVatPriceVisibility();
   // Open dialog immediately for faster perceived response
   applySellingUnitsVisibility();
   safeShowModal(dlg);
