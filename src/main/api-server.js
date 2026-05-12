@@ -76,80 +76,120 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/invoices', async (req, res) => {
     let conn;
     try {
-      const { limit = 20, offset = 0, before_id, search, customer_q, payment_status, date_from, date_to, user_id, type } = req.query;
+      const {
+        limit = 20,
+        offset = 0,
+        before_id,
+        search,
+        customer_q,
+        payment_status,
+        date_from,
+        date_to,
+        user_id,
+        type,
+        customers_only,
+      } = req.query;
+
+      const rawLim = req.query.limit;
+      let lim;
+      if (rawLim === '0' || rawLim === 0 || rawLim === 'all') {
+        lim = 999999;
+      } else {
+        lim = Math.min(parseInt(rawLim) || 20, 999999);
+      }
+
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id, invoice_no, order_no, doc_type, created_at,
-        customer_id, customer_name, customer_phone, customer_vat,
-        payment_method, payment_status, sub_total, vat_total, grand_total,
-        total_after_discount, discount_type, discount_value, discount_amount,
-        paid_amount, remaining_amount, settled_at, settled_method, settled_cash,
-        pay_cash_amount, pay_card_amount, shift_id,
-        zatca_uuid, zatca_submitted, zatca_status, zatca_rejection_reason, zatca_response,
-        created_by_user_id, created_by_username`;
+
+      const SELECT_COLS = `s.id, s.invoice_no, s.order_no, s.doc_type, s.created_at,
+        s.customer_id, s.customer_name, s.customer_phone, s.customer_vat,
+        s.payment_method, s.payment_status, s.sub_total, s.vat_total, s.grand_total,
+        s.total_after_discount, s.discount_type, s.discount_value, s.discount_amount,
+        s.paid_amount, s.remaining_amount, s.settled_at, s.settled_method, s.settled_cash,
+        s.pay_cash_amount, s.pay_card_amount, s.shift_id,
+        s.zatca_uuid, s.zatca_submitted, s.zatca_status, s.zatca_rejection_reason, s.zatca_response,
+        s.created_by_user_id, s.created_by_username,
+        s.ref_base_sale_id, s.ref_base_invoice_no,
+        c.name AS disp_customer_name, c.phone AS disp_customer_phone`;
 
       const whereClauses = [];
-      if (type === 'invoice') {
-        whereClauses.push("(doc_type IS NULL OR doc_type='invoice')");
-      } else if (type === 'credit_note') {
-        whereClauses.push("doc_type='credit_note'");
-      }
       const params = [];
-      const hasFilters = !!(search || customer_q || payment_status || date_from || date_to || user_id || type);
+
+      if (type === 'invoice') {
+        whereClauses.push("(s.doc_type IS NULL OR s.doc_type='invoice')");
+      } else if (type === 'credit_note' || type === 'credit') {
+        whereClauses.push("s.doc_type='credit_note'");
+      }
 
       if (search) {
-        whereClauses.push('(invoice_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR customer_vat LIKE ?)');
+        whereClauses.push('(s.invoice_no LIKE ? OR s.customer_name LIKE ? OR s.customer_phone LIKE ? OR s.customer_vat LIKE ?)');
         const s = `%${search}%`;
         params.push(s, s, s, s);
       }
       if (customer_q) {
-        whereClauses.push('(customer_phone LIKE ? OR customer_name LIKE ? OR customer_vat LIKE ?)');
+        whereClauses.push('(s.customer_phone LIKE ? OR s.customer_vat LIKE ? OR s.customer_name LIKE ? OR c.phone LIKE ? OR c.name LIKE ? OR c.vat_number LIKE ?)');
         const cq = `%${customer_q}%`;
-        params.push(cq, cq, cq);
+        params.push(cq, cq, cq, cq, cq, cq);
       }
       if (payment_status) {
-        whereClauses.push('payment_status = ?');
+        whereClauses.push('s.payment_status = ?');
         params.push(payment_status);
       }
-      if (date_from) {
-        whereClauses.push('created_at >= ?');
-        params.push(date_from);
-      }
-      if (date_to) {
-        whereClauses.push('created_at <= ?');
-        params.push(date_to);
-      }
       if (user_id) {
-        whereClauses.push('created_by_user_id = ?');
+        whereClauses.push('s.created_by_user_id = ?');
         params.push(Number(user_id));
+      }
+      if (customers_only) {
+        whereClauses.push('(s.customer_id IS NOT NULL OR s.customer_name IS NOT NULL)');
+      }
+
+      if (date_from && date_to) {
+        whereClauses.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
+        params.push(date_from, date_to, date_from, date_to);
+      } else if (date_from) {
+        whereClauses.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
+        params.push(date_from, date_from);
+      } else if (date_to) {
+        whereClauses.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
+        params.push(date_to, date_to);
       }
 
       const where = whereClauses.length ? ('WHERE ' + whereClauses.join(' AND ')) : '';
-      const lim = Math.min(parseInt(limit) || 20, 999999);
 
-      // Fast COUNT: use index stats for unfiltered, exact COUNT only when filters applied
       let total = 0;
-      if (!hasFilters) {
+      const needsJoinForCount = !!customer_q;
+      if (needsJoinForCount) {
+        const [[countRow]] = await conn.query(
+          `SELECT COUNT(DISTINCT s.id) AS total FROM sales s LEFT JOIN customers c ON c.id = s.customer_id ${where}`,
+          params
+        );
+        total = Number(countRow.total || 0);
+      } else if (!whereClauses.length) {
         const [cntRows] = await conn.query(`SELECT COUNT(*) AS total FROM sales`);
         total = Number(cntRows[0]?.total || 0);
       } else {
-        const [[countRow]] = await conn.query(`SELECT COUNT(*) AS total FROM sales ${where}`, params);
+        const [[countRow]] = await conn.query(`SELECT COUNT(*) AS total FROM sales s ${where}`, params);
         total = Number(countRow.total || 0);
       }
 
-      // Keyset pagination (before_id): O(1) regardless of page depth — avoids OFFSET scan
       let rows;
       const beforeId = before_id ? Number(before_id) : null;
       if (beforeId) {
-        const ksWhere = 'WHERE ' + [...whereClauses, 'id < ?'].join(' AND ');
+        const ksWhere = 'WHERE ' + [...whereClauses, 's.id < ?'].join(' AND ');
         const [ksRows] = await conn.query(
-          `SELECT ${SELECT_COLS} FROM sales ${ksWhere} ORDER BY id DESC LIMIT ?`,
+          `SELECT ${SELECT_COLS}
+             FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+             ${ksWhere}
+             ORDER BY s.id DESC LIMIT ?`,
           [...params, beforeId, lim]
         );
         rows = ksRows;
       } else {
         const off = parseInt(offset) || 0;
         const [offRows] = await conn.query(
-          `SELECT ${SELECT_COLS} FROM sales ${where} ORDER BY id DESC LIMIT ? OFFSET ?`,
+          `SELECT ${SELECT_COLS}
+             FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+             ${where}
+             ORDER BY s.id DESC LIMIT ? OFFSET ?`,
           [...params, lim, off]
         );
         rows = offRows;
@@ -220,8 +260,16 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       conn = await dbAdapter.getConnection();
       const terms = ["doc_type='credit_note'"];
       const params = [];
-      if (date_from) { terms.push('created_at >= ?'); params.push(date_from); }
-      if (date_to) { terms.push('created_at <= ?'); params.push(date_to); }
+      if (date_from && date_to) {
+        terms.push('((settled_at IS NULL AND created_at >= ? AND created_at <= ?) OR (settled_at IS NOT NULL AND settled_at >= ? AND settled_at <= ?))');
+        params.push(date_from, date_to, date_from, date_to);
+      } else if (date_from) {
+        terms.push('((settled_at IS NULL AND created_at >= ?) OR (settled_at IS NOT NULL AND settled_at >= ?))');
+        params.push(date_from, date_from);
+      } else if (date_to) {
+        terms.push('((settled_at IS NULL AND created_at <= ?) OR (settled_at IS NOT NULL AND settled_at <= ?))');
+        params.push(date_to, date_to);
+      }
       const where = 'WHERE ' + terms.join(' AND ');
       const lim = Math.min(parseInt(limit) || 999999, 999999);
       const [rows] = await conn.query(`SELECT * FROM sales ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
@@ -911,9 +959,14 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query(`SELECT ${SELECT_COLS} FROM products ${whereSql} ${order} LIMIT ?`, [...prodParams, lim]),
         conn.query(`SELECT * FROM offers WHERE is_global=1 AND is_active=1 AND ${nowCond} ORDER BY id DESC LIMIT 1`),
       ]);
+      const settings = (settingsRow && settingsRow[0]) || {};
+      try {
+        if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+        if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+      } catch (_) { settings.payment_methods = []; }
       res.json({
         ok: true,
-        settings: (settingsRow && settingsRow[0]) || {},
+        settings,
         types: types,
         types_for_display: typesDisplay,
         products: products,
@@ -1435,7 +1488,12 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
         conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
       ]);
-      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+      const settings = (settingsRow && settingsRow[0]) || {};
+      try {
+        if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+        if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+      } catch (_) { settings.payment_methods = []; }
+      res.json({ ok: true, settings, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -1453,7 +1511,12 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query('SELECT id, name, phone, email, vat_number, is_active, created_at FROM customers ORDER BY id DESC LIMIT 100'),
         conn.query('SELECT COUNT(*) AS total FROM customers'),
       ]);
-      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+      const settings = (settingsRow && settingsRow[0]) || {};
+      try {
+        if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+        if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+      } catch (_) { settings.payment_methods = []; }
+      res.json({ ok: true, settings, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -1473,7 +1536,12 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query('SELECT * FROM operations ORDER BY id'),
         conn.query('SELECT COUNT(*) AS total FROM products'),
       ]);
-      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+      const settings = (settingsRow && settingsRow[0]) || {};
+      try {
+        if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+        if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+      } catch (_) { settings.payment_methods = []; }
+      res.json({ ok: true, settings, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -1496,7 +1564,12 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query(`SELECT * FROM shifts ${where} ORDER BY id DESC LIMIT ?`, [...params, lim]),
         conn.query(`SELECT * FROM shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1`),
       ]);
-      res.json({ ok: true, settings: (settingsRow && settingsRow[0]) || {}, shifts, open_shift: openShift[0] || null });
+      const settings = (settingsRow && settingsRow[0]) || {};
+      try {
+        if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+        if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+      } catch (_) { settings.payment_methods = []; }
+      res.json({ ok: true, settings, shifts, open_shift: openShift[0] || null });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {

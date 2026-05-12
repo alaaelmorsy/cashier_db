@@ -1560,9 +1560,14 @@ app.whenReady().then(async () => {
               conn.query(`SELECT ${SELECT_COLS} FROM products ${whereSql} ${order} LIMIT ?`, [...prodParams, lim]),
               conn.query(`SELECT * FROM offers WHERE is_global=1 AND is_active=1 AND ${nowCond} ORDER BY id DESC LIMIT 1`),
             ]);
+            const settings = (settingsRow && settingsRow[0]) || {};
+            try {
+              if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+              if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+            } catch(_) { settings.payment_methods = []; }
             return {
               ok: true,
-              settings: (settingsRow && settingsRow[0]) || {},
+              settings,
               types: types,
               types_for_display: typesDisplay,
               products: products,
@@ -1584,7 +1589,12 @@ app.whenReady().then(async () => {
               conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
               conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
             ]);
-            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+            const settings = (settingsRow && settingsRow[0]) || {};
+            try {
+              if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+              if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+            } catch(_) { settings.payment_methods = []; }
+            return { ok: true, settings, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });
@@ -1600,7 +1610,12 @@ app.whenReady().then(async () => {
               conn.query('SELECT id, name, phone, email, vat_number, is_active, created_at FROM customers ORDER BY id DESC LIMIT 100'),
               conn.query('SELECT COUNT(*) AS total FROM customers'),
             ]);
-            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+            const settings = (settingsRow && settingsRow[0]) || {};
+            try {
+              if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+              if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+            } catch(_) { settings.payment_methods = []; }
+            return { ok: true, settings, customers, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });
@@ -1618,7 +1633,12 @@ app.whenReady().then(async () => {
               conn.query('SELECT * FROM operations ORDER BY id'),
               conn.query('SELECT COUNT(*) AS total FROM products'),
             ]);
-            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+            const settings = (settingsRow && settingsRow[0]) || {};
+            try {
+              if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+              if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+            } catch(_) { settings.payment_methods = []; }
+            return { ok: true, settings, products, types, operations, total: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });
@@ -1638,7 +1658,12 @@ app.whenReady().then(async () => {
               conn.query(`SELECT * FROM shifts ${shiftWhere} ORDER BY id DESC LIMIT ?`, [...shiftParams, lim]),
               conn.query(`SELECT * FROM shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1`),
             ]);
-            return { ok: true, settings: (settingsRow && settingsRow[0]) || {}, shifts, open_shift: openShift[0] || null };
+            const settings = (settingsRow && settingsRow[0]) || {};
+            try {
+              if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
+              if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
+            } catch(_) { settings.payment_methods = []; }
+            return { ok: true, settings, shifts, open_shift: openShift[0] || null };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });

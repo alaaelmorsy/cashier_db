@@ -1441,7 +1441,7 @@ async function __clearRoomSession(id){ try{ await window.api.rooms_clear(id); }c
           __processedSaleData = null;
           // إعادة طريقة الدفع إلى الافتراضي
           try{
-            const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+            const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
             if(settings.default_payment_method && methods.includes(settings.default_payment_method)){
               paymentMethod.value = settings.default_payment_method;
             } else { paymentMethod.value = methods[0]; }
@@ -1682,7 +1682,8 @@ allowOnlyNumbersSales(acmPhone);
 allowOnlyNumbersSales(acmVat);
 allowOnlyNumbersSales(acmCr);
 
-let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: ['cash','card','mixed'], op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false, update_product_price_on_edit: false };
+const DEFAULT_PAYMENT_METHODS = ['cash','card','mixed'];
+let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: DEFAULT_PAYMENT_METHODS, op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false, update_product_price_on_edit: false };
 let cart = []; // {id, name, price, qty, image_path}
 let customerDisplayEnabled = false;
 let currencyCodeForDisplay = 'SAR';
@@ -2000,7 +2001,7 @@ async function showPartialRefundModal(saleId){
           __processedSaleId = null;
           __processedSaleData = null;
           try{
-            const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+            const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
             if(settings.default_payment_method && methods.includes(settings.default_payment_method)){
               paymentMethod.value = settings.default_payment_method;
             } else { paymentMethod.value = methods[0]; }
@@ -2729,7 +2730,15 @@ function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, ch => ({'&':'&amp;'
 async function loadSettings(prefetchedSettings){
   const r = prefetchedSettings ? { ok: true, item: prefetchedSettings } : await window.api.settings_get();
   if(r.ok){ 
-    settings = { ...settings, ...(r.item||{}) };
+    const incoming = r.item || {};
+    try {
+      if (typeof incoming.payment_methods === 'string') incoming.payment_methods = JSON.parse(incoming.payment_methods);
+      if (!Array.isArray(incoming.payment_methods)) incoming.payment_methods = [];
+    } catch(_) { incoming.payment_methods = []; }
+    if (Array.isArray(incoming.payment_methods) && incoming.payment_methods.length === 0) {
+      delete incoming.payment_methods;
+    }
+    settings = { ...settings, ...incoming };
     __oneTimeBarcodeMode = !!settings.one_time_barcode || __urlParams.get('one_time_barcode') === '1';
     customerDisplayEnabled = !!settings.customer_display_enabled;
     currencyCodeForDisplay = settings.currency_code || 'SAR';
@@ -2740,7 +2749,7 @@ async function loadSettings(prefetchedSettings){
   }
   // payment methods into select
   paymentMethod.innerHTML = '';
-  const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+  const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
   const labels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي' };
   methods.forEach(m => {
     const opt = document.createElement('option');
@@ -4628,7 +4637,7 @@ btnClear.addEventListener('click', async () => {
     cdWelcome();
     // إعادة طريقة الدفع إلى الافتراضية عند مسح السلة
     try{
-      const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+      const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
       if(settings.default_payment_method && methods.includes(settings.default_payment_method)){
         paymentMethod.value = settings.default_payment_method;
       } else {
@@ -4976,7 +4985,7 @@ btnPay.addEventListener('click', async () => {
   barcode.value = '';
   // إعادة طريقة الدفع إلى الافتراضية المحددة في الإعدادات
   try{
-    const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+    const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
     if(settings.default_payment_method && methods.includes(settings.default_payment_method)){
       paymentMethod.value = settings.default_payment_method;
     } else {
@@ -5016,7 +5025,7 @@ async function showPaymentMethodModal(){
     let selectedMethod = paymentMethod.value || 'cash';
     
     // بناء خيارات طرق الدفع بناءً على الإعدادات
-    const availableMethods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+    const availableMethods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
     const methodLabels = {
       'cash': '💵 نقدي',
       'card': '💳 شبكة',
@@ -5418,7 +5427,7 @@ async function processPrint(){
   barcode.value = '';
   // إعادة طريقة الدفع إلى الافتراضية المحددة في الإعدادات
   try{
-    const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : ['cash'];
+    const methods = Array.isArray(settings.payment_methods) && settings.payment_methods.length ? settings.payment_methods : DEFAULT_PAYMENT_METHODS;
     if(settings.default_payment_method && methods.includes(settings.default_payment_method)){
       paymentMethod.value = settings.default_payment_method;
     } else {

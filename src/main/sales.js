@@ -810,13 +810,18 @@ function registerSalesIPC(){
   });
 
   ipcMain.handle('sales:list', async (_e, query) => {
-    // If Secondary device, fetch from API
     if (isSecondaryDevice()) {
       try {
         const _q = query || {};
         const _page = Math.max(1, Number(_q.page) || 1);
-        const _pageSize = Math.max(1, Number(_q.pageSize) || 20);
-        const apiParams = { limit: _pageSize };
+
+        const rawPageSize = Number(_q.pageSize);
+        const wantAll = (rawPageSize === 0);
+        const _pageSize = wantAll ? 0 : (rawPageSize > 0 ? rawPageSize : 20);
+
+        const apiParams = {};
+        apiParams.limit = wantAll ? 999999 : _pageSize;
+
         if (_q.q) apiParams.search = _q.q;
         if (_q.customer_q) apiParams.customer_q = _q.customer_q;
         if (_q.payment_status) apiParams.payment_status = _q.payment_status;
@@ -824,17 +829,28 @@ function registerSalesIPC(){
         if (_q.date_to) apiParams.date_to = _q.date_to;
         if (_q.user_id) apiParams.user_id = _q.user_id;
         if (_q.type) apiParams.type = _q.type;
-        // Pass before_id for keyset pagination (avoids OFFSET scan on millions of rows)
-        if (_q.before_id) {
+        if (_q.customers_only) apiParams.customers_only = '1';
+
+        if (!wantAll && _q.before_id) {
           apiParams.before_id = _q.before_id;
-        } else {
+        } else if (!wantAll) {
           apiParams.offset = (_page - 1) * _pageSize;
         }
+
         const result = await fetchFromAPI('/invoices', apiParams);
         const items = result.invoices || [];
         const total = result.total != null ? result.total : items.length;
-        const last_id = items.length ? items[items.length - 1].id : null;
-        return { ok: true, items, total, page: _page, pageSize: _pageSize, last_id };
+        const first_id = items.length ? items[0].id : null;
+        const last_id  = items.length ? items[items.length - 1].id : null;
+        return {
+          ok: true,
+          items,
+          total,
+          page: wantAll ? 1 : _page,
+          pageSize: wantAll ? 0 : _pageSize,
+          first_id,
+          last_id,
+        };
       } catch (err) {
         return { ok: false, error: err.message };
       }
