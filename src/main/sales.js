@@ -1580,6 +1580,7 @@ function registerSalesIPC(){
         if (q.date_to) apiParams.date_to = q.date_to;
         if (q.from_at) apiParams.from_at = q.from_at;
         if (q.to_at) apiParams.to_at = q.to_at;
+        if (q.exclude_unpaid_credit) apiParams.exclude_unpaid_credit = 1;
         const result = await fetchFromAPI('/sales-items-summary', apiParams);
         if (result && result.ok) {
           return { ok: true, items: result.items || [] };
@@ -1600,6 +1601,11 @@ function registerSalesIPC(){
     if(to){ terms.push('s.created_at <= ?'); params.push(to); }
     // Treat NULL doc_type as 'invoice'
     terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
+    // For profitability: exclude credit (آجل) invoices that are not yet fully paid.
+    // Credit notes always pass through so refunds for paid invoices still net out.
+    if(q.exclude_unpaid_credit){
+      terms.push("NOT ((s.doc_type IS NULL OR s.doc_type='invoice') AND LOWER(COALESCE(s.payment_method,''))='credit' AND s.payment_status IN ('unpaid','partial'))");
+    }
     const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
     try{
       const conn = await dbAdapter.getConnection();

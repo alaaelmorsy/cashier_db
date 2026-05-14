@@ -311,7 +311,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/sales-items-summary', async (req, res) => {
     let conn;
     try {
-      const { date_from, date_to, from_at, to_at } = req.query;
+      const { date_from, date_to, from_at, to_at, exclude_unpaid_credit } = req.query;
       const from = date_from || from_at || null;
       const to = date_to || to_at || null;
       
@@ -321,6 +321,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (from) { terms.push('s.created_at >= ?'); params.push(from); }
       if (to) { terms.push('s.created_at <= ?'); params.push(to); }
       terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
+      // For profitability: exclude credit (آجل) invoices that are not yet fully paid.
+      if (exclude_unpaid_credit) {
+        terms.push("NOT ((s.doc_type IS NULL OR s.doc_type='invoice') AND LOWER(COALESCE(s.payment_method,''))='credit' AND s.payment_status IN ('unpaid','partial'))");
+      }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       
       const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
