@@ -1482,6 +1482,57 @@ function registerSalesIPC(){
   });
 
   // Get refunded quantities for a sale
+  ipcMain.handle('sales:get_by_invoice_no', async (_e, invoiceNo) => {
+    const no = String(invoiceNo||'').trim();
+    if(!no) return { ok:false, error:'رقم الفاتورة مفقود' };
+
+    if (isSecondaryDevice()) {
+      try {
+        const result = await fetchFromAPI(`/invoices/by-no/${encodeURIComponent(no)}`);
+        if (!result.ok) return { ok: false, error: result.error || 'فشل جلب الفاتورة' };
+        return { ok: true, sale: result.sale || result.invoice, items: result.items || [] };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    try{
+      const conn = await dbAdapter.getConnection();
+      try{
+        await ensureTables(conn);
+        const [[sale]] = await conn.query('SELECT * FROM sales WHERE invoice_no = ? LIMIT 1', [no]);
+        if(!sale) return { ok:false, error:'الفاتورة غير موجودة' };
+        const sid = sale.id;
+        try{
+          if(sale && (sale.order_no == null) && (String(sale.doc_type||'invoice') !== 'credit_note')){
+            let closing = '00:00';
+            try{ const [[st]] = await conn.query('SELECT closing_hour FROM app_settings WHERE id=1'); if(st && st.closing_hour){ closing = String(st.closing_hour).slice(0,5); } }catch(_){ }
+            const [hh, mm] = (closing||'00:00').split(':').map(v=>Number(v||0));
+            const created = new Date(sale.created_at);
+            const curStart = new Date(created); curStart.setHours(hh||0, mm||0, 0, 0);
+            let dayStart = curStart; if(created < curStart){ dayStart = new Date(curStart); dayStart.setDate(curStart.getDate()-1); }
+            const y = dayStart.getFullYear(); const mo = String(dayStart.getMonth()+1).padStart(2,'0'); const dy = String(dayStart.getDate()).padStart(2,'0');
+            const startStr = `${y}-${mo}-${dy} ${String(hh||0).padStart(2,'0')}:${String(mm||0).padStart(2,'0')}:00`;
+            const dayEnd = new Date(dayStart); dayEnd.setDate(dayStart.getDate()+1);
+            const endStr = `${dayEnd.getFullYear()}-${String(dayEnd.getMonth()+1).padStart(2,'0')}-${String(dayEnd.getDate()).padStart(2,'0')} ${String(hh||0).padStart(2,'0')}:${String(mm||0).padStart(2,'0')}:00`;
+            const [[cnt]] = await conn.query(
+              "SELECT COUNT(*) AS c FROM sales WHERE (doc_type IS NULL OR doc_type='invoice') AND created_at >= ? AND created_at < ? AND id <= ?",
+              [startStr, endStr, Number(sid)]
+            );
+            const ord = Number(cnt?.c||0);
+            if(ord > 0){ sale.order_no = ord; }
+          }
+        }catch(_){ }
+        const [items] = await conn.query('SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier, si.price, si.qty, si.line_total, si.is_vat_exempt, si.operation_id, si.operation_name, si.employee_id, p.is_tobacco, p.is_vat_exempt AS product_is_vat_exempt, p.category, p.name_en, COALESCE(pv.barcode, p.barcode) AS barcode, e.name as employee_name FROM sales_items si LEFT JOIN products p ON p.id = si.product_id LEFT JOIN product_variants pv ON pv.id = si.operation_id LEFT JOIN employees e ON e.id = si.employee_id WHERE si.sale_id=?', [sid]);
+        const normalizedItems = items.map(it => ({
+          ...it,
+          is_vat_exempt: Number(it.is_vat_exempt||0) === 1 ? 1 : (Number(it.product_is_vat_exempt||0) === 1 ? 1 : 0)
+        }));
+        return { ok:true, sale, items: normalizedItems };
+      } finally { conn.release(); }
+    }catch(e){ console.error(e); return { ok:false, error:'تعذر جلب الفاتورة' }; }
+  });
+
   ipcMain.handle('sales:get_refunded_quantities', async (_e, saleId) => {
     const sid = Number(saleId||0);
     if(!sid) return { ok:false, error:'معرّف مفقود' };
@@ -1909,7 +1960,14 @@ function registerSalesIPC(){
           });
         }
 
-        const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
+        let vatPercentSetting = 15;
+        try{
+          const [[settingsRow]] = await conn.query('SELECT vat_percent FROM app_settings WHERE id=1');
+          if(settingsRow && Number.isFinite(Number(settingsRow.vat_percent))){
+            vatPercentSetting = Number(settingsRow.vat_percent);
+          }
+        }catch(_){}
+        const vatPercent = vatPercentSetting;
 
         let totalExclusiveRefund = 0;
         const itemsToInsert = [];

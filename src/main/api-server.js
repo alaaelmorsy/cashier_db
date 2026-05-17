@@ -238,6 +238,41 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     }
   });
 
+  app.get('/api/invoices/by-no/:no', async (req, res) => {
+    let conn;
+    try {
+      const { no } = req.params;
+      conn = await dbAdapter.getConnection();
+      const [[saleRow], items] = await Promise.all([
+        conn.query('SELECT * FROM sales WHERE invoice_no = ? LIMIT 1', [no]),
+        conn.query(
+          `SELECT si.id, si.sale_id, si.product_id, si.name, si.description, si.unit_name, si.unit_multiplier,
+                  si.price, si.qty, si.line_total, si.is_vat_exempt, si.operation_id, si.operation_name,
+                  si.employee_id, p.is_tobacco, p.is_vat_exempt AS product_is_vat_exempt, p.category, p.name_en,
+                  COALESCE(pv.barcode, p.barcode) AS barcode, e.name AS employee_name
+           FROM sales_items si
+           LEFT JOIN products p ON p.id = si.product_id
+           LEFT JOIN product_variants pv ON pv.id = si.operation_id
+           LEFT JOIN employees e ON e.id = si.employee_id
+           WHERE si.sale_id = (SELECT id FROM sales WHERE invoice_no = ? LIMIT 1) ORDER BY si.id`,
+          [no]
+        ),
+      ]);
+      if (!saleRow || !saleRow.length) {
+        return res.status(404).json({ ok: false, error: 'Invoice not found' });
+      }
+      const normalizedItems = (items[0] || []).map(it => ({
+        ...it,
+        is_vat_exempt: Number(it.is_vat_exempt||0) === 1 ? 1 : (Number(it.product_is_vat_exempt||0) === 1 ? 1 : 0)
+      }));
+      res.json({ ok: true, sale: saleRow[0], invoice: saleRow[0], items: normalizedItems });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
   app.get('/api/credit-invoices', async (req, res) => {
     let conn;
     try {

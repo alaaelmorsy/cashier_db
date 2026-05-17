@@ -1907,7 +1907,7 @@ async function showPartialRefundModal(saleId){
     }
     
     function updateTotals(){
-      const vatPercent = Number(sale.vat_total||0) / (Number(sale.sub_total||0) || 1) * 100;
+      const vatRate = (Number(settings.vat_percent) || 15) / 100;
       const pricesIncludeVat = settings.prices_include_vat ? 1 : 0;
       let subtotal = 0;
       saleItems.forEach((item, idx) => {
@@ -1917,14 +1917,14 @@ async function showPartialRefundModal(saleId){
         if(checkbox && checkbox.checked && qtyInput){
           const qty = Number(qtyInput.value||0);
           let price = Number(item.price||0);
-          if(pricesIncludeVat && !item.is_vat_exempt && vatPercent > 0){
-            price = price / (1 + vatPercent / 100);
+          if(pricesIncludeVat && !item.is_vat_exempt && vatRate > 0){
+            price = price / (1 + vatRate);
           }
           subtotal += qty * price;
         }
       });
       
-      const vat = Number((subtotal * (vatPercent/100)).toFixed(2));
+      const vat = Number((subtotal * vatRate).toFixed(2));
       const total = Number((subtotal + vat).toFixed(2));
       
       if(subtotalEl) subtotalEl.textContent = subtotal.toFixed(2) + ' ريال';
@@ -2049,18 +2049,16 @@ async function showPartialRefundModal(saleId){
   }
 }
 
+let __loadingInvoice = false;
 async function loadInvoiceIntoCartByNumber(invNo){
+  if(__loadingInvoice) return;
+  __loadingInvoice = true;
   setError(''); __processedSaleId = null; __processedSaleData = null;
   try{
     const q = String(invNo||'').trim(); if(!q){ showErrorNotification(_t('notifEnterValidInvoiceNo')); return; }
-    // ابحث عن الفاتورة برقمها بدقة
-    const res = await window.api.sales_list({ invoice_no: q });
-    if(!res || !res.ok || !Array.isArray(res.items) || !res.items.length){ showErrorNotification(_t('notifInvoiceNotFound')); return; }
-    // اختر أول نتيجة مطابقة تمامًا إن وجدت
-    const exact = res.items.find(x => String(x.invoice_no) === q) || res.items[0];
-    const gid = exact.id;
-    const det = await window.api.sales_get(gid);
-    if(!det || !det.ok){ showErrorNotification(_t('notifCannotFetchInvoice')); return; }
+    // البحث الدقيق عن الفاتورة برقمها — لا نستخدم LIKE أو fallback
+    const det = await window.api.sales_get_by_invoice_no(q);
+    if(!det || !det.ok){ showErrorNotification(_t('notifInvoiceNotFound')); return; }
     
     // منع معالجة الفواتير الدائنة (credit notes)
     if(det.sale && String(det.sale.doc_type) === 'credit_note'){
@@ -2126,7 +2124,7 @@ async function loadInvoiceIntoCartByNumber(invNo){
     renderCart();
     // اقفل الشاشة
     setProcessingMode(true);
-  }catch(e){ console.error(e); showErrorNotification(_t('notifProcessingError')); }
+  }catch(e){ console.error(e); showErrorNotification(_t('notifProcessingError')); } finally { __loadingInvoice = false; }
 }
 
 function fmt(amount){
@@ -4237,8 +4235,11 @@ function calcSubBeforeVAT(){
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 1);
     if(settings.prices_include_vat){
-      const base = price / (1 + vatPct);
-      sub += base * qty;
+      const inclusiveItemTotal = (item.__amount != null && isFinite(Number(item.__amount)))
+        ? Number(item.__amount)
+        : (price * qty);
+      const base = (Number(item.is_vat_exempt||0) === 1) ? inclusiveItemTotal : (inclusiveItemTotal / (1 + vatPct));
+      sub += base;
     } else {
       sub += price * qty;
     }
@@ -5677,15 +5678,6 @@ async function populateCategories(){
     }
   }catch(_){ }
   // Load saved invoices
-  try{
-    if(btnProcessInvoice && processInvoiceNoEl){
-      btnProcessInvoice.addEventListener('click', async ()=>{
-        const inv = String(processInvoiceNoEl.value||'').trim();
-        if(!inv){ setError('أدخل رقم فاتورة'); return; }
-        await loadInvoiceIntoCartByNumber(inv);
-      });
-    }
-  }catch(_){ }
   
   setupHeldInvoices();
 })();

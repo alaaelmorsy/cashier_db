@@ -1130,6 +1130,7 @@ contextBridge.exposeInMainWorld('api', {
   sales_create: (payload) => ipcRenderer.invoke('sales:create', payload),
   sales_list: (q) => ipcRenderer.invoke('sales:list', q),
   sales_get: (id) => ipcRenderer.invoke('sales:get', { id }),
+  sales_get_by_invoice_no: (invoiceNo) => ipcRenderer.invoke('sales:get_by_invoice_no', invoiceNo),
   sales_has_credit_for_invoice: (q) => ipcRenderer.invoke('sales:has_credit_for_invoice', q),
   sales_list_credit: (q) => ipcRenderer.invoke('sales:list_credit', q),
   sales_list_credit_notes: (q) => ipcRenderer.invoke('sales:list_credit_notes', q),
