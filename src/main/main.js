@@ -454,12 +454,13 @@ function registerContextMenuIPC() {
     try{
       const win = BrowserWindow.fromWebContents(event.sender);
       if(!win) return { ok:false };
+      const ar = payload && payload.lang === 'ar';
       const template = [
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
+        { label: ar ? 'قص' : 'Cut', role: 'cut' },
+        { label: ar ? 'نسخ' : 'Copy', role: 'copy' },
+        { label: ar ? 'لصق' : 'Paste', role: 'paste' },
         { type: 'separator' },
-        { role: 'selectAll' }
+        { label: ar ? 'تحديد الكل' : 'Select All', role: 'selectAll' }
       ];
       const menu = Menu.buildFromTemplate(template);
       menu.popup({ window: win });
@@ -586,6 +587,7 @@ async function createMainWindow() {
   function _showWin() {
     if (_shown || win.isDestroyed()) return;
     _shown = true;
+    try { win.maximize(); } catch (_) {}
     try { win.show(); } catch (_) {}
     try { setupAutoUpdater(win); } catch (_) {}
     try { win.webContents.setFrameRate(60); } catch (_) {}
@@ -601,10 +603,12 @@ async function createMainWindow() {
       try{
         if(!win.isDestroyed() && page && page !== loginPage){
           if(page === branchSelectionPage){
+            if (win.isMaximized()) win.unmaximize();
             win.setSize(460, 560);
             win.center();
             win.setResizable(false);
           } else if(page === activationPage){
+            if (win.isMaximized()) win.unmaximize();
             win.setSize(460, 520);
             win.center();
             win.setResizable(false);
@@ -614,6 +618,17 @@ async function createMainWindow() {
       }catch(_){ }
     })
     .catch(() => { });
+
+  win.webContents.on('did-navigate', (_event, url) => {
+    try {
+      const urlPath = String(url || '');
+      const isSmallPage = urlPath.includes('activation') || urlPath.includes('branch-selection');
+      if (!isSmallPage && !win.isMaximized()) {
+        win.setResizable(true);
+        win.maximize();
+      }
+    } catch (_) {}
+  });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.includes('quotation.html')) {
@@ -661,14 +676,22 @@ async function createMainWindow() {
   try{ registerUpdateIPC && registerUpdateIPC(); }catch(_){ }
 
   // Window controls (fullscreen toggle, back)
-  ipcMain.handle('window:set_size', async (event, { width, height, center, resizable } = {}) => {
+  ipcMain.handle('window:set_size', async (event, { width, height, center, resizable, fullscreen: fs } = {}) => {
     try {
       const { BrowserWindow } = require('electron');
       const w = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
       if (!w) return { ok: false, error: 'no-window' };
-      if (resizable !== undefined) w.setResizable(resizable);
-      if (width && height) w.setSize(Math.round(width), Math.round(height));
-      if (center !== false) w.center();
+      if (fs === true) {
+        w.setResizable(true);
+        w.maximize();
+      } else {
+        if (resizable !== undefined) w.setResizable(resizable);
+        if (width && height) {
+          if (w.isMaximized()) w.unmaximize();
+          w.setSize(Math.round(width), Math.round(height));
+        }
+        if (center !== false) w.center();
+      }
       return { ok: true };
     } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
   });
@@ -1339,6 +1362,10 @@ async function createMainWindow() {
       }
       
       win.loadFile(path.join(__dirname, targetPath));
+      if (page === 'main' || page === 'zatca') {
+        win.setResizable(true);
+        win.maximize();
+      }
       return { ok: true };
     } catch (error) {
       console.error('Navigation error:', error);
