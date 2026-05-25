@@ -1044,20 +1044,22 @@ async function loadRange(startStr, endStr){
 
     // Load all data in parallel for maximum performance
     let soldItems = [];
-    let soldItemsForProfit = []; // الأصناف المباعة في فواتير مدفوعة فقط — لقسم الربحية (Cash basis)
+    let soldItemsDetailed = [];
     let allSales = [], settings = {};
-    let purRes0, invRes0;
+    let purRes0, invRes0, payRes0;
     try{
-      const [sumRes, sumPaidRes, salesRes, _purRes, _invRes, settingsRes] = await Promise.all([
+      const [sumRes, detRes, salesRes, _purRes, _invRes, settingsRes, _payRes] = await Promise.all([
         window.api.sales_items_summary({ date_from: startStr, date_to: endStr }),
-        window.api.sales_items_summary({ date_from: startStr, date_to: endStr, exclude_unpaid_credit: true }),
+        window.api.sales_items_detailed({ date_from: startStr, date_to: endStr }),
         window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 }),
         window.api.purchases_list({ from_at: startStr, to_at: endStr }),
         window.api.purchase_invoices_list({ from: startStr, to: endStr }),
-        window.api.settings_get()
+        window.api.settings_get(),
+        window.api.sales_list_payments({ date_from: startStr, date_to: endStr })
       ]);
       soldItems = (sumRes && sumRes.ok) ? (sumRes.items||[]) : [];
-      soldItemsForProfit = (sumPaidRes && sumPaidRes.ok) ? (sumPaidRes.items||[]) : [];
+      soldItemsDetailed = (detRes && detRes.ok) ? (detRes.items||[]) : [];
+      payRes0 = _payRes;
       allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
       settings = (settingsRes && settingsRes.ok) ? settingsRes.item : {};
       purRes0 = _purRes;
@@ -1258,76 +1260,43 @@ async function loadRange(startStr, endStr){
     set('netVat', netVat);
     set('netAfter', netPre + netTob + netVat);
 
-    // Profitability KPIs (with VAT and without VAT):
-    // - costTotalWithVat: sum of (sold qty x product.cost) including VAT
-    // - salesTotalWithVat: sum of (sold qty x product.price) including VAT
-    // - profitNetWithVat: salesTotalWithVat - costTotalWithVat
-    // - costTotalExVat: same but excluding VAT
-    // - salesTotalExVat: same but excluding VAT
-    // - profitNetExVat: salesTotalExVat - costTotalExVat
-    let costTotalWithVat = 0;
-    let salesTotalWithVat = 0;
-    let costTotalExVat = 0;
-    let salesTotalExVat = 0;
+    let paidBySale = new Map();
     try{
-      const vatPct = Number(settings.vat_percent || 15) / 100;
-      const costIncludesVat = Boolean(Number(settings.cost_includes_vat ?? 1));
+      const txs = (payRes0 && payRes0.ok) ? (payRes0.items||[]) : [];
+      if(typeof ReportProfitUtils !== 'undefined' && ReportProfitUtils.buildPaidBySale){
+        paidBySale = ReportProfitUtils.buildPaidBySale(txs);
+      } else {
+        txs.forEach(tx => {
+          const val = Number(tx.amount||0);
+          if(!isFinite(val) || val <= 0) return;
+          const sid = Number(tx.sale_id||0);
+          if(sid > 0){ paidBySale.set(sid, Number(paidBySale.get(sid)||0) + val); }
+        });
+      }
+    }catch(_){ }
 
-      // التكلفة تُحسب من أصناف الفواتير المسدَّدة فقط (تستثني الآجل غير المدفوع/الجزئي)
-      (soldItemsForProfit||[]).forEach(it => {
-        const qty = Number(it.qty_total||0);
-        const cost = Number(it.cost_price || 0);
-        const isVatExempt = Number(it.is_vat_exempt ?? 0) === 1;
-        const itemVatPct = isVatExempt ? 0 : vatPct;
-
-        let costWithVat, costExVat;
-        if(costIncludesVat){
-          costWithVat = cost;
-          costExVat = itemVatPct > 0 ? cost / (1 + itemVatPct) : cost;
-        } else {
-          costExVat = cost;
-          costWithVat = cost * (1 + itemVatPct);
-        }
-        costTotalWithVat += (qty * costWithVat);
-        costTotalExVat += (qty * costExVat);
-      });
-    }catch(err){ console.error('Profitability cost calc failed (period):', err); costTotalWithVat = 0; costTotalExVat = 0; }
-
-    // الإيراد يُحسب من الفواتير المدفوعة فقط (Cash basis) + خصم الإشعارات الدائنة
     try{
-      let profitSalesWithVat = 0;
-      let profitSalesExVat = 0;
-      (allSales||[]).forEach(sv => {
-        const isCN = String(sv.doc_type||'') === 'credit_note' || String(sv.invoice_no||'').startsWith('CN-');
-        if(isCN) return;
-        const pm = String(sv.payment_method||'').toLowerCase();
-        const ps = String(sv.payment_status||'').toLowerCase();
-        // استثناء الآجل غير المدفوع كاملاً
-        if(pm === 'credit' && (ps === 'unpaid' || ps === 'partial')) return;
-        const grand = Number(sv.grand_total||0);
-        const vat = Number(sv.vat_total||0);
-        profitSalesWithVat += grand;
-        profitSalesExVat   += (grand - vat);
-      });
-      (creditNotes||[]).forEach(sv => {
-        const grand = Math.abs(Number(sv.grand_total||0));
-        const vat = Math.abs(Number(sv.vat_total||0));
-        profitSalesWithVat -= grand;
-        profitSalesExVat   -= (grand - vat);
-      });
-      salesTotalWithVat = profitSalesWithVat;
-      salesTotalExVat   = profitSalesExVat;
-    }catch(err){ console.error('Profitability sales calc failed (period):', err); salesTotalWithVat = 0; salesTotalExVat = 0; }
-
-    const profitNetWithVat = Number(salesTotalWithVat - costTotalWithVat);
-    const profitNetExVat = Number(salesTotalExVat - costTotalExVat);
-
-    set('costTotalPre', costTotalWithVat);
-    set('salesTotalPre', salesTotalWithVat);
-    set('profitNetPre', profitNetWithVat);
-    set('costTotalExVat', costTotalExVat);
-    set('salesTotalExVat', salesTotalExVat);
-    set('profitNetExVat', profitNetExVat);
+      const profit = (typeof ReportProfitUtils !== 'undefined' && ReportProfitUtils.calcProfitabilityTotals)
+        ? ReportProfitUtils.calcProfitabilityTotals({
+            allSales,
+            creditNotes,
+            soldItemsDetailed,
+            paidBySale,
+            vatPercent: settings.vat_percent,
+            costIncludesVat: settings.cost_includes_vat
+          })
+        : { costTotalWithVat: 0, salesTotalWithVat: 0, costTotalExVat: 0, salesTotalExVat: 0, profitNetWithVat: 0, profitNetExVat: 0 };
+      set('costTotalPre', profit.costTotalWithVat);
+      set('salesTotalPre', profit.salesTotalWithVat);
+      set('profitNetPre', profit.profitNetWithVat);
+      set('costTotalExVat', profit.costTotalExVat);
+      set('salesTotalExVat', profit.salesTotalExVat);
+      set('profitNetExVat', profit.profitNetExVat);
+    }catch(err){
+      console.error('Profitability calc failed (period):', err);
+      set('costTotalPre', 0); set('salesTotalPre', 0); set('profitNetPre', 0);
+      set('costTotalExVat', 0); set('salesTotalExVat', 0); set('profitNetExVat', 0);
+    }
 
     // build tables similar to daily.js
     const invTbody = document.getElementById('invTbody');

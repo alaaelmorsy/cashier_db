@@ -39,6 +39,8 @@ function showToast(message, bgColor = '#16a34a', duration = 3000){
 }
 
 let __settings = { default_print_format: 'thermal' };
+const SETTLE_PAYMENT_METHODS = ['cash','card','tamara','tabby','bank_transfer'];
+const SETTLE_METHOD_LABELS = { cash: '💵 كاش', card: '💳 شبكة', tamara: '🛍️ تمارا', tabby: '📱 تابي', bank_transfer: '🏦 تحويل بنكي' };
 let __currentSale = null;
 let __list = [];
 let __perms = new Set();
@@ -69,7 +71,33 @@ function forceCloseDialog() {
   dlgPartial.innerHTML = '💵 دفع جزئي';
 }
 
-async function loadSettings(){ try{ const r = await window.api.settings_get(); if(r && r.ok){ __settings = { ...__settings, ...(r.item||{}) }; } }catch(_){}}
+function applyPaymentMethodsToSelect(){
+  let fromSettings = __settings.payment_methods;
+  try{
+    if(typeof fromSettings === 'string') fromSettings = JSON.parse(fromSettings);
+  }catch(_){ fromSettings = []; }
+  const enabled = Array.isArray(fromSettings) && fromSettings.length
+    ? fromSettings.filter(m => SETTLE_PAYMENT_METHODS.includes(m))
+    : SETTLE_PAYMENT_METHODS;
+  const list = enabled.length ? enabled : SETTLE_PAYMENT_METHODS;
+  const current = payMethod.value;
+  payMethod.innerHTML = '';
+  list.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = SETTLE_METHOD_LABELS[m] || m;
+    payMethod.appendChild(opt);
+  });
+  payMethod.value = list.includes(current) ? current : (list[0] || 'cash');
+}
+
+async function loadSettings(){
+  try{
+    const r = await window.api.settings_get();
+    if(r && r.ok){ __settings = { ...__settings, ...(r.item||{}) }; }
+  }catch(_){}
+  applyPaymentMethodsToSelect();
+}
 
 function render(items){
   __list = items || [];
@@ -268,7 +296,7 @@ async function openPaymentsDialog(sale){
       payments.forEach(p => {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-gray-100';
-        const methodNames = { cash: '💵 كاش', card: '💳 شبكة', tamara: '🛍️ تمارا', tabby: '📱 تابي' };
+        const methodNames = { cash: '💵 كاش', card: '💳 شبكة', tamara: '🛍️ تمارا', tabby: '📱 تابي', bank_transfer: '🏦 تحويل بنكي' };
         tr.innerHTML = `
           <td class="px-4 py-3">${new Date(p.created_at).toLocaleString('ar-SA')}</td>
           <td class="px-4 py-3 font-bold text-green-600">${fmt(p.amount)} ريال</td>
@@ -298,8 +326,8 @@ dlgPaymentsBackdrop.addEventListener('click', (event) => {
 });
 
 payMethod.addEventListener('change', ()=>{
-  const methodNames = { cash: 'كاش', card: 'شبكة', tamara: 'تمارا', tabby: 'تابي' };
-  showToast(`تم اختيار طريقة الدفع: ${methodNames[payMethod.value]}`, '#06b6d4');
+  const methodNames = { cash: 'كاش', card: 'شبكة', tamara: 'تمارا', tabby: 'تابي', bank_transfer: 'تحويل بنكي' };
+  showToast(`تم اختيار طريقة الدفع: ${methodNames[payMethod.value] || payMethod.value}`, '#06b6d4');
 });
 
 dlgCancel.addEventListener('click', (event)=>{ 

@@ -1272,7 +1272,7 @@ function registerSalesIPC(){
       const id = Number(p.sale_id||0);
       const amount = Number(p.amount||0);
       const method = String(p.method||'').toLowerCase();
-      const okMethod = ['cash','card','tamara','tabby'].includes(method);
+      const okMethod = ['cash','card','tamara','tabby','bank_transfer'].includes(method);
       const cash = (method==='cash') ? Number(p.cash_received||0) : null;
       const notes = String(p.notes||'').trim() || null;
       const userId = p.user_id || null;
@@ -1412,7 +1412,7 @@ function registerSalesIPC(){
         // Also set split fields for simple methods to aid reports
         if(method==='cash'){
           await conn.query('UPDATE sales SET pay_cash_amount = grand_total, pay_card_amount = NULL WHERE id=?', [id]);
-        } else if(method==='card' || method==='tamara' || method==='tabby'){
+        } else if(method==='card' || method==='tamara' || method==='tabby' || method==='bank_transfer'){
           await conn.query('UPDATE sales SET pay_cash_amount = NULL, pay_card_amount = grand_total WHERE id=?', [id]);
         }
         // Notify update
@@ -1696,7 +1696,8 @@ function registerSalesIPC(){
         const sql = `
           SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
                  si.product_id, si.name, si.description, si.operation_name, si.price, si.qty, si.line_total,
-                 p.category, p.is_tobacco
+                 p.category, p.is_tobacco,
+                 COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
           FROM sales_items si
           INNER JOIN sales s ON s.id = si.sale_id
           LEFT JOIN products p ON p.id = si.product_id

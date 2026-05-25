@@ -286,6 +286,12 @@
         border: 2px solid #9333ea;
       }
 
+      .method-bank_transfer {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 2px solid #059669;
+      }
+
       .notes-section {
         margin: 30px 0;
         padding: 20px;
@@ -575,7 +581,8 @@
           'cash': 'نقدي / Cash',
           'card': 'بطاقة / Card',
           'tamara': 'تمارا / Tamara',
-          'tabby': 'تابي / Tabby'
+          'tabby': 'تابي / Tabby',
+          'bank_transfer': 'تحويل بنكي / Bank Transfer'
         };
         return names[method] || method;
       }
@@ -585,7 +592,8 @@
           'cash': '<span class="method-badge method-cash">💵 Cash / نقدي</span>',
           'card': '<span class="method-badge method-card">💳 Card / بطاقة</span>',
           'tamara': '<span class="method-badge method-tamara">🛍️ Tamara / تمارا</span>',
-          'tabby': '<span class="method-badge method-tabby">🛒 Tabby / تابي</span>'
+          'tabby': '<span class="method-badge method-tabby">🛒 Tabby / تابي</span>',
+          'bank_transfer': '<span class="method-badge method-bank_transfer">🏦 Bank Transfer / تحويل بنكي</span>'
         };
         return badges[method] || '';
       }
