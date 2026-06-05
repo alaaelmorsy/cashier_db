@@ -331,16 +331,16 @@ class LocalZatcaBridge {
       const zcfg = await this.loadZatcaConfig();
       const company = zcfg.companyData || {};
 
-      // قراءة معدل الضريبة من إعدادات النظام (15% أو 5%) لضمان التوافق مع الهيئة
-      const [[settings]] = await conn.query('SELECT vat_percent FROM app_settings WHERE id=1 LIMIT 1');
+      // قراءة معدل الضريبة وإعداد شمول الضريبة في السعر
+      const [[settings]] = await conn.query('SELECT vat_percent, prices_include_vat FROM app_settings WHERE id=1 LIMIT 1');
       const taxRate = Number(settings?.vat_percent || 15);
+      const pricesIncludeVat = Number(settings?.prices_include_vat || 0) === 1;
 
       // Totals
       const subTotal = Math.abs(Number(sale.sub_total || 0));
       const discount = Math.abs(Number(sale.discount_amount || 0));
       const totalWithoutVAT = Number(sale.total_after_discount != null ? sale.total_after_discount : (subTotal - discount));
       const vatTotal = Math.abs(Number(sale.vat_total || 0));
-      const grandTotal = Math.abs(Number(sale.grand_total || (totalWithoutVAT + vatTotal)));
 
       // UUID: prefer existing ZATCA UUID if stored, else generate a new one
       const uuid = sale.zatca_uuid && String(sale.zatca_uuid).trim().length > 0 ? sale.zatca_uuid : crypto.randomUUID();
@@ -352,15 +352,22 @@ class LocalZatcaBridge {
       const type_inv = sale.doc_type === 'credit_note' ? '381' : '388';
 
       // Split invoice-level discount proportionally across items (before VAT)
+      // When prices include VAT, derive the pre-VAT unit price to get correct base amounts
+      const vatFactor = 1 + taxRate / 100;
       const itemsMapped = [];
-      const sumPreVat = items.reduce((acc, it) => acc + Math.abs(Number(it.price || 0)) * Math.abs(Number(it.qty || it.quantity || 0)), 0);
+      const sumPreVat = items.reduce((acc, it) => {
+        const rawPrice = Math.abs(Number(it.price || 0));
+        const netPrice = pricesIncludeVat ? rawPrice / vatFactor : rawPrice;
+        return acc + netPrice * Math.abs(Number(it.qty || it.quantity || 0));
+      }, 0);
       for (const it of items) {
         const qty = Math.abs(Number(it.qty || it.quantity || 1));
-        const unitPrice = Math.abs(Number(it.price || 0));
-        const linePreVat = unitPrice * qty;
+        const rawPrice = Math.abs(Number(it.price || 0));
+        const unitPriceNet = pricesIncludeVat ? rawPrice / vatFactor : rawPrice;
+        const linePreVat = unitPriceNet * qty;
         const share = sumPreVat > 0 ? (linePreVat / sumPreVat) : 0;
         const lineDiscount = Number((discount * share).toFixed(2));
-        const lineAfterDisPreVat = Math.max(0, linePreVat - lineDiscount);
+        const lineAfterDisPreVat = Math.max(0, Number((linePreVat - lineDiscount).toFixed(2)));
         const lineTax = Number((lineAfterDisPreVat * (taxRate / 100)).toFixed(2));
         const lineAfterDisWithVat = Number((lineAfterDisPreVat + lineTax).toFixed(2));
 
@@ -369,11 +376,11 @@ class LocalZatcaBridge {
           name: it.name || 'Product',
           id: it.product_id || it.id || 0,
           tax: lineTax,
-          price: unitPrice,
+          price: Number(unitPriceNet.toFixed(4)),
           dis_val: lineDiscount,
           tax_rate: taxRate,
-          selling_price: unitPrice,
-          total_selling_after_dis: Number(lineAfterDisPreVat.toFixed(2)),
+          selling_price: Number(unitPriceNet.toFixed(4)),
+          total_selling_after_dis: lineAfterDisPreVat,
           total_price_after_dis: lineAfterDisWithVat,
           tax_val: lineTax
         });
@@ -421,9 +428,10 @@ class LocalZatcaBridge {
       };
 
       // Normalize totals: credit notes must be positive amounts
+      // Recalculate grand total from rounded intermediates to ensure BT-112 = BT-109 + VAT (BR-CO-15)
       const sumNoVat = Number(totalWithoutVAT.toFixed(2));
       const vatVal = Number(vatTotal.toFixed(2));
-      const grandVal = Number(grandTotal.toFixed(2));
+      const grandVal = Number((sumNoVat + vatVal).toFixed(2));
       const usedSum = isCredit ? Math.abs(sumNoVat) : sumNoVat;
       const usedVat = isCredit ? Math.abs(vatVal) : vatVal;
       const usedGrand = isCredit ? Math.abs(grandVal) : grandVal;
