@@ -5588,12 +5588,12 @@ async function populateCategories(){
           description: it.description || null,
           employee_id: it.employee_id || null,
           product_min_price: it.product_min_price || null,
-          manualPriceEdit: it.manualPriceEdit || false,
+          manualPriceEdit: true,
           __opsLoaded: false,
           __ops: []
         };
       }).filter(it => it !== null);
-      
+
       sessionStorage.removeItem('restore_cart');
     }
     
