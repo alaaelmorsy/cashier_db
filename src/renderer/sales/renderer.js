@@ -4367,6 +4367,7 @@ tbody.addEventListener('input', async (e) => {
       const p = Number(priceInpLive.value || 0);
       if(it && !isNaN(p) && p >= 0){
         it.price = p;
+        it.manualPriceEdit = true;
         const qty = Number(it.qty || 0);
         const tr = priceInpLive.closest('tr');
         const totalVal = tr ? tr.querySelector('.total-val') : null;
