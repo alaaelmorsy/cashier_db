@@ -661,6 +661,33 @@ table tr td, table tr th { vertical-align: middle; }
         background: #fff;
         }
 
+      /* Tooltip الحد الأدنى للسعر */
+      .price-input-wrap { display: inline-block; }
+      #min-price-global-tip {
+        display: none;
+        position: fixed;
+        background: #1e293b;
+        color: #fbbf24;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 99999;
+        font-family: 'Cairo', sans-serif;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      }
+      #min-price-global-tip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #1e293b;
+      }
+
       .grid{ display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; padding-bottom: 250px; }
       
       /* تصغير البطاقات عند إخفاء الصور */
@@ -3992,5 +4019,27 @@ table tr td, table tr th { vertical-align: middle; }
     </dialog>
 
     <script src="./renderer.js"></script>
+    <div id="min-price-global-tip"></div>
+    <script>
+      (function(){
+        var tip = document.getElementById('min-price-global-tip');
+        document.addEventListener('mouseover', function(e){
+          var inp = e.target.closest('input.op-price');
+          if(inp && inp.dataset.minPrice){
+            var label = document.documentElement.lang === 'ar' || document.body.dir === 'rtl' ? 'الحد الأدنى' : 'Min';
+            tip.textContent = label + ': ' + inp.dataset.minPrice;
+            tip.style.display = 'block';
+            var r = inp.getBoundingClientRect();
+            tip.style.left = (r.left + r.width/2 - tip.offsetWidth/2) + 'px';
+            tip.style.top = (r.top - tip.offsetHeight - 8) + 'px';
+          }
+        });
+        document.addEventListener('mouseout', function(e){
+          if(e.target.closest('input.op-price')){
+            tip.style.display = 'none';
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

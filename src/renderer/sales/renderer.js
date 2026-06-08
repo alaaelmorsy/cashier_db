@@ -2607,7 +2607,7 @@ function renderCart(){
       </td>
       <td class="td-price">
         ${settings.op_price_manual
-          ? `<input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"${__isAr ? 'السعر' : 'Price'}\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}/>`
+          ? `<div class=\"price-input-wrap\"><input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"${__isAr ? 'السعر' : 'Price'}\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}${it.product_min_price!=null ? ` data-min-price=\"${Number(it.product_min_price).toFixed(2)}\"` : ''}/></div>`
           : `<span class=\"price-val\">${Number(it.price||0).toFixed(2)}</span>`}
       </td>
       <td class="td-qty">
