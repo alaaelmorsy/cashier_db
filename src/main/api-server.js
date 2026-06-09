@@ -1228,6 +1228,37 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     }
   });
 
+  app.put('/api/invoices/:id/employees', async (req, res) => {
+    let conn;
+    try {
+      const { id } = req.params;
+      const { items } = req.body || {};
+      if (!items || !items.length) {
+        return res.status(400).json({ ok: false, error: 'بيانات ناقصة' });
+      }
+      conn = await dbAdapter.getConnection();
+      const [[sale]] = await conn.query('SELECT id FROM sales WHERE id=? LIMIT 1', [id]);
+      if (!sale) {
+        return res.status(404).json({ ok: false, error: 'الفاتورة غير موجودة' });
+      }
+      await conn.beginTransaction();
+      for (const it of items) {
+        const employeeId = (it.employee_id != null && it.employee_id !== '') ? Number(it.employee_id) : null;
+        await conn.query(
+          'UPDATE sales_items SET employee_id=? WHERE id=? AND sale_id=?',
+          [employeeId, Number(it.id), id]
+        );
+      }
+      await conn.commit();
+      res.json({ ok: true, message: 'تم تعديل الموظفين بنجاح' });
+    } catch (err) {
+      if (conn) { try { await conn.rollback(); } catch (_) {} }
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // Shifts Endpoints
   // ═══════════════════════════════════════════════════════════════

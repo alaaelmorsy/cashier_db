@@ -1063,6 +1063,7 @@ contextBridge.exposeInMainWorld('api', {
   reports_inventory: (q) => ipcRenderer.invoke('reports:inventory', q),
   sales_list_by_user: (q) => ipcRenderer.invoke('sales:list_by_user', q),
   sales_employee_report: (q) => ipcRenderer.invoke('sales:employee_report', q),
+  sales_update_employee_items: (payload) => ipcRenderer.invoke('sales:update_employee_items', payload),
 
   // Shifts
   shift_get_current: (userId) => ipcRenderer.invoke('shift:get-current', userId),

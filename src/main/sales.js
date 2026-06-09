@@ -1,7 +1,7 @@
 // Sales IPC: persist invoices and items
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
-const { isSecondaryDevice, fetchFromAPI, postToAPI } = require('./api-client');
+const { isSecondaryDevice, fetchFromAPI, postToAPI, putToAPI } = require('./api-client');
 const LocalZatcaBridge = require('./local-zatca');
 
 function registerSalesIPC(){
@@ -2150,6 +2150,53 @@ function registerSalesIPC(){
     } catch (error) {
       console.error('خطأ في تحديث بيانات ZATCA:', error);
       return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('sales:update_employee_items', async (_e, payload) => {
+    try {
+      const { sale_id, items } = payload || {};
+      if (!sale_id || !items || !items.length) {
+        return { ok: false, error: 'بيانات ناقصة' };
+      }
+
+      if (isSecondaryDevice()) {
+        try {
+          const result = await putToAPI(`/invoices/${sale_id}/employees`, payload);
+          if (!result.ok) return { ok: false, error: result.error || 'فشل تعديل الموظفين' };
+          return { ok: true };
+        } catch (err) {
+          return { ok: false, error: err.message };
+        }
+      }
+
+      const conn = await dbAdapter.getConnection();
+      try {
+        const [[sale]] = await conn.query('SELECT id FROM sales WHERE id=? LIMIT 1', [sale_id]);
+        if (!sale) {
+          return { ok: false, error: 'الفاتورة غير موجودة' };
+        }
+
+        await conn.beginTransaction();
+        for (const it of items) {
+          const employeeId = (it.employee_id != null && it.employee_id !== '') ? Number(it.employee_id) : null;
+          await conn.query(
+            'UPDATE sales_items SET employee_id=? WHERE id=? AND sale_id=?',
+            [employeeId, Number(it.id), sale_id]
+          );
+        }
+        await conn.commit();
+
+        return { ok: true, message: 'تم تعديل الموظفين بنجاح' };
+      } catch (e) {
+        await conn.rollback().catch(() => {});
+        throw e;
+      } finally {
+        conn.release();
+      }
+    } catch (error) {
+      console.error('sales:update_employee_items error:', error);
+      return { ok: false, error: 'حدث خطأ أثناء تعديل الموظفين' };
     }
   });
 

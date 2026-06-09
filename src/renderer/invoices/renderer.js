@@ -32,6 +32,7 @@ let __cursors = {};
 // default print format from settings (thermal | a4)
 let __defPrintFormat = 'thermal';
 let __zatcaEnabled = false;
+let __showEmpSelector = true;
 // Batch screen-init: settings + total in ONE request (faster on remote/VPN)
 const __settingsReady = (async()=>{
   try{
@@ -40,6 +41,7 @@ const __settingsReady = (async()=>{
       const s = r.settings || r.item || {};
       __defPrintFormat = (s.default_print_format === 'a4') ? 'a4' : 'thermal';
       __zatcaEnabled = !!(s.zatca_enabled);
+      __showEmpSelector = s.show_employee_selector == null ? true : !!(s.show_employee_selector);
       if(r.total_invoices != null){ __totalInvoices = Number(r.total_invoices || 0); renderInvPager(); }
     }
   }catch(_){ /* ignore */ }
@@ -89,6 +91,7 @@ function renderRows(list){
     viewInvoice: 'عرض الفاتورة',
     sendZatca: '📤 إرسال للهيئة',
     zatcaResp: '📄 رد الهيئة',
+    editEmployees: 'تعديل الموظفين',
   } : {
     disabled: 'Disabled',
     sent: '✅ Sent',
@@ -97,6 +100,7 @@ function renderRows(list){
     viewInvoice: 'View invoice',
     sendZatca: '📤 Send to ZATCA',
     zatcaResp: '📄 ZATCA Response',
+    editEmployees: 'Edit Employees',
   };
   const canView = hasInvoice('invoices.view');
   const frag = document.createDocumentFragment();
@@ -130,6 +134,7 @@ function renderRows(list){
       <td class="px-4 py-3">
         <div class="flex flex-wrap gap-2 items-center">
           ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">${T.viewInvoice}</button>` : ''}
+          ${canView && __showEmpSelector ? `<button style="padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,0.35);display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(124,58,237,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(124,58,237,0.35)';this.style.transform=''" data-act="editEmp" data-id="${row.id}">${T.editEmployees}</button>` : ''}
           ${zatcaBtns}
         </div>
       </td>
@@ -205,6 +210,11 @@ function onTableAction(e){
     const row = __allInvoices.find(x=>Number(x.id)===id) || {};
     showZatcaResponseModal(row.zatca_response || row.zatca_rejection_reason || '');
   }
+  if(act==='editEmp'){
+    if(!hasInvoice('invoices.view')) return;
+    const id = Number(b.getAttribute('data-id'));
+    openEmpEditModal(id);
+  }
 }
 
 (function(){
@@ -278,3 +288,128 @@ try {
     else renderInvPager();
   });
 } catch(_) {}
+
+// ─── Employee Edit Modal ───
+let __allEmployees = [];
+
+(async function loadEmployees() {
+  try {
+    const r = await window.api.employees_list({});
+    if (r && r.ok) __allEmployees = r.items || [];
+  } catch (_) {}
+})();
+
+function showEmpToast(msg, type = 'success') {
+  const t = document.getElementById('empToast');
+  if (!t) return;
+  const styles = {
+    success: { bg: 'linear-gradient(135deg,#059669,#10b981)', icon: '✓', shadow: 'rgba(5,150,105,0.4)' },
+    error:   { bg: 'linear-gradient(135deg,#dc2626,#ef4444)', icon: '✕', shadow: 'rgba(220,38,38,0.4)' },
+    info:    { bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', icon: 'ℹ', shadow: 'rgba(29,78,216,0.4)' },
+  };
+  const s = styles[type] || styles.info;
+  t.innerHTML = `<span style="margin-left:8px;font-size:16px;">${s.icon}</span>${msg}`;
+  t.style.cssText = `display:block;position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9999;min-width:280px;max-width:420px;padding:14px 22px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;box-shadow:0 8px 32px ${s.shadow};background:${s.bg};color:#fff;pointer-events:none;animation:empToastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);`;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.4s'; setTimeout(() => { t.style.display = 'none'; t.style.opacity = ''; t.style.transition = ''; }, 400); }, 2800);
+}
+
+function openEmpEditModal(saleId) {
+  const modal = document.getElementById('empEditModal');
+  const loading = document.getElementById('empEditLoading');
+  const content = document.getElementById('empEditContent');
+  const tbody = document.getElementById('empEditTbody');
+  const title = document.getElementById('empEditInvoiceNo');
+  const saveBtn = document.getElementById('empEditSave');
+  const errDiv = document.getElementById('empEditError');
+
+  modal.style.display = 'flex';
+  loading.style.display = 'block';
+  content.style.display = 'none';
+  saveBtn.disabled = true;
+  errDiv.style.display = 'none';
+
+  (async () => {
+    try {
+      const r = await window.api.sales_get(saleId);
+      if (!r || !r.ok) {
+        errDiv.textContent = r?.error || 'فشل تحميل بيانات الفاتورة';
+        errDiv.style.display = 'block';
+        loading.style.display = 'none';
+        return;
+      }
+      const { sale, items } = r;
+      title.textContent = sale.invoice_no;
+      loading.style.display = 'none';
+      content.style.display = 'block';
+
+      tbody.innerHTML = items.map((it, idx) => {
+        const opts = __allEmployees.map(emp =>
+          `<option value="${emp.id}" ${String(it.employee_id) === String(emp.id) ? 'selected' : ''}>${emp.name}</option>`
+        ).join('');
+        const bg = idx % 2 === 0 ? '#fff' : '#f8fafc';
+        return `<tr style="background:${bg};transition:background 0.15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${bg}'">
+          <td style="padding:14px 20px;font-size:14px;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;">${it.name}</td>
+          <td style="padding:10px 20px;border-bottom:1px solid #f1f5f9;">
+            <select data-item-id="${it.id}" class="emp-edit-select" style="width:100%;padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:500;color:#334155;background:#fff;outline:none;cursor:pointer;transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.12)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+              <option value="">— اختر الموظف —</option>
+              ${opts}
+            </select>
+          </td>
+        </tr>`;
+      }).join('');
+
+      saveBtn.disabled = false;
+      saveBtn._saleId = saleId;
+    } catch (e) {
+      errDiv.textContent = 'حدث خطأ: ' + (e.message || String(e));
+      errDiv.style.display = 'block';
+      loading.style.display = 'none';
+    }
+  })();
+}
+
+(function(){
+  const modal = document.getElementById('empEditModal');
+  const closeBtn = document.getElementById('empEditClose');
+  const cancelBtn = document.getElementById('empEditCancel');
+  const saveBtn = document.getElementById('empEditSave');
+  const errDiv = document.getElementById('empEditError');
+
+  if (closeBtn) closeBtn.onclick = () => { if(modal) modal.style.display = 'none'; };
+  if (cancelBtn) cancelBtn.onclick = () => { if(modal) modal.style.display = 'none'; };
+  if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const saleId = saveBtn._saleId;
+      if (!saleId) return;
+      const selects = document.querySelectorAll('.emp-edit-select');
+      const items = Array.from(selects).map(sel => ({
+        id: Number(sel.getAttribute('data-item-id')),
+        employee_id: sel.value ? Number(sel.value) : null
+      }));
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:empSpin 0.7s linear infinite;vertical-align:middle;margin-left:6px;"></span> جاري الحفظ...';
+      if(errDiv) errDiv.style.display = 'none';
+      try {
+        const r = await window.api.sales_update_employee_items({ sale_id: saleId, items });
+        if (r && r.ok) {
+          if(modal) modal.style.display = 'none';
+          showEmpToast('تم حفظ التعديلات بنجاح', 'success');
+        } else {
+          const msg = r?.error || 'فشل حفظ التعديلات';
+          if(errDiv){ errDiv.textContent = msg; errDiv.style.display = 'block'; }
+          showEmpToast(msg, 'error');
+        }
+      } catch (e) {
+        const msg = 'حدث خطأ: ' + (e.message || String(e));
+        if(errDiv){ errDiv.textContent = msg; errDiv.style.display = 'block'; }
+        showEmpToast(msg, 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '✓ حفظ التعديلات';
+      }
+    };
+  }
+})();
