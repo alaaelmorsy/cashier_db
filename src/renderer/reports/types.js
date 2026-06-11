@@ -6,6 +6,66 @@ if(btnBack){ btnBack.onclick = ()=>{ window.location.href = './index.html'; } }
 const rangeEl = document.getElementById('range');
 const fromAtEl = document.getElementById('fromAt');
 const toAtEl = document.getElementById('toAt');
+const productSearchEl = document.getElementById('productSearch');
+const productSuggestionsEl = document.getElementById('productSuggestions');
+const productClearBtn = document.getElementById('productClearBtn');
+
+let allProducts = [];
+let selectedProductId = null;
+let selectedProductName = '';
+
+async function initProducts(){
+  try{
+    const res = await window.api.products_list({ limit: 0 });
+    allProducts = (res && res.ok) ? (res.items||[]) : [];
+  }catch(_){ allProducts = []; }
+}
+initProducts();
+
+function showSuggestions(query){
+  const q = query.trim().toLowerCase();
+  if(!q){ productSuggestionsEl.style.display='none'; return; }
+  const matches = allProducts.filter(p =>
+    (p.name||'').toLowerCase().includes(q) ||
+    (p.barcode||'').toLowerCase().includes(q) ||
+    (p.barcode2||'').toLowerCase().includes(q)
+  ).slice(0,20);
+  if(!matches.length){ productSuggestionsEl.style.display='none'; return; }
+  productSuggestionsEl.innerHTML = matches.map(p =>
+    `<div data-id="${p.id}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #e6eaf0;font-size:14px;">
+      <span>${p.name||''}</span>
+      ${p.barcode ? `<span style="color:#64748b;font-size:12px;margin-right:8px;">${p.barcode}</span>` : ''}
+    </div>`
+  ).join('');
+  productSuggestionsEl.style.display='block';
+  productSuggestionsEl.querySelectorAll('div[data-id]').forEach(el=>{
+    el.addEventListener('mousedown', e=>{ e.preventDefault(); });
+    el.addEventListener('click', ()=>{
+      selectedProductId = Number(el.dataset.id);
+      selectedProductName = el.dataset.name;
+      productSearchEl.value = selectedProductName;
+      productSuggestionsEl.style.display='none';
+      productClearBtn.style.display='inline';
+    });
+    el.addEventListener('mouseenter', ()=>{ el.style.background='#eef2ff'; });
+    el.addEventListener('mouseleave', ()=>{ el.style.background=''; });
+  });
+}
+
+productSearchEl?.addEventListener('input', ()=>{
+  selectedProductId = null;
+  selectedProductName = '';
+  productClearBtn.style.display = productSearchEl.value ? 'inline' : 'none';
+  showSuggestions(productSearchEl.value);
+});
+productSearchEl?.addEventListener('blur', ()=>{ setTimeout(()=>{ productSuggestionsEl.style.display='none'; }, 150); });
+productClearBtn?.addEventListener('click', ()=>{
+  productSearchEl.value = '';
+  selectedProductId = null;
+  selectedProductName = '';
+  productClearBtn.style.display = 'none';
+  productSuggestionsEl.style.display = 'none';
+});
 
 function bindDatePicker(input, labelSelector){
   if(!input) return;
@@ -57,16 +117,19 @@ function fmtDateEn(input){
   }catch(_){ return String(input||'').toString(); }
 }
 
-async function loadRange(startStr, endStr){
+async function loadRange(startStr, endStr, filterProductId){
   try{
-    if(rangeEl){ rangeEl.textContent = `الفترة: ${fmtDateEn(startStr)} — ${fmtDateEn(endStr)}`; }
-    // استخدم تجميعة عناصر البيع للحصول على الأصناف، ثم نجمع حسب التصنيف
-    const sumRes = await window.api.sales_items_summary({ date_from: startStr, date_to: endStr });
+    const productLabel = filterProductId ? ` — ${selectedProductName}` : '';
+    if(rangeEl){ rangeEl.textContent = `الفترة: ${fmtDateEn(startStr)} — ${fmtDateEn(endStr)}${productLabel}`; }
+    const sumParams = { date_from: startStr, date_to: endStr };
+    if(filterProductId) sumParams.product_id = filterProductId;
+    const sumRes = await window.api.sales_items_summary(sumParams);
     const items = (sumRes && sumRes.ok) ? (sumRes.items||[]) : [];
-    // نحتاج جلب بيانات المنتجات لمعرفة التصنيف لكل product_id
-    const prodsRes = await window.api.products_list({ limit: 0 });
-    const products = (prodsRes && prodsRes.ok) ? (prodsRes.items||[]) : [];
-    const byId = new Map(); products.forEach(p=> byId.set(Number(p.id), p));
+    const products = allProducts.length ? allProducts : (()=>{
+      window.api.products_list({ limit: 0 }).then(r=>{ if(r&&r.ok) allProducts=r.items||[]; });
+      return [];
+    })();
+    const byId = new Map(); (allProducts.length ? allProducts : products).forEach(p=> byId.set(Number(p.id), p));
 
     // تجميع حسب التصنيف (category). الأصناف بدون تصنيف تُجمع تحت "غير مصنف"
     const byCat = new Map();
@@ -97,7 +160,9 @@ async function loadRange(startStr, endStr){
     if(detailsBox){
       detailsBox.innerHTML = '';
       // بيانات تفصيلية لكل الأصناف (ليست التبغ فقط)
-      const detAllRes = await window.api.sales_items_detailed({ date_from: startStr, date_to: endStr });
+      const detAllParams = { date_from: startStr, date_to: endStr };
+      if(filterProductId) detAllParams.product_id = filterProductId;
+      const detAllRes = await window.api.sales_items_detailed(detAllParams);
       const detAll = (detAllRes && detAllRes.ok) ? (detAllRes.items||[]) : [];
       const byCatDet = new Map();
       detAll.forEach(it => {
@@ -153,7 +218,9 @@ async function loadRange(startStr, endStr){
 
     // أصناف التبغ فقط — تفصيليًا من جدول البنود مع الفاتورة والتاريخ
     try{
-      const detRes = await window.api.sales_items_detailed({ date_from: startStr, date_to: endStr, only_tobacco: true });
+      const tobParams = { date_from: startStr, date_to: endStr, only_tobacco: true };
+      if(filterProductId) tobParams.product_id = filterProductId;
+      const detRes = await window.api.sales_items_detailed(tobParams);
       const det = (detRes && detRes.ok) ? (detRes.items||[]) : [];
       // بناء تجميع أعلى حسب (التصنيف، العملية)
       const byKey = new Map();
@@ -225,7 +292,7 @@ loadBtn?.addEventListener('click', () => {
   const fromStr = fromInputToStr(fromAtEl);
   const toStrVal = fromInputToStr(toAtEl);
   if(!fromStr || !toStrVal){ alert('يرجى اختيار الفترة'); return; }
-  loadRange(fromStr, toStrVal);
+  loadRange(fromStr, toStrVal, selectedProductId || null);
 });
 
 // تصدير PDF/Excel

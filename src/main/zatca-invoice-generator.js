@@ -640,8 +640,11 @@ class ZatcaInvoiceGenerator {
         // Positive totals
         const subtotal = Math.abs(Number(data.totals?.subtotal || 0));
         const discount = Math.abs(Number(data.totals?.discount || 0));
+        const charges = Math.abs(Number(data.totals?.charges || 0));
         const vatTotal = Math.abs(Number(data.totals?.vatTotal || 0));
         const totalWithVAT = Math.abs(Number(data.totals?.totalWithVAT || 0));
+        // BT-109: taxable amount = sum(line nets) - allowances + charges
+        const taxExclusive = Number((subtotal - discount + charges).toFixed(2));
 
         // Build CreditNote structure
         const creditNote = {
@@ -682,18 +685,24 @@ class ZatcaInvoiceGenerator {
                 'cac:PaymentMeans': this.buildPaymentMeans(data.payment || { method: 'cash' }),
 
                 // Tax total (positive)
-                'cac:TaxTotal': this.buildTaxTotal({ subtotal, discount, vatTotal }, data.taxBreakdown),
+                'cac:TaxTotal': this.buildTaxTotal({ subtotal, discount, charges, vatTotal }, data.taxBreakdown),
 
                 // Legal monetary totals (positive)
+                // BR-CO-15: TaxInclusiveAmount (BT-112) = TaxExclusiveAmount (BT-109) + TaxTotal (BT-110)
                 'cac:LegalMonetaryTotal': (() => {
+                    // Recalculate TaxInclusiveAmount from taxExclusive + vatTotal to satisfy BR-CO-15
+                    const taxInclusive = Number((taxExclusive + vatTotal).toFixed(2));
                     const legal = {
                         'cbc:LineExtensionAmount': { '@_currencyID': currency, '#text': subtotal.toFixed(2) },
-                        'cbc:TaxExclusiveAmount': { '@_currencyID': currency, '#text': subtotal.toFixed(2) },
-                        'cbc:TaxInclusiveAmount': { '@_currencyID': currency, '#text': totalWithVAT.toFixed(2) },
-                        'cbc:PayableAmount': { '@_currencyID': currency, '#text': totalWithVAT.toFixed(2) }
+                        'cbc:TaxExclusiveAmount': { '@_currencyID': currency, '#text': taxExclusive.toFixed(2) },
+                        'cbc:TaxInclusiveAmount': { '@_currencyID': currency, '#text': taxInclusive.toFixed(2) },
+                        'cbc:PayableAmount': { '@_currencyID': currency, '#text': taxInclusive.toFixed(2) }
                     };
                     if (discount > 0) {
                         legal['cbc:AllowanceTotalAmount'] = { '@_currencyID': currency, '#text': discount.toFixed(2) };
+                    }
+                    if (charges > 0) {
+                        legal['cbc:ChargeTotalAmount'] = { '@_currencyID': currency, '#text': charges.toFixed(2) };
                     }
                     return legal;
                 })(),

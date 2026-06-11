@@ -336,10 +336,10 @@ class LocalZatcaBridge {
       const taxRate = Number(settings?.vat_percent || 15);
       const pricesIncludeVat = Number(settings?.prices_include_vat || 0) === 1;
 
-      // Totals
+      // Totals — credit notes store all amounts as NEGATIVE in DB, so always use Math.abs()
       const subTotal = Math.abs(Number(sale.sub_total || 0));
       const discount = Math.abs(Number(sale.discount_amount || 0));
-      const totalWithoutVAT = Number(sale.total_after_discount != null ? sale.total_after_discount : (subTotal - discount));
+      const totalWithoutVAT = Math.abs(Number(sale.total_after_discount != null ? sale.total_after_discount : (subTotal - discount)));
       const vatTotal = Math.abs(Number(sale.vat_total || 0));
 
       // UUID: prefer existing ZATCA UUID if stored, else generate a new one
@@ -351,40 +351,51 @@ class LocalZatcaBridge {
       // Document type
       const type_inv = sale.doc_type === 'credit_note' ? '381' : '388';
 
-      // Split invoice-level discount proportionally across items (before VAT)
-      // When prices include VAT, derive the pre-VAT unit price to get correct base amounts
+      // Build items with BT-131 (LineExtensionAmount) rounded to exactly 2 decimal places.
+      // Strategy: compute lineNet2 = round2(qty × unitPriceNet), then derive
+      //   price = lineNet2 / qty  so that qty × price = lineNet2 exactly (EN16931-11).
+      // Adjust the last line so sum(lineNet2) = subTotal, ensuring
+      //   sum(BT-131) - discount = totalWithoutVAT = BT-109 (BR-CO-15, BR-S-08).
       const vatFactor = 1 + taxRate / 100;
-      const itemsMapped = [];
-      const sumPreVat = items.reduce((acc, it) => {
-        const rawPrice = Math.abs(Number(it.price || 0));
-        const netPrice = pricesIncludeVat ? rawPrice / vatFactor : rawPrice;
-        return acc + netPrice * Math.abs(Number(it.qty || it.quantity || 0));
-      }, 0);
-      for (const it of items) {
+      const round2 = (n) => Number(Math.round(n * 100) / 100);
+
+      // Pass 1: compute each line's BT-131
+      const lineData = items.map(it => {
         const qty = Math.abs(Number(it.qty || it.quantity || 1));
         const rawPrice = Math.abs(Number(it.price || 0));
         const unitPriceNet = pricesIncludeVat ? rawPrice / vatFactor : rawPrice;
-        const linePreVat = unitPriceNet * qty;
-        const share = sumPreVat > 0 ? (linePreVat / sumPreVat) : 0;
-        const lineDiscount = Number((discount * share).toFixed(2));
-        const lineAfterDisPreVat = Math.max(0, Number((linePreVat - lineDiscount).toFixed(2)));
-        const lineTax = Number((lineAfterDisPreVat * (taxRate / 100)).toFixed(2));
-        const lineAfterDisWithVat = Number((lineAfterDisPreVat + lineTax).toFixed(2));
+        return { it, qty, unitPriceNet, lineNet2: round2(qty * unitPriceNet) };
+      });
 
-        itemsMapped.push({
+      // Pass 2: adjust last line so sum(lineNet2) = subTotal (pre-discount)
+      if (lineData.length > 0) {
+        const sumLines = lineData.reduce((s, l) => s + l.lineNet2, 0);
+        const diff = round2(round2(subTotal) - round2(sumLines));
+        if (Math.abs(diff) <= 0.10) {
+          lineData[lineData.length - 1].lineNet2 = round2(lineData[lineData.length - 1].lineNet2 + diff);
+        }
+      }
+
+      // Pass 3: build mapped items
+      const itemsMapped = lineData.map(({ it, qty, unitPriceNet, lineNet2 }) => {
+        // BT-146: derive price from lineNet2 so qty × price = lineNet2 exactly
+        const priceSend = qty > 0 ? lineNet2 / qty : unitPriceNet;
+        const lineTax = round2(lineNet2 * taxRate / 100);
+        const lineWithVat = round2(lineNet2 + lineTax);
+        return {
           count: qty,
           name: it.name || 'Product',
           id: it.product_id || it.id || 0,
           tax: lineTax,
-          price: Number(unitPriceNet.toFixed(4)),
-          dis_val: lineDiscount,
+          price: priceSend,
+          dis_val: 0,
           tax_rate: taxRate,
-          selling_price: Number(unitPriceNet.toFixed(4)),
-          total_selling_after_dis: lineAfterDisPreVat,
-          total_price_after_dis: lineAfterDisWithVat,
+          selling_price: priceSend,
+          total_selling_after_dis: lineNet2,
+          total_price_after_dis: lineWithVat,
           tax_val: lineTax
-        });
-      }
+        };
+      });
 
       // Customer snapshot (fallback to cash customer)
       const customerNameAr = sale.customer_name || 'عميل نقدي';

@@ -133,6 +133,9 @@
         body.dark .input { background: #1a1a1a; border-color: var(--border); color: var(--text); }
         body.dark .input:focus { border-color: #3b82f6; }
         body.dark label { color: var(--text); }
+        body.dark #productSuggestions { background: #1a1a1a; border-color: #3b82f6; }
+        body.dark #productSuggestions div { color: var(--text); border-bottom-color: var(--border); }
+        body.dark #productSuggestions div:hover { background: #1a2744 !important; }
       }
     </style>
   </head>
@@ -145,17 +148,23 @@
     </header>
     <div class="container">
       <div class="section">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0">
-          <div style="display:flex; gap:8px; align-items:center;">
-            <label for="fromAt">من:</label>
-            <input id="fromAt" class="input" type="datetime-local" />
-            <label for="toAt">إلى:</label>
-            <input id="toAt" class="input" type="datetime-local" />
-            <button id="loadBtn" class="btn">تطبيق</button>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; flex-wrap:nowrap;">
+          <div style="display:flex; gap:6px; align-items:center; flex:1; min-width:0;">
+            <div style="position:relative;display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
+              <label for="productSearch" style="white-space:nowrap;font-size:13px;">بحث صنف:</label>
+              <input id="productSearch" class="input" type="text" placeholder="اسم أو باركود..." autocomplete="off" style="padding:6px 8px;font-size:12px;min-width:0;flex:1;padding-left:22px;" />
+              <span id="productClearBtn" style="cursor:pointer;color:#94a3b8;font-size:14px;display:none;position:absolute;left:4px;" title="مسح">✕</span>
+              <div id="productSuggestions" style="display:none;position:absolute;top:100%;right:0;min-width:260px;background:#fff;border:1.5px solid #3b82f6;border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.12);"></div>
+            </div>
+            <label for="fromAt" style="white-space:nowrap;font-size:13px;">من:</label>
+            <input id="fromAt" class="input" type="datetime-local" style="padding:6px 8px;font-size:12px;min-width:0;flex:1;" />
+            <label for="toAt" style="white-space:nowrap;font-size:13px;">إلى:</label>
+            <input id="toAt" class="input" type="datetime-local" style="padding:6px 8px;font-size:12px;min-width:0;flex:1;" />
+            <button id="loadBtn" class="btn" style="padding:6px 12px;font-size:13px;white-space:nowrap;">تطبيق</button>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button id="exportPdfBtn" class="btn">تصدير PDF</button>
-            <button id="exportExcelBtn" class="btn">تصدير Excel</button>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button id="exportPdfBtn" class="btn" style="padding:6px 10px;font-size:13px;white-space:nowrap;">تصدير PDF</button>
+            <button id="exportExcelBtn" class="btn" style="padding:6px 10px;font-size:13px;white-space:nowrap;">تصدير Excel</button>
           </div>
         </div>
         <div class="muted" id="range" style="margin-top:6px"></div>

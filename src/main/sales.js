@@ -1657,6 +1657,7 @@ function registerSalesIPC(){
     if(q.exclude_unpaid_credit){
       terms.push("NOT ((s.doc_type IS NULL OR s.doc_type='invoice') AND LOWER(COALESCE(s.payment_method,''))='credit' AND s.payment_status IN ('unpaid','partial'))");
     }
+    if(q.product_id){ terms.push('si.product_id = ?'); params.push(Number(q.product_id)); }
     const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
     try{
       const conn = await dbAdapter.getConnection();
@@ -1688,6 +1689,7 @@ function registerSalesIPC(){
     if(to){ terms.push('s.created_at <= ?'); params.push(to); }
     terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
     if(onlyTobacco){ terms.push('(p.is_tobacco = 1)'); }
+    if(q.product_id){ terms.push('si.product_id = ?'); params.push(Number(q.product_id)); }
     const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
     try{
       const conn = await dbAdapter.getConnection();
