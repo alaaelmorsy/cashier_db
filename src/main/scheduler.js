@@ -227,40 +227,82 @@ function stopDailyEmailScheduler(){
 
 async function submitUnsentInvoicesHourly(){
   const LocalZatcaBridge = require('./local-zatca');
+  const fs = require('fs/promises');
   let running = false;
+
+  async function ensureZatcaColumns(conn){
+    // Ensure required ZATCA columns exist before querying (they are created lazily by sales.js)
+    const checks = [
+      { col: 'zatca_status',           sql: "ALTER TABLE sales ADD COLUMN zatca_status ENUM('pending','submitted','accepted','rejected') NULL DEFAULT 'pending'" },
+      { col: 'zatca_submitted',         sql: "ALTER TABLE sales ADD COLUMN zatca_submitted DATETIME NULL" },
+      { col: 'zatca_rejection_reason',  sql: "ALTER TABLE sales ADD COLUMN zatca_rejection_reason TEXT NULL" },
+      { col: 'zatca_response',          sql: "ALTER TABLE sales ADD COLUMN zatca_response LONGTEXT NULL" },
+    ];
+    for(const { col, sql } of checks){
+      const [existing] = await conn.query(`SHOW COLUMNS FROM sales LIKE '${col}'`);
+      if(!existing.length) await conn.query(sql);
+    }
+  }
+
   async function runOnce(){
-    if(running) return; running = true;
+    if(running) return;
+    running = true;
     try{
       const conn = await dbAdapter.getConnection();
       try{
-        // respect ZATCA toggle: do nothing if disabled
+        // respect ZATCA toggle
         const [[s]] = await conn.query('SELECT zatca_enabled FROM app_settings WHERE id=1');
-        if(!s || !s.zatca_enabled){ return; }
-        // pick unsent invoices: status not submitted/accepted and no submitted timestamp
+        if(!s || !s.zatca_enabled){
+          console.log('[ZATCA Scheduler] ZATCA disabled, skipping.');
+          return;
+        }
+
+        // ensure columns exist before querying them
+        try{ await ensureZatcaColumns(conn); }catch(e){ console.error('[ZATCA Scheduler] ensureColumns failed', e && e.message); return; }
+
+        // read sendFromDate from config file
+        let sendFromDate = null;
+        try{
+          const { app } = require('electron');
+          const cfgPath = require('path').join(app.getPath('userData'), '.zatca-config.json');
+          const cfgData = await fs.readFile(cfgPath, 'utf8').catch(()=>'{}');
+          const cfg = JSON.parse(cfgData);
+          if(cfg.sendFromDate) sendFromDate = cfg.sendFromDate;
+        }catch(_){}
+
+        const dateFilter = sendFromDate ? `AND DATE(created_at) >= '${sendFromDate}'` : '';
         const [rows] = await conn.query(`
-          SELECT id FROM sales 
+          SELECT id FROM sales
           WHERE (zatca_status IS NULL OR zatca_status NOT IN ('submitted','accepted'))
             AND (zatca_submitted IS NULL)
-            AND (COALESCE(zatca_response,'') NOT LIKE '%NOT_REPORTED%') -- تخطي الحالات التي تخبرنا أنها غير مُبلّغة من جهة الهيئة
+            AND (COALESCE(zatca_response,'') NOT LIKE '%NOT_REPORTED%')
+            ${dateFilter}
           ORDER BY id ASC
           LIMIT 500
         `);
+
+        console.log(`[ZATCA Scheduler] Found ${rows.length} unsent/rejected invoices & credit notes.`);
+        if(!rows.length) return;
+
         const bridge = LocalZatcaBridge.getInstance();
         for(const r of rows){
           try{
             await bridge.submitSaleById(r.id);
-          }catch(e){ console.error('ZATCA auto submit failed for sale', r.id, e && e.message || e); }
-          // wait 5 seconds between invoices
+            console.log(`[ZATCA Scheduler] Sent sale id=${r.id}`);
+          }catch(e){
+            console.error(`[ZATCA Scheduler] Failed sale id=${r.id}:`, e && e.message || e);
+          }
           await new Promise(res=>setTimeout(res, 5000));
         }
       } finally { conn.release(); }
-    }catch(e){ console.error('unsent hourly submit tick failed', e); }
+    }catch(e){ console.error('[ZATCA Scheduler] tick failed:', e && e.message || e); }
     finally { running = false; }
   }
-  // run once at start, then every 15 minutes
+
+  // run once 30 seconds after app start (allow DB + ZATCA bridge to initialize), then every 15 minutes
   try { if (__unsentInvoicesTimeout) clearTimeout(__unsentInvoicesTimeout); } catch (_) {}
   try { if (__unsentInvoicesInterval) clearInterval(__unsentInvoicesInterval); } catch (_) {}
-  __unsentInvoicesTimeout = setTimeout(runOnce, 1000);
+  __unsentInvoicesTimeout = setTimeout(runOnce, 30000);
   __unsentInvoicesInterval = setInterval(runOnce, 15*60*1000);
 }
 

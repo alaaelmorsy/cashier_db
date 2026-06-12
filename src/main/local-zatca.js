@@ -49,7 +49,7 @@ class LocalZatcaBridge {
         if(this.paramName && !this.paramAliases.includes(this.paramName)){
           this.paramAliases.unshift(this.paramName);
         }
-        this.preferredMode = cfg?.localApi?.preferredMode || 'json-raw'; // default to raw JSON; will fallback across other modes automatically
+        this.preferredMode = cfg?.localApi?.preferredMode || 'form'; // default to form; SDK Java servers usually reject json-raw with 415
         // Allow disabling text/plain fallback to avoid final 415 noise on strict servers (default: disabled)
         this.enableTextPlain = (cfg?.localApi?.enableTextPlain ?? false) ? true : false;
       }catch(_){ }

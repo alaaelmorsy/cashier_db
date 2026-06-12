@@ -41,6 +41,11 @@ function populateSettingsForm(){
   setValue('postal-code', cd.address?.postalCode || '');
   setValue('district', cd.address?.district || '');
   setValue('send-from-date', currentConfig.sendFromDate || '');
+  const la = currentConfig.localApi || {};
+  setValue('local-api-endpoint', la.endpoint || '');
+  setValue('local-api-param', la.paramName || '');
+  const modeEl = document.getElementById('local-api-mode');
+  if(modeEl && la.preferredMode) modeEl.value = la.preferredMode;
 }
 
 function setValue(id, val){ const el = document.getElementById(id); if(el) el.value = val; }
