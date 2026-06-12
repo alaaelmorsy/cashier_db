@@ -72,6 +72,28 @@ class LocalZatcaBridge {
         let finalBody = body;
         if (!finalBody) {
           if (!sale_id) return { success: false, message: 'sale_id أو body مطلوب' };
+
+          // التحقق من تاريخ بدء الإرسال قبل إرسال الفاتورة
+          try {
+            const cfgData = await fs.readFile(getZatcaConfigPath(), 'utf8').catch(() => '{}');
+            const cfg = JSON.parse(cfgData);
+            if (cfg.sendFromDate) {
+              const conn = await dbAdapter.getConnection();
+              try {
+                const rows = await conn.query('SELECT created_at FROM sales WHERE id=? LIMIT 1', [Number(sale_id)]);
+                const row = rows && rows[0];
+                if (row && row.created_at) {
+                  const invoiceDate = new Date(row.created_at);
+                  const limitDate = new Date(cfg.sendFromDate);
+                  limitDate.setHours(0, 0, 0, 0);
+                  if (invoiceDate < limitDate) {
+                    return { success: false, message: `هذه الفاتورة بتاريخ ${invoiceDate.toLocaleDateString('ar-SA')} وهي قبل تاريخ بدء الإرسال المحدد (${new Date(cfg.sendFromDate).toLocaleDateString('ar-SA')}). لن يتم إرسالها.` };
+                  }
+                }
+              } finally { conn.release(); }
+            }
+          } catch (_) {}
+
           finalBody = await this.buildBodyFromSaleId(sale_id);
         }
 

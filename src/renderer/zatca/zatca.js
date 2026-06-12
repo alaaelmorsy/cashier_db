@@ -40,6 +40,7 @@ function populateSettingsForm(){
   setValue('city', cd.address?.city || 'الرياض');
   setValue('postal-code', cd.address?.postalCode || '');
   setValue('district', cd.address?.district || '');
+  setValue('send-from-date', currentConfig.sendFromDate || '');
 }
 
 function setValue(id, val){ const el = document.getElementById(id); if(el) el.value = val; }
@@ -55,6 +56,7 @@ async function handleSettingsSubmit(ev){
   ev.preventDefault();
   const fd = new FormData(ev.target);
   const settings = {
+    sendFromDate: fd.get('sendFromDate') || null,
     companyData: {
       organizationName: fd.get('companyName'),
       vatNumber: fd.get('vatNumber'),
