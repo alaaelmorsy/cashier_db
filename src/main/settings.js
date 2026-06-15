@@ -740,7 +740,7 @@ function registerSettingsIPC(){
         }
         await conn.query(`UPDATE app_settings SET 
           seller_legal_name=?, seller_legal_name_en=?, seller_vat_number=?, company_site=?, company_location=?, company_location_en=?, mobile=?, email=?, show_email_in_invoice=?, logo_path=?, 
-          vat_percent=?, prices_include_vat=?, payment_methods=?, default_payment_method=?,
+          vat_percent=?, prices_include_vat=?, cost_includes_vat=?, payment_methods=?, default_payment_method=?,
           currency_code=?, currency_symbol=?, currency_symbol_position=?, app_locale=?,
           default_print_format=?, print_copies=?, silent_print=?, print_show_change=?, show_barcode_in_a4=?, unit_price_label=?, quantity_label=?, op_price_manual=?, allow_sell_zero_stock=?, update_product_price_on_edit=?, allow_negative_inventory=?, cart_separate_duplicate_lines=?,
           logo_width_px=?, logo_height_px=?, invoice_footer_note=?, hide_product_images=?, closing_hour=?, zatca_enabled=?, recovery_unlocked=?, 
@@ -806,6 +806,7 @@ function registerSettingsIPC(){
           p.logo_path || null,
           (p.vat_percent==='' || p.vat_percent===null || p.vat_percent===undefined) ? 15.00 : Number(p.vat_percent),
           p.prices_include_vat ? 1 : 0,
+          (p.cost_includes_vat !== undefined && p.cost_includes_vat !== null) ? (p.cost_includes_vat ? 1 : 0) : 1,
           methods,
           (p.default_payment_method || null),
           (p.currency_code || 'SAR'),

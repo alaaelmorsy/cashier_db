@@ -918,6 +918,11 @@
           const vatRate = Number(settings?.vat_percent || 0) / 100;
           const effectiveVatRate = (String(sale.price_mode||'') === 'zero_vat') ? 0 : vatRate;
 
+          // مجموع line_total لجميع البنود (للتوزيع النسبي)
+          const sumLineTotalsAll = items.reduce((s, it) => s + Math.abs(Number(it.line_total || (Number(it.price||0) * Number(it.qty||1)))), 0);
+          const storedSubTotal = Math.abs(Number(sale.sub_total||0));
+          const storedVatTotal = Math.abs(Number(sale.vat_total||0));
+
           let rowNum = 0;
           items.forEach(it => {
             rowNum++;
@@ -955,16 +960,15 @@
             let net = 0, vatAmt = 0, gross = 0;
             const itemVatRate = (Number(it.is_vat_exempt||0) === 1) ? 0 : effectiveVatRate;
             if(itemVatRate > 0){
-              if(pricesInclVat){
-                // الإجمالي يشمل الضريبة -> صافي = الإجمالي / (1+نسبة) ، الضريبة = الإجمالي - الصافي
-                net = lineTotal / (1 + itemVatRate);
-                vatAmt = lineTotal - net;
-                gross = lineTotal;
-              }else{
-                // الإجمالي لا يشمل الضريبة -> صافي = الإجمالي ، الضريبة = صافي * نسبة ، الإجمالي = صافي + الضريبة
-                net = lineTotal;
-                vatAmt = net * itemVatRate;
+              // توزيع الإجماليات المخزنة نسبياً على البند
+              // هذا مستقل عن إعداد prices_include_vat ويعمل صحيحاً مع الفواتير القديمة والجديدة
+              if(sumLineTotalsAll > 0){
+                const ratio = lineTotal / sumLineTotalsAll;
+                net = ratio * storedSubTotal;
+                vatAmt = ratio * storedVatTotal;
                 gross = net + vatAmt;
+              } else {
+                net = 0; vatAmt = 0; gross = 0;
               }
             }else{
               // لا توجد ضريبة
