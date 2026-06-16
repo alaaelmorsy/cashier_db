@@ -2,7 +2,7 @@
 
 // Permissions (align with main logic): hide actions if not granted
 let __perms = new Set();
-(async()=>{ try{ const u=JSON.parse(localStorage.getItem('pos_user')||'null'); if(u&&u.id){ const r=await window.api.perms_get_for_user(u.id); if(r&&r.ok){ __perms = new Set(r.keys||[]); } } }catch(_){ __perms = new Set(); } })();
+const __permsReady = (async()=>{ try{ const u=JSON.parse(localStorage.getItem('pos_user')||'null'); if(u&&u.id){ const r=await window.api.perms_get_for_user(u.id); if(r&&r.ok){ __perms = new Set(r.keys||[]); } } }catch(_){ __perms = new Set(); } })();
 function hasInvoice(k){ return __perms.has(k); }
 const tbody = document.getElementById('tbody');
 const errorDiv = document.getElementById('error');
@@ -239,7 +239,7 @@ function showZatcaResponseModal(raw){
 
 async function load(resetPage = true, beforeId = null){
   setError('');
-  await __settingsReady;
+  await Promise.all([__settingsReady, __permsReady]);
 
   if(resetPage){ __invPage=1; __cursors={}; beforeId=null; }
 
