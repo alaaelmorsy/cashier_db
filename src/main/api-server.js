@@ -1406,7 +1406,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (search) { terms.push('(name LIKE ? OR phone LIKE ?)'); const s = `%${search}%`; params.push(s, s); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const [rows] = await conn.query(`SELECT * FROM suppliers ${where} ORDER BY id DESC`, params);
-      res.json({ ok: true, items: rows });
+      const items = rows.map(r => ({ ...r, balance: Number(r.balance || 0), total_due: Number(r.balance || 0) }));
+      res.json({ ok: true, items });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
