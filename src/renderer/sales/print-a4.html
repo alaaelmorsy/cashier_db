@@ -696,13 +696,17 @@
           const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', bank_transfer:'تحويل بنكي', refund:'إشعار دائن' };
           const payKey = pay || sale.payment_method || '';
           document.getElementById('invPay').textContent = payLabels[payKey] || payKey;
-          // Show cashier (logged-in user) full name from localStorage if available
+          // Show cashier: prefer URL param (original creator), fallback to logged-in user
           try{
-            const u = JSON.parse(localStorage.getItem('pos_user')||'null');
-            if(u && (u.full_name || u.username)){
+            let cashier = String((params.get('cashier')||'').trim());
+            if(!cashier){
+              const u = JSON.parse(localStorage.getItem('pos_user')||'null');
+              if(u && (u.full_name || u.username)){ cashier = u.full_name || u.username; }
+            }
+            if(cashier){
               const line = document.getElementById('userLineA4');
               const span = document.getElementById('cashierNameA4');
-              if(span){ span.textContent = u.full_name || u.username; }
+              if(span){ span.textContent = cashier; }
               if(line){ line.style.display = 'flex'; }
             }
           }catch(_){ /* ignore */ }

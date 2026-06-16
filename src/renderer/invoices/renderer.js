@@ -163,7 +163,8 @@ function onTableAction(e){
       : 0;
     // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
     // إضافة reprint=1 لمنع إرسال واتساب تلقائياً عند إعادة الطباعة
-    const params = new URLSearchParams({ id: String(id), ...(method?{pay:method}:{}) , ...(cash?{cash:String(cash)}:{}), refresh: '1', reprint: '1' });
+    const cashierName = String(row.created_by_username || '').trim();
+    const params = new URLSearchParams({ id: String(id), ...(method?{pay:method}:{}) , ...(cash?{cash:String(cash)}:{}), refresh: '1', reprint: '1', ...(cashierName ? {cashier: cashierName} : {}) });
     const url = `../sales/${page}?${params.toString()}`;
     const w = (__defPrintFormat === 'a4') ? 900 : 500;
     const h = (__defPrintFormat === 'a4') ? 1000 : 700;
