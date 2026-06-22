@@ -1448,8 +1448,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       conn = await dbAdapter.getConnection();
       const terms = []; const params = [];
       if (supplier_id) { terms.push('pi.supplier_id=?'); params.push(Number(supplier_id)); }
-      if (from) { terms.push('DATE(pi.invoice_at) >= ?'); params.push(from); }
-      if (to) { terms.push('DATE(pi.invoice_at) <= ?'); params.push(to); }
+      if (from) { terms.push('pi.invoice_at >= ?'); params.push(from); }
+      if (to) { terms.push('pi.invoice_at <= ?'); params.push(to); }
       if (search) { terms.push('(pi.invoice_no LIKE ? OR s.name LIKE ?)'); const sq = `%${search}%`; params.push(sq, sq); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const lim = Math.min(parseInt(limit) || 50, 999999);
