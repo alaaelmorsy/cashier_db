@@ -382,6 +382,65 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     }
   });
 
+  // GET /api/sales-items-detailed — detailed sold items for profitability (secondary device)
+  app.get('/api/sales-items-detailed', async (req, res) => {
+    let conn;
+    try {
+      const { date_from, date_to, from_at, to_at, only_tobacco, product_id } = req.query;
+      const from = date_from || from_at || null;
+      const to = date_to || to_at || null;
+      const onlyTobacco = only_tobacco === '1' || only_tobacco === 'true';
+      conn = await dbAdapter.getConnection();
+      const terms = [];
+      const params = [];
+      if (from) { terms.push('s.created_at >= ?'); params.push(from); }
+      if (to) { terms.push('s.created_at <= ?'); params.push(to); }
+      terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
+      if (onlyTobacco) { terms.push('(p.is_tobacco = 1)'); }
+      if (product_id) { terms.push('si.product_id = ?'); params.push(Number(product_id)); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const sql = `
+        SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
+               si.product_id, si.name, si.description, si.operation_name, si.price, si.qty, si.line_total,
+               p.category, p.is_tobacco,
+               COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
+        FROM sales_items si
+        INNER JOIN sales s ON s.id = si.sale_id
+        LEFT JOIN products p ON p.id = si.product_id
+        ${where}
+        ORDER BY s.created_at DESC, s.id DESC, si.id ASC`;
+      const [rows] = await conn.query(sql, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      console.error('sales-items-detailed error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
+  // GET /api/sales-payments — payment transactions for profitability (secondary device)
+  app.get('/api/sales-payments', async (req, res) => {
+    let conn;
+    try {
+      const { date_from, date_to, sale_id } = req.query;
+      conn = await dbAdapter.getConnection();
+      const terms = [];
+      const params = [];
+      if (date_from) { terms.push('created_at >= ?'); params.push(date_from); }
+      if (date_to) { terms.push('created_at <= ?'); params.push(date_to); }
+      if (sale_id) { terms.push('sale_id = ?'); params.push(Number(sale_id)); }
+      const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
+      const [rows] = await conn.query(`SELECT * FROM payment_transactions ${where} ORDER BY created_at ASC`, params);
+      res.json({ ok: true, items: rows });
+    } catch (err) {
+      console.error('sales-payments error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    } finally {
+      if (conn) conn.release();
+    }
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // Products Endpoints
   // ═══════════════════════════════════════════════════════════════

@@ -1363,6 +1363,20 @@ function registerSalesIPC(){
 
   // List payment transactions within a date range (for reports)
   ipcMain.handle('sales:list_payments', async (_e, q) => {
+    if (isSecondaryDevice()) {
+      try {
+        const query = q || {};
+        const apiParams = {};
+        if (query.date_from) apiParams.date_from = query.date_from;
+        if (query.date_to) apiParams.date_to = query.date_to;
+        if (query.sale_id) apiParams.sale_id = query.sale_id;
+        const result = await fetchFromAPI('/sales-payments', apiParams);
+        if (result && result.ok) return { ok: true, items: result.items || [] };
+        return { ok: false, error: result && result.error ? result.error : 'Failed to connect to primary device' };
+      } catch (err) {
+        return { ok: false, error: err.message || 'Failed to connect to primary device' };
+      }
+    }
     try{
       const query = q || {};
       const from = query.date_from ? String(query.date_from) : null;
@@ -1679,6 +1693,23 @@ function registerSalesIPC(){
 
   // Detailed sold items within a period, with optional tobacco-only filter
   ipcMain.handle('sales:items_detailed', async (_e, query) => {
+    if (isSecondaryDevice()) {
+      try {
+        const q = query || {};
+        const apiParams = {};
+        if (q.date_from) apiParams.date_from = q.date_from;
+        if (q.date_to) apiParams.date_to = q.date_to;
+        if (q.from_at) apiParams.from_at = q.from_at;
+        if (q.to_at) apiParams.to_at = q.to_at;
+        if (q.only_tobacco) apiParams.only_tobacco = '1';
+        if (q.product_id) apiParams.product_id = q.product_id;
+        const result = await fetchFromAPI('/sales-items-detailed', apiParams);
+        if (result && result.ok) return { ok: true, items: result.items || [] };
+        return { ok: false, error: result && result.error ? result.error : 'Failed to connect to primary device' };
+      } catch (err) {
+        return { ok: false, error: err.message || 'Failed to connect to primary device' };
+      }
+    }
     const q = query || {};
     const from = q.date_from || q.from_at || null;
     const to = q.date_to || q.to_at || null;
