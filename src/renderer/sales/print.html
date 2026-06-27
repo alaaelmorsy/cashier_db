@@ -1451,7 +1451,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           // استخدم الخصم المحفوظ فقط، وأخفِ صف الكوبون لمنع الازدواجية
           if(Number(sale.discount_amount||0) > 0){
             document.getElementById('discRow').style.display='';
-            const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+            const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : (( sale.discount_type === 'percent' || sale.discount_type === 'percentage' ) && Number(sale.discount_value||0) > 0 ? `خصم ${Number(sale.discount_value)}%` : 'خصم');
             document.getElementById('discLabel').textContent = label;
             const dispDisc = Math.abs(Number(sale.discount_amount||0));
             document.getElementById('disc').innerHTML = fmt(dispDisc);
@@ -1504,7 +1504,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                 }
                 if(bDisc > 0){
                   document.getElementById('discRow').style.display='';
-                  const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+                  const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : (baseSale.discount_type === 'percentage' && Number(baseSale.discount_value||0) > 0 ? `خصم ${Number(baseSale.discount_value)}%` : 'خصم');
                   document.getElementById('discLabel').textContent = blabel;
                   document.getElementById('disc').innerHTML = fmt(Math.abs(bDisc));
                   document.getElementById('afterDisc').innerHTML = fmt(Math.abs(baseSale.total_after_discount ?? (Number(baseSale.sub_total||0) - bDisc)));

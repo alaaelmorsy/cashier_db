@@ -165,26 +165,17 @@
         word-break: keep-all;
         overflow-wrap: normal;
       }
-      .totals{ margin-top:6px; width:320px; margin-left:auto; border:2px solid #334155; border-radius:6px; overflow:hidden; }
-      .totals td{ padding:4px 8px; font-weight:900; font-size:14px; white-space:nowrap; }
+      .totals{ margin-top:6px; width:320px; margin-left:auto; border:2px solid #334155; border-radius:6px; overflow:hidden; table-layout:fixed; border-spacing:0; }
+      .totals td{ padding:4px 8px; font-weight:900; font-size:14px; word-break:break-word; overflow-wrap:anywhere; }
+      .totals td:last-child{ width:90px; }
       .totals tbody tr td:first-child{ border-left: 1px solid #cbd5e1; }
       .totals tbody tr{ border-bottom: 1px dashed #cbd5e1; }
       .totals tbody tr:last-child{ border-bottom: 0; }
-      /* توحيد الإطار الجانبي للصفوف الاختيارية */
-      .totals tbody tr#extraRow td,
-      .totals tbody tr#discRow td,
-      .totals tbody tr#afterDiscRow td,
-      .totals tbody tr#tobaccoFeeRow td,
-      .totals tbody tr#paidCashRow td,
-      .totals tbody tr#paidCardRow td,
-      .totals tbody tr#paidRow td,
-      .totals tbody tr#changeRow td{
-        border-left: 2px solid #334155 !important;
-        border-right: 2px solid #334155 !important;
-      }
       /* ضمان استمرار الفاصل العمودي الأوسط في صفوف المدفوع/المتبقي */
       .totals tbody tr#paidRow td,
       .totals tbody tr#changeRow td{ border-left: 0 !important; }
+      .totals tbody tr#paidRow td:first-child,
+      .totals tbody tr#changeRow td:first-child{ border-left: 1px solid #cbd5e1 !important; }
       .totals tbody tr#paidRow td:first-child,
       .totals tbody tr#changeRow td:first-child{ border-left: 1px solid #cbd5e1 !important; }
       .totals tbody tr#paidRow td:last-child,
@@ -192,7 +183,9 @@
       /* إبراز الصفوف الأساسية: قبل الضريبة، الضريبة، شامل الضريبة */
       .totals tbody tr:has(td#sub) td,
       .totals tbody tr:has(td#vat) td,
-      .totals tbody tr:has(td#grand) td{ background:#eef2ff; }
+      .totals tbody tr:has(td#grand) td,
+      .totals tbody tr#discRow td,
+      .totals tbody tr#afterDiscRow td{ background:#eef2ff; }
       /* حدود بداية/فواصل/نهاية المجموعة */
       .totals tbody tr:has(td#sub) td{ border-top: 2px solid #334155 !important; }
       .totals tbody tr:has(td#vat) td{ border-top: 2px solid #334155 !important; }
@@ -200,6 +193,7 @@
       /* فاصل سميك لصف الخصم وما بعد الخصم ليتطابق مع بقية صفوف الإجماليات */
       .totals tbody tr#discRow td,
       .totals tbody tr#afterDiscRow td{ border-top: 2px solid #334155 !important; }
+      .totals tbody tr#afterDiscRow td:first-child{ font-size:12px; }
       .totals tbody tr:last-child td{ border-bottom: 2px solid #334155 !important; }
       .footer{ margin-top:6px; display:flex; justify-content:space-between; align-items:center; }
       .bottom-summary{ margin-top:6px; display:flex; gap:12px; align-items:flex-start; justify-content:flex-start; flex-wrap:wrap; }
@@ -358,7 +352,7 @@
             <tbody>
               <tr id="extraRow" style="display:none"><td>الإضافى</td><td style="text-align:left" id="extra"></td></tr>
               <tr><td>الإجمالي قبل الضريبة</td><td style="text-align:left" id="sub"></td></tr>
-              <tr id="discRow" style="display:none"><td id="discLabel">خصم</td><td style="text-align:left; color:#b91c1c" id="disc"></td></tr>
+              <tr id="discRow" style="display:none"><td id="discLabel">خصم</td><td style="text-align:left" id="disc"></td></tr>
               <tr id="afterDiscRow" style="display:none"><td>الإجمالي بعد الخصم (قبل الضريبة)</td><td style="text-align:left" id="afterDisc"></td></tr>
               <tr id="tobaccoFeeRow" style="display:none"><td>رسوم التبغ</td><td style="text-align:left" id="tobaccoFee"></td></tr>
               <tr><td>ضريبة VAT</td><td style="text-align:left" id="vat"></td></tr>
@@ -550,7 +544,7 @@
                 }
                 if(bDisc > 0){
                   document.getElementById('discRow').style.display='';
-                  const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+                  const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : (baseSale.discount_type === 'percentage' && Number(baseSale.discount_value||0) > 0 ? `خصم ${Number(baseSale.discount_value)}%` : 'خصم');
                   document.getElementById('discLabel').textContent = blabel;
                   document.getElementById('disc').textContent = Number(Math.abs(bDisc)).toFixed(2);
                   document.getElementById('afterDisc').textContent = Number(Math.abs(baseSale.total_after_discount ?? (Number(baseSale.sub_total||0) - bDisc))).toFixed(2);
@@ -1085,7 +1079,7 @@
           // استخدم الخصم المحفوظ فقط، وأخفِ أي أثر للكوبون في الإخراج
           if(Number(sale.discount_amount||0) > 0){
             document.getElementById('discRow').style.display='';
-            const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : 'خصم';
+            const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : (( sale.discount_type === 'percent' || sale.discount_type === 'percentage' ) && Number(sale.discount_value||0) > 0 ? `خصم ${Number(sale.discount_value)}%` : 'خصم');
             document.getElementById('discLabel').textContent = label;
             document.getElementById('disc').innerHTML = fmt(Math.abs(Number(sale.discount_amount||0)));
             document.getElementById('afterDiscRow').style.display='';
