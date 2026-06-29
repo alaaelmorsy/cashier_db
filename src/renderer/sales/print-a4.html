@@ -963,8 +963,15 @@
               if(sumLineTotalsAll > 0){
                 const ratio = lineTotal / sumLineTotalsAll;
                 net = ratio * storedSubTotal;
-                vatAmt = ratio * storedVatTotal;
-                gross = net + vatAmt;
+                // حساب ضريبة البند وإجماليه من lineTotal مباشرة (قبل الخصم على الفاتورة)
+                // الخصم على الفاتورة يظهر فقط في ملخص الإجماليات أسفل الفاتورة
+                if(pricesInclVat){
+                  vatAmt = lineTotal * itemVatRate / (1 + itemVatRate);
+                  gross = lineTotal;
+                } else {
+                  vatAmt = lineTotal * itemVatRate;
+                  gross = lineTotal + vatAmt;
+                }
               } else {
                 net = 0; vatAmt = 0; gross = 0;
               }
