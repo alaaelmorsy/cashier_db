@@ -2606,7 +2606,7 @@ function renderCart(){
         <span data-idx="${idx}" class="op-name-label hidden w-full text-[10px] font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 leading-tight"></span>
       </td>
       <td class="td-price">
-        ${settings.op_price_manual
+        ${(settings.op_price_manual || it.allow_manual_price)
           ? `<div class=\"price-input-wrap\"><input data-idx=\"${idx}\" class=\"op-price\" type=\"text\" inputmode=\"decimal\" lang=\"en\" step=\"0.01\" min=\"0\" style=\"width:${String(Number(it.price).toFixed(2)).length}ch; min-width:4ch; display:inline-block; box-sizing:content-box; max-width:100%; height:28px; padding:4px 6px; direction:ltr; text-align:left\" oninput=\"this.style.width = Math.max(4, this.value.length) + 'ch';\" placeholder=\"${__isAr ? 'السعر' : 'Price'}\" value=\"${Number(it.price).toFixed(2)}\" ${__isProcessingOld?'disabled':''}${it.product_min_price!=null ? ` data-min-price=\"${Number(it.product_min_price).toFixed(2)}\"` : ''}/></div>`
           : `<span class=\"price-val\">${Number(it.price||0).toFixed(2)}</span>`}
       </td>
@@ -3719,6 +3719,7 @@ async function addToCart(p){
     __ops: [],
     __pending: true,
     product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null,
+    allow_manual_price: Number(p.allow_manual_price||0) ? 1 : 0,
     cost: (p.cost!=null && p.cost!=='') ? Number(p.cost) : null
   };
   cart.unshift(it);
@@ -3849,7 +3850,8 @@ async function __doScanCode(code){
         category: p.category || null, is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
         is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
         unit_name: null, unit_multiplier: 1, operation_name: null,
-        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
+        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null,
+        allow_manual_price: Number(p.allow_manual_price||0) ? 1 : 0
       };
       await applyCustomerPricingForItem(it);
       if(scale.type === 'weight'){
@@ -3895,7 +3897,8 @@ async function __doScanCode(code){
         unit_name: null, unit_multiplier: 1,
         variant_id: p.variant_id, variant_name: p.variant_name,
         operation_id: p.variant_id, operation_name: p.variant_name,
-        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null
+        product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null,
+        allow_manual_price: Number(p.allow_manual_price||0) ? 1 : 0
       };
       await applyCustomerPricingForItem(it);
       cart.push(it);
@@ -4361,9 +4364,10 @@ tbody.addEventListener('input', async (e) => {
     const fixed = cur.replace(/[^0-9.]/g, '').replace(/^(\d*\.?\d*).*$/, '$1');
     if(fixed !== cur){ const pos = numInp.selectionStart - (cur.length - fixed.length); numInp.value = fixed; try{ numInp.setSelectionRange(pos, pos); }catch(_){} }
     const priceInpLive = e.target.closest('input.op-price');
-    if(priceInpLive && settings.op_price_manual){
+    if(priceInpLive){
       const idx = Number(priceInpLive.dataset.idx);
       const it = cart[idx];
+      if(it && (settings.op_price_manual || it.allow_manual_price)){
       const p = Number(priceInpLive.value || 0);
       if(it && !isNaN(p) && p >= 0){
         it.price = p;
@@ -4386,6 +4390,7 @@ tbody.addEventListener('input', async (e) => {
           amtInpLive.style.width = Math.max(4, newAmtStr.length) + 'ch';
         }
         scheduleComputeTotals();
+      }
       }
     }
     const qtyInpLive = e.target.closest('input.qty');
@@ -4561,9 +4566,9 @@ tbody.addEventListener('change', async (e) => {
   }
   const priceInp = e.target.closest('input.op-price');
   if(priceInp){
-    if(!settings.op_price_manual){ return; }
     const idx = Number(priceInp.dataset.idx);
     const it = cart[idx];
+    if(!(settings.op_price_manual || (it && it.allow_manual_price))){ return; }
     const p = Number(priceInp.value||0);
     if(!isNaN(p) && p >= 0){
       // تطبيق حد أدنى للسعر إن وُجد على المنتج
@@ -5588,6 +5593,7 @@ async function populateCategories(){
           description: it.description || null,
           employee_id: it.employee_id || null,
           product_min_price: it.product_min_price || null,
+          allow_manual_price: it.allow_manual_price || 0,
           manualPriceEdit: true,
           __opsLoaded: false,
           __ops: []

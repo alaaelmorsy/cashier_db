@@ -1612,16 +1612,41 @@ app.whenReady().then(async () => {
           const { dbAdapter } = require('../db/db-adapter');
           const conn = await dbAdapter.getConnection();
           try {
-            const [[settingsRow], [cntRow]] = await Promise.all([
+            let sendFromDate = null;
+            try {
+              const cfgPath = path.join(app.getPath('userData'), '.zatca-config.json');
+              const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+              if (cfg && cfg.sendFromDate) sendFromDate = cfg.sendFromDate;
+            } catch(_) { /* no config yet */ }
+            const zatcaSql = `
+              SELECT
+                SUM(CASE WHEN zatca_status='rejected' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN zatca_status<>'rejected' AND (zatca_status IN ('submitted','accepted') OR zatca_submitted IS NOT NULL) THEN 1 ELSE 0 END) AS sent,
+                COUNT(*) AS total
+              FROM sales
+              WHERE (doc_type IS NULL OR doc_type='invoice') ${sendFromDate ? 'AND DATE(created_at) >= ?' : ''}
+            `;
+            const zatcaParams = sendFromDate ? [sendFromDate] : [];
+            const [[settingsRow], [cntRow], [zatcaRow]] = await Promise.all([
               conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
               conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
+              conn.query(zatcaSql, zatcaParams),
             ]);
             const settings = (settingsRow && settingsRow[0]) || {};
             try {
               if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
               if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
             } catch(_) { settings.payment_methods = []; }
-            return { ok: true, settings, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) };
+            const zStats = (zatcaRow && zatcaRow[0]) || {};
+            const zSent = Number(zStats.sent || 0);
+            const zFailed = Number(zStats.failed || 0);
+            const zTotal = Number(zStats.total || 0);
+            return {
+              ok: true,
+              settings,
+              total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0),
+              zatca_stats: { sent: zSent, failed: zFailed, pending: Math.max(0, zTotal - zSent - zFailed) },
+            };
           } finally { conn.release(); }
         } catch(e) { return { ok: false, error: e.message }; }
       });

@@ -830,6 +830,7 @@ function registerSalesIPC(){
         if (_q.user_id) apiParams.user_id = _q.user_id;
         if (_q.type) apiParams.type = _q.type;
         if (_q.customers_only) apiParams.customers_only = '1';
+        if (_q.zatca_status) apiParams.zatca_status = _q.zatca_status;
 
         if (!wantAll && _q.before_id) {
           apiParams.before_id = _q.before_id;
@@ -895,6 +896,14 @@ function registerSalesIPC(){
     if(q.user_id){ terms.push('s.created_by_user_id = ?'); params.push(Number(q.user_id)); }
     // only customers: include invoices that have a customer linked (by id or name snapshot)
     if(q.customers_only){ terms.push('(s.customer_id IS NOT NULL OR s.customer_name IS NOT NULL)'); }
+    // filter by ZATCA submission status: 'rejected' (failed), 'not_sent' (pending), 'sent' (submitted/accepted)
+    if(q.zatca_status === 'rejected'){
+      terms.push("s.zatca_status='rejected'");
+    } else if(q.zatca_status === 'sent'){
+      terms.push("s.zatca_status<>'rejected' AND (s.zatca_status IN ('submitted','accepted') OR s.zatca_submitted IS NOT NULL)");
+    } else if(q.zatca_status === 'not_sent'){
+      terms.push("(s.zatca_status IS NULL OR s.zatca_status NOT IN ('rejected','submitted','accepted')) AND s.zatca_submitted IS NULL");
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
@@ -972,7 +981,7 @@ function registerSalesIPC(){
         const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
         
         // Optimized count strategy for large tables (300k+ records)
-        const hasFilters = q.q || q.customer_q || q.invoice_no || q.customer_id || q.user_id || q.date_from || q.date_to || q.customers_only;
+        const hasFilters = q.q || q.customer_q || q.invoice_no || q.customer_id || q.user_id || q.date_from || q.date_to || q.customers_only || q.zatca_status;
         const needsJoinForCount = q.customer_q && String(q.customer_q).trim();
         let total = 0;
         
@@ -1005,6 +1014,13 @@ function registerSalesIPC(){
           if(q.customer_id){ countTerms.push('s.customer_id = ?'); countParams.push(Number(q.customer_id)); }
           if(q.user_id){ countTerms.push('s.created_by_user_id = ?'); countParams.push(Number(q.user_id)); }
           if(q.customers_only){ countTerms.push('(s.customer_id IS NOT NULL OR s.customer_name IS NOT NULL)'); }
+          if(q.zatca_status === 'rejected'){
+            countTerms.push("s.zatca_status='rejected'");
+          } else if(q.zatca_status === 'sent'){
+            countTerms.push("s.zatca_status<>'rejected' AND (s.zatca_status IN ('submitted','accepted') OR s.zatca_submitted IS NOT NULL)");
+          } else if(q.zatca_status === 'not_sent'){
+            countTerms.push("(s.zatca_status IS NULL OR s.zatca_status NOT IN ('rejected','submitted','accepted')) AND s.zatca_submitted IS NULL");
+          }
           if(q.date_from && q.date_to){
             countTerms.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
             countParams.push(q.date_from, q.date_to, q.date_from, q.date_to);

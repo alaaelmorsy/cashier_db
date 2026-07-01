@@ -64,6 +64,10 @@ function registerProductsIPC(){
     if (!colMinPrice.length) {
       await conn.query("ALTER TABLE products ADD COLUMN min_price DECIMAL(10,2) NULL DEFAULT NULL AFTER price");
     }
+    const [colAllowManualPrice] = await conn.query("SHOW COLUMNS FROM products LIKE 'allow_manual_price'");
+    if (!colAllowManualPrice.length) {
+      await conn.query("ALTER TABLE products ADD COLUMN allow_manual_price TINYINT NOT NULL DEFAULT 0 AFTER min_price");
+    }
     const [colHideFromSales] = await conn.query("SHOW COLUMNS FROM products LIKE 'hide_from_sales'");
     if (!colHideFromSales.length) {
       await conn.query("ALTER TABLE products ADD COLUMN hide_from_sales TINYINT NOT NULL DEFAULT 0 AFTER is_active");
@@ -247,8 +251,8 @@ function registerProductsIPC(){
         const vatPctAdd = Number(settingsRowAdd?.vat_percent || 0);
         const priceWithVatAdd = vatPctAdd > 0 ? Number(((price??0) * (1 + vatPctAdd/100)).toFixed(2)) : null;
         const [r] = await conn.query(
-          'INSERT INTO products (name, name_en, barcode, price, price_with_vat, min_price, cost, stock, category, description, image_path, image_blob, image_mime, is_tobacco, is_vat_exempt, is_active, hide_from_sales, expiry_date, sort_order, base_unit, base_qty_step) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-          [name, payload.name_en || null, barcode, price ?? 0, priceWithVatAdd, (payload.min_price!=null ? Number(payload.min_price) : null), cost ?? 0, stock ?? 0, category, description, payload.image_path || null, imgBuffer, imgMime, payload.is_tobacco ? 1 : 0, payload.is_vat_exempt ? 1 : 0, 1, (payload.hide_from_sales ? 1 : 0), expiryDate, nextOrder, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1)]
+          'INSERT INTO products (name, name_en, barcode, price, price_with_vat, min_price, cost, stock, category, description, image_path, image_blob, image_mime, is_tobacco, is_vat_exempt, is_active, hide_from_sales, expiry_date, sort_order, base_unit, base_qty_step, allow_manual_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+          [name, payload.name_en || null, barcode, price ?? 0, priceWithVatAdd, (payload.min_price!=null ? Number(payload.min_price) : null), cost ?? 0, stock ?? 0, category, description, payload.image_path || null, imgBuffer, imgMime, payload.is_tobacco ? 1 : 0, payload.is_vat_exempt ? 1 : 0, 1, (payload.hide_from_sales ? 1 : 0), expiryDate, nextOrder, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), (payload.allow_manual_price ? 1 : 0)]
         );
         const newId = r && (r.insertId || r.insertId === 0) ? Number(r.insertId) : null;
         return { ok:true, id: newId };
@@ -463,7 +467,7 @@ function registerProductsIPC(){
         }
         
         const params = [...whereParams, ...orderParams];
-        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSql} ${order}`;
+        let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSql} ${order}`;
         if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; params.push(limit, Math.max(0, offset)); }
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows, total };
@@ -500,7 +504,7 @@ function registerProductsIPC(){
           
           let orderFallback = 'ORDER BY id DESC';
           if(query.sort === 'custom') orderFallback = 'ORDER BY sort_order ASC, is_active DESC, name ASC';
-          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSqlFallback} ${orderFallback}`;
+          let sql = `SELECT id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image FROM products ${whereSqlFallback} ${orderFallback}`;
           if(limit > 0){ sql += ' LIMIT ? OFFSET ?'; paramsFallback.push(limit, Math.max(0, offset)); }
           const [rows] = await conn.query(sql, paramsFallback);
           return { ok:true, items: rows, total };
@@ -528,7 +532,7 @@ function registerProductsIPC(){
     try{
       const conn = await dbAdapter.getConnection();
       try{
-        const [rows] = await conn.query('SELECT id,name,name_en,barcode,price,price_with_vat,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,created_at FROM products WHERE id=? LIMIT 1', [pid]);
+        const [rows] = await conn.query('SELECT id,name,name_en,barcode,price,price_with_vat,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,created_at FROM products WHERE id=? LIMIT 1', [pid]);
         if(rows.length===0) return { ok:false, error:'غير موجود' };
         return { ok:true, item: rows[0] };
       } finally { conn.release(); }
@@ -609,7 +613,7 @@ function registerProductsIPC(){
         
         // If not found in variants, search in products (optimized with 2 conditions)
         // Index on barcode makes this extremely fast (no full table scan)
-        const sql = `SELECT id,name,name_en,barcode,barcode_used,price,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,created_at
+        const sql = `SELECT id,name,name_en,barcode,barcode_used,price,min_price,cost,stock,category,description,image_path,image_mime,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,created_at
                      FROM products
                      WHERE barcode = ? OR barcode = ?
                      LIMIT 1`;
@@ -774,14 +778,14 @@ function registerProductsIPC(){
         const vatPctUpd = Number(settingsRowUpd?.vat_percent || 0);
         const priceWithVatUpd = vatPctUpd > 0 ? Number(((price??0) * (1 + vatPctUpd/100)).toFixed(2)) : null;
         if(payload && payload.remove_image){
-          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, image_path=NULL, image_blob=NULL, image_mime=NULL, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), pid]);
+          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, image_path=NULL, image_blob=NULL, image_mime=NULL, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=?, allow_manual_price=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), (payload.allow_manual_price ? 1 : 0), pid]);
         } else if(payload && payload.image_blob_base64){
           const imgMime = payload?.image_mime || 'image/png';
           const imgBase64 = payload?.image_blob_base64 || null;
           const imgBuffer = (imgBase64 && typeof imgBase64 === 'string') ? Buffer.from(imgBase64, 'base64') : null;
-          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, image_path=NULL, image_blob=?, image_mime=?, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, imgBuffer, imgMime, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), pid]);
+          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, image_path=NULL, image_blob=?, image_mime=?, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=?, allow_manual_price=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, imgBuffer, imgMime, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), (payload.allow_manual_price ? 1 : 0), pid]);
         } else {
-          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), pid]);
+          await conn.query('UPDATE products SET name=?, name_en=?, barcode=?, price=?, price_with_vat=?, min_price=?, cost=?, stock=?, category=?, description=?, is_tobacco=?, is_vat_exempt=?, hide_from_sales=?, expiry_date=?, base_unit=?, base_qty_step=?, allow_manual_price=? WHERE id=?', [name, (name_en||null), barcode||null, price??0, priceWithVatUpd, (payload.min_price!=null ? Number(payload.min_price) : null), cost??0, stock??0, category||null, description||null, (payload.is_tobacco ? 1 : 0), (payload.is_vat_exempt ? 1 : 0), (payload.hide_from_sales ? 1 : 0), expiryDate, (payload.base_unit||'piece'), (payload.base_qty_step!=null? Number(payload.base_qty_step): 1), (payload.allow_manual_price ? 1 : 0), pid]);
         }
 
         // Reset barcode_used when barcode changes (one-time barcode feature)

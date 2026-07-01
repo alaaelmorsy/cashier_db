@@ -43,6 +43,19 @@ const __settingsReady = (async()=>{
       __zatcaEnabled = !!(s.zatca_enabled);
       __showEmpSelector = s.show_employee_selector == null ? true : !!(s.show_employee_selector);
       if(r.total_invoices != null){ __totalInvoices = Number(r.total_invoices || 0); renderInvPager(); }
+      const statsBox = document.getElementById('zatcaStats');
+      if(statsBox){
+        if(__zatcaEnabled && r.zatca_stats){
+          statsBox.classList.remove('hidden');
+          statsBox.classList.add('flex');
+          document.getElementById('zatcaStatSent').textContent = r.zatca_stats.sent || 0;
+          document.getElementById('zatcaStatPending').textContent = r.zatca_stats.pending || 0;
+          document.getElementById('zatcaStatFailed').textContent = r.zatca_stats.failed || 0;
+        } else {
+          statsBox.classList.add('hidden');
+          statsBox.classList.remove('flex');
+        }
+      }
     }
   }catch(_){ /* ignore */ }
 })();
@@ -147,28 +160,33 @@ function renderRows(list){
   renderInvPager();
 }
 
+function openInvoiceView(row){
+  if(!hasInvoice('invoices.view')) return;
+  const id = Number(row.id);
+  // open print view honoring default_print_format from settings
+  const page = (__defPrintFormat === 'a4') ? 'print-a4.html' : 'print.html';
+  const method = String(row.payment_method||'');
+  // Prefer persisted settled_cash for settled cash invoices; fallback to full total
+  const cash = (method==='cash')
+    ? ((row.settled_cash != null) ? Number(row.settled_cash) : Number(row.grand_total||0))
+    : 0;
+  // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
+  // إضافة reprint=1 لمنع إرسال واتساب تلقائياً عند إعادة الطباعة
+  const cashierName = String(row.created_by_username || '').trim();
+  const params = new URLSearchParams({ id: String(id), ...(method?{pay:method}:{}) , ...(cash?{cash:String(cash)}:{}), refresh: '1', reprint: '1', ...(cashierName ? {cashier: cashierName} : {}) });
+  const url = `../sales/${page}?${params.toString()}`;
+  const w = (__defPrintFormat === 'a4') ? 900 : 500;
+  const h = (__defPrintFormat === 'a4') ? 1000 : 700;
+  window.open(url, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+}
+
 function onTableAction(e){
   const b = e.target.closest('button'); if(!b) return;
   const act = b.getAttribute('data-act');
   if(act==='view'){
-    if(!hasInvoice('invoices.view')) return;
     const id = Number(b.getAttribute('data-id'));
-    // open print view honoring default_print_format from settings
-    const page = (__defPrintFormat === 'a4') ? 'print-a4.html' : 'print.html';
     const row = __allInvoices.find(x=>Number(x.id)===id) || {};
-    const method = String(row.payment_method||'');
-    // Prefer persisted settled_cash for settled cash invoices; fallback to full total
-    const cash = (method==='cash')
-      ? ((row.settled_cash != null) ? Number(row.settled_cash) : Number(row.grand_total||0))
-      : 0;
-    // إضافة refresh=1 لضمان تحميل البيانات المحدثة وعرض تاريخ الدفع
-    // إضافة reprint=1 لمنع إرسال واتساب تلقائياً عند إعادة الطباعة
-    const cashierName = String(row.created_by_username || '').trim();
-    const params = new URLSearchParams({ id: String(id), ...(method?{pay:method}:{}) , ...(cash?{cash:String(cash)}:{}), refresh: '1', reprint: '1', ...(cashierName ? {cashier: cashierName} : {}) });
-    const url = `../sales/${page}?${params.toString()}`;
-    const w = (__defPrintFormat === 'a4') ? 900 : 500;
-    const h = (__defPrintFormat === 'a4') ? 1000 : 700;
-    window.open(url, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
+    openInvoiceView(row);
   }
   if(act==='send'){
     const id = Number(b.getAttribute('data-id'));
@@ -225,9 +243,146 @@ function onTableAction(e){
   if(modal){ modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; } }); }
 })();
 
+// ─── Failed ZATCA Invoices Modal ───
+let __failedZatcaPage = 1;
+const __failedZatcaPageSize = 20;
+let __failedZatcaTotal = 0;
+
+function renderFailedZatcaPager(){
+  const pager = document.getElementById('failedZatcaPager');
+  if(!pager) return;
+  const pages = Math.max(1, Math.ceil(__failedZatcaTotal / __failedZatcaPageSize));
+  if(pages <= 1){ pager.innerHTML = ''; return; }
+  const btn = (l,d,g) => `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" ${d?'disabled':''} data-go="${g}">${l}</button>`;
+  pager.innerHTML = [
+    btn('⏮️', __failedZatcaPage<=1, 'first'),
+    btn('◀️', __failedZatcaPage<=1, 'prev'),
+    `<span class="text-gray-600 font-medium px-2 text-sm">صفحة ${__failedZatcaPage} من ${pages}</span>`,
+    btn('▶️', __failedZatcaPage>=pages, 'next'),
+    btn('⏭️', __failedZatcaPage>=pages, 'last'),
+  ].join(' ');
+  pager.onclick = (e) => {
+    const b = e.target.closest('button'); if(!b) return;
+    const act = b.getAttribute('data-go');
+    if(act==='first') __failedZatcaPage = 1;
+    else if(act==='prev') __failedZatcaPage = Math.max(1, __failedZatcaPage-1);
+    else if(act==='next') __failedZatcaPage = Math.min(pages, __failedZatcaPage+1);
+    else if(act==='last') __failedZatcaPage = pages;
+    loadFailedZatcaPage();
+  };
+}
+
+async function openFailedZatcaModal(){
+  const modal = document.getElementById('failedZatcaModal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  __failedZatcaPage = 1;
+  await loadFailedZatcaPage();
+}
+
+async function loadFailedZatcaPage(){
+  const loading = document.getElementById('failedZatcaLoading');
+  const empty = document.getElementById('failedZatcaEmpty');
+  const table = document.getElementById('failedZatcaTable');
+  const tbody = document.getElementById('failedZatcaTbody');
+  const countEl = document.getElementById('failedZatcaCount');
+  const pager = document.getElementById('failedZatcaPager');
+
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  table.style.display = 'none';
+  pager.innerHTML = '';
+
+  try{
+    const r = await window.api.sales_list({ type: 'invoice', zatca_status: 'rejected', page: __failedZatcaPage, pageSize: __failedZatcaPageSize });
+    loading.style.display = 'none';
+    if(!r || !r.ok){
+      empty.textContent = r?.error || 'تعذر تحميل الفواتير';
+      empty.style.display = 'block';
+      return;
+    }
+    const items = r.items || [];
+    __failedZatcaTotal = r.total || 0;
+    countEl.textContent = __failedZatcaTotal;
+    if(!items.length){
+      empty.textContent = 'لا توجد فواتير فاشلة الإرسال 🎉';
+      empty.style.display = 'block';
+      return;
+    }
+    table.style.display = 'table';
+    const canView = hasInvoice('invoices.view');
+    const isAr = (document.documentElement.lang || 'ar') !== 'en';
+    const PMETH = isAr
+      ? {cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'}
+      : {cash:'Cash',card:'Network',credit:'Credit',mixed:'Mixed',tamara:'Tamara',tabby:'Tabby'};
+    tbody.innerHTML = items.map((row, idx) => {
+      const bg = idx % 2 === 0 ? '#fff' : '#fef2f2';
+      const hasResp = !!(row.zatca_response || row.zatca_rejection_reason);
+      const pmeth = PMETH[String(row.payment_method||'').toLowerCase()] || (row.payment_method||'');
+      return `<tr style="background:${bg};">
+        <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${row.invoice_no}</td>
+        <td style="padding:12px 16px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">${row.disp_customer_phone || row.customer_phone || ''}</td>
+        <td style="padding:12px 16px;font-size:13px;color:#64748b;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${fmtDate(row.created_at)}</td>
+        <td style="padding:12px 16px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">${pmeth}</td>
+        <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;text-align:center;">
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+            ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">عرض الفاتورة</button>` : ''}
+            <button class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium" data-act="send" data-id="${row.id}">📤 إرسال يدوي</button>
+            ${hasResp ? `<button class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium" data-act="show_zresp_failed" data-id="${row.id}">📄 الرد</button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    __failedZatcaItems = items;
+    renderFailedZatcaPager();
+  }catch(e){
+    loading.style.display = 'none';
+    empty.textContent = 'حدث خطأ: ' + (e.message || String(e));
+    empty.style.display = 'block';
+  }
+}
+
+let __failedZatcaItems = [];
+
+(function(){
+  const card = document.getElementById('zatcaCardFailed');
+  const modal = document.getElementById('failedZatcaModal');
+  const closeBtn = document.getElementById('failedZatcaClose');
+  const closeBtn2 = document.getElementById('failedZatcaCloseBtn');
+  const tbody = document.getElementById('failedZatcaTbody');
+  if(card) card.addEventListener('click', openFailedZatcaModal);
+  if(closeBtn) closeBtn.onclick = ()=>{ modal.style.display='none'; };
+  if(closeBtn2) closeBtn2.onclick = ()=>{ modal.style.display='none'; };
+  if(modal) modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
+  if(tbody){
+    tbody.addEventListener('click', (e)=>{
+      const b = e.target.closest('button'); if(!b) return;
+      const act = b.getAttribute('data-act');
+      if(act === 'show_zresp_failed'){
+        const id = Number(b.getAttribute('data-id'));
+        const row = __failedZatcaItems.find(x=>Number(x.id)===id) || {};
+        showZatcaResponseModal(row.zatca_response || row.zatca_rejection_reason || '');
+        return;
+      }
+      if(act === 'view'){
+        const id = Number(b.getAttribute('data-id'));
+        const row = __failedZatcaItems.find(x=>Number(x.id)===id) || {};
+        openInvoiceView(row);
+        return;
+      }
+      // reuse the same 'send' logic as the main table, then refresh this modal's current page
+      onTableAction(e);
+      if(act === 'send'){
+        setTimeout(()=>{ loadFailedZatcaPage(); }, 600);
+      }
+    });
+  }
+})();
+
 function showZatcaResponseModal(raw){
   const modal = document.getElementById('zatcaModal');
   const pre = document.getElementById('zatcaContent');
+  if(modal) modal.style.zIndex = '1100';
   let text = raw;
   try{
     const obj = (typeof raw==='string') ? JSON.parse(raw) : raw;

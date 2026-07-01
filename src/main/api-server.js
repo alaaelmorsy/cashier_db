@@ -88,6 +88,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         user_id,
         type,
         customers_only,
+        zatca_status,
       } = req.query;
 
       const rawLim = req.query.limit;
@@ -140,6 +141,13 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       }
       if (customers_only) {
         whereClauses.push('(s.customer_id IS NOT NULL OR s.customer_name IS NOT NULL)');
+      }
+      if (zatca_status === 'rejected') {
+        whereClauses.push("s.zatca_status='rejected'");
+      } else if (zatca_status === 'sent') {
+        whereClauses.push("s.zatca_status<>'rejected' AND (s.zatca_status IN ('submitted','accepted') OR s.zatca_submitted IS NOT NULL)");
+      } else if (zatca_status === 'not_sent') {
+        whereClauses.push("(s.zatca_status IS NULL OR s.zatca_status NOT IN ('rejected','submitted','accepted')) AND s.zatca_submitted IS NULL");
       }
 
       if (date_from && date_to) {
@@ -449,7 +457,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { q, active, hide_from_sales, category, sort, limit = 500, offset = 0, skip_count, starts_with } = req.query;
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
       const where = [];
       const whereParams = [];
       const orderParams = [];
@@ -1038,7 +1046,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { sort = 'custom', limit = 48, category } = req.query;
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
       const prodWhere = ['is_active=1', 'hide_from_sales=0'];
       const prodParams = [];
       if (category) { prodWhere.push('category=?'); prodParams.push(category); }
@@ -1614,16 +1622,42 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     let conn;
     try {
       conn = await dbAdapter.getConnection();
-      const [[settingsRow], [cntRow]] = await Promise.all([
+      let sendFromDate = null;
+      try {
+        const { app: electronApp } = require('electron');
+        const cfgPath = require('path').join(electronApp.getPath('userData'), '.zatca-config.json');
+        const cfg = JSON.parse(require('fs').readFileSync(cfgPath, 'utf8'));
+        if (cfg && cfg.sendFromDate) sendFromDate = cfg.sendFromDate;
+      } catch (_) { /* no config yet */ }
+      const zatcaSql = `
+        SELECT
+          SUM(CASE WHEN zatca_status='rejected' THEN 1 ELSE 0 END) AS failed,
+          SUM(CASE WHEN zatca_status<>'rejected' AND (zatca_status IN ('submitted','accepted') OR zatca_submitted IS NOT NULL) THEN 1 ELSE 0 END) AS sent,
+          COUNT(*) AS total
+        FROM sales
+        WHERE (doc_type IS NULL OR doc_type='invoice') ${sendFromDate ? 'AND DATE(created_at) >= ?' : ''}
+      `;
+      const zatcaParams = sendFromDate ? [sendFromDate] : [];
+      const [[settingsRow], [cntRow], [zatcaRow]] = await Promise.all([
         conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
         conn.query(`SELECT COUNT(*) AS total FROM sales WHERE (doc_type IS NULL OR doc_type='invoice')`),
+        conn.query(zatcaSql, zatcaParams),
       ]);
       const settings = (settingsRow && settingsRow[0]) || {};
       try {
         if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
         if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
       } catch (_) { settings.payment_methods = []; }
-      res.json({ ok: true, settings, total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0) });
+      const zStats = (zatcaRow && zatcaRow[0]) || {};
+      const zSent = Number(zStats.sent || 0);
+      const zFailed = Number(zStats.failed || 0);
+      const zTotal = Number(zStats.total || 0);
+      res.json({
+        ok: true,
+        settings,
+        total_invoices: Number((cntRow && cntRow[0] && cntRow[0].total) || 0),
+        zatca_stats: { sent: zSent, failed: zFailed, pending: Math.max(0, zTotal - zSent - zFailed) },
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
