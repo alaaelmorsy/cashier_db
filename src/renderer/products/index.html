@@ -125,36 +125,24 @@
       table th {
         font-size: 13px;
       }
-      table td:nth-child(1) { width: 3%; }
-      table td:nth-child(2) { width: 5%; }
-      table td:nth-child(3) { width: 11%; }
-      table td:nth-child(4) { width: 9%; }
-      table td:nth-child(5) { width: 6%; }
-      table td:nth-child(6) { width: 6%; }
-      table td:nth-child(7) { width: 9%; }
-      table td:nth-child(8) { width: 6%; }
-      table td:nth-child(9) { width: 7%; }
-      table td:nth-child(10) { width: 7%; }
-      table td:nth-child(11) { width: 7%; }
-      table td:nth-child(12) { width: 6%; }
-      table td:nth-child(13) { width: 7%; }
-      table td:nth-child(14) { width: 6%; }
-      table td:nth-child(15) { width: 9%; }
-      table th:nth-child(1) { width: 3%; }
-      table th:nth-child(2) { width: 5%; }
-      table th:nth-child(3) { width: 11%; }
-      table th:nth-child(4) { width: 9%; }
-      table th:nth-child(5) { width: 6%; }
-      table th:nth-child(6) { width: 6%; }
-      table th:nth-child(7) { width: 9%; }
-      table th:nth-child(8) { width: 6%; }
-      table th:nth-child(9) { width: 7%; }
-      table th:nth-child(10) { width: 7%; }
-      table th:nth-child(11) { width: 7%; }
-      table th:nth-child(12) { width: 6%; }
-      table th:nth-child(13) { width: 7%; }
-      table th:nth-child(14) { width: 6%; }
-      table th:nth-child(15) { width: 9%; }
+      /* عروض الأعمدة (17 عموداً بعد إضافة المعلق والمتوفر في 9 و10) */
+      table td:nth-child(1),  table th:nth-child(1)  { width: 3%; }
+      table td:nth-child(2),  table th:nth-child(2)  { width: 5%; }
+      table td:nth-child(3),  table th:nth-child(3)  { width: 10%; }
+      table td:nth-child(4),  table th:nth-child(4)  { width: 8%; }
+      table td:nth-child(5),  table th:nth-child(5)  { width: 6%; }
+      table td:nth-child(6),  table th:nth-child(6)  { width: 6%; }
+      table td:nth-child(7),  table th:nth-child(7)  { width: 8%; }
+      table td:nth-child(8),  table th:nth-child(8)  { width: 5%; }
+      table td:nth-child(9),  table th:nth-child(9)  { width: 5%; }
+      table td:nth-child(10), table th:nth-child(10) { width: 5%; }
+      table td:nth-child(11), table th:nth-child(11) { width: 6%; }
+      table td:nth-child(12), table th:nth-child(12) { width: 6%; }
+      table td:nth-child(13), table th:nth-child(13) { width: 6%; }
+      table td:nth-child(14), table th:nth-child(14) { width: 6%; }
+      table td:nth-child(15), table th:nth-child(15) { width: 6%; }
+      table td:nth-child(16), table th:nth-child(16) { width: 6%; }
+      table td:nth-child(17), table th:nth-child(17) { width: 9%; }
       tbody tr {
         border-bottom: 3px solid #d1d5db;
       }
@@ -242,8 +230,12 @@
         <div id="pagerTop" class="flex gap-2 items-center"></div>
       </div>
 
-      <div class="overflow-hidden rounded-lg border border-gray-200">
-        <table class="w-full bg-white">
+      <style>
+        table.hide-held-cols .col-held,
+        table.hide-held-cols .col-available { display: none; }
+      </style>
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table id="productsTable" class="w-full bg-white" style="min-width:1100px;">
           <thead>
             <tr class="bg-blue-50">
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">#</th>
@@ -254,6 +246,8 @@
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">سعر البيع</th>
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">العمليات وأسعارها</th>
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">المخزون</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200 col-held">المعلق</th>
+              <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200 col-available">المتوفر</th>
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">إجمالي الشراء</th>
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">إجمالي البيع</th>
               <th class="px-4 py-3 text-right text-sm font-bold text-blue-900 border-b border-gray-200">صافي الربح</th>

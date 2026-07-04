@@ -748,6 +748,56 @@ async function loadRowData(tr, p) {
   }, { timeout: 500 });
 }
 
+// خريطة الكميات المعلقة (من الفواتير المعلقة) لكل منتج
+let __heldStockMap = {};
+let __showHeldCols = true;
+
+async function applyHeldColsSetting(){
+  try{
+    const st = await window.api.settings_get();
+    const s = (st && st.ok) ? (st.item || {}) : {};
+    __showHeldCols = (typeof s.show_held_available_columns === 'undefined') ? true : !!s.show_held_available_columns;
+  }catch(_){ __showHeldCols = true; }
+  const tbl = document.getElementById('productsTable');
+  if(tbl) tbl.classList.toggle('hide-held-cols', !__showHeldCols);
+}
+
+async function refreshHeldStockMap(){
+  __heldStockMap = {};
+  try{
+    const r = await window.api.held_invoices_list();
+    if(r && r.ok){
+      (r.items || []).forEach(inv => {
+        (inv.cart || []).forEach(it => {
+          const pid = Number(it.id || it.product_id);
+          if(!pid) return;
+          const mult = (it.unit_multiplier != null) ? Number(it.unit_multiplier) : 1;
+          const qty = Number(it.qty || 0) * (mult > 0 ? mult : 1);
+          __heldStockMap[pid] = (__heldStockMap[pid] || 0) + qty;
+        });
+      });
+    }
+  }catch(_){ }
+}
+
+// استقبال تغيير الإعداد من شاشة الإعدادات دون إعادة تشغيل
+window.addEventListener('storage', (e) => {
+  if(e.key === 'pos_held_invoices_changed'){
+    // تحديث عمودي المعلق والمتوفر عند تعليق/استرجاع/حذف فاتورة من شاشة البيع
+    if(__showHeldCols){ try{ loadProducts(false, false); }catch(_){ } }
+    return;
+  }
+  if(e.key === 'pos_settings_held_columns'){
+    try{
+      const v = JSON.parse(e.newValue || '{}');
+      __showHeldCols = !!v.show_held_available_columns;
+      const tbl = document.getElementById('productsTable');
+      if(tbl) tbl.classList.toggle('hide-held-cols', !__showHeldCols);
+      loadProducts(false, false);
+    }catch(_){ }
+  }
+});
+
 function renderRows(list){
   tbody.innerHTML='';
   
@@ -852,7 +902,9 @@ function renderRows(list){
         ${priceExportBtn}
       </td>
       <td class="ops-cell" data-id="${p.id}" style="font-size:12px; color:var(--muted);">...</td>
-      <td>${stockVal}</td>
+      <td>${stockVal + Number(__heldStockMap[p.id]||0)}</td>
+      <td class="col-held" style="color:#d97706; font-weight:700">${Number(__heldStockMap[p.id]||0)}</td>
+      <td class="col-available" style="color:#047857; font-weight:700">${stockVal}</td>
       <td class="total-buy" data-id="${p.id}">${totalBuy.toFixed(2)}</td>
       <td class="total-sell" data-id="${p.id}">${totalSell.toFixed(2)}</td>
       <td class="net-profit" data-id="${p.id}" style="font-weight:700; color: ${netProfit>0 ? '#047857' : (netProfit<0 ? '#dc2626' : 'inherit')}">${netProfit.toFixed(2)}</td>
@@ -927,6 +979,7 @@ async function loadProducts(resetPage = true, clearError = true){
     }
     
     __allProducts = products;
+    await refreshHeldStockMap();
     renderRows(__allProducts);
     renderPager(__totalProducts);
   } catch(err) {
@@ -2321,6 +2374,6 @@ if(btnDownloadTemplate){
 }
 
 (async () => {
-  await Promise.all([__permsReadyPromise, populateFilterCategories()]);
+  await Promise.all([__permsReadyPromise, populateFilterCategories(), applyHeldColsSetting()]);
   await loadProducts();
 })();

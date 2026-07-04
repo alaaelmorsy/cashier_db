@@ -5701,6 +5701,11 @@ function setupHeldInvoices(){
   const heldInvoicesSearch = document.getElementById('heldInvoicesSearch');
   let heldInvoicesCache = [];
 
+  // إشعار الشاشات الأخرى (مثل شاشة المنتجات) بتغير الفواتير المعلقة
+  function broadcastHeldInvoicesChanged(){
+    try{ localStorage.setItem('pos_held_invoices_changed', String(Date.now())); }catch(_){ }
+  }
+
   if(btnHoldInvoice){
     btnHoldInvoice.addEventListener('click', async ()=>{
       if(!cart || cart.length === 0){
@@ -5751,7 +5756,8 @@ function setupHeldInvoices(){
       computeTotals();
       
       try{ await loadCatalog(); }catch(_){}
-      
+
+      broadcastHeldInvoicesChanged();
       showSuccessNotification(_t('notifHoldSuccess'));
     });
   }
@@ -5945,7 +5951,8 @@ function setupHeldInvoices(){
     }
     
     await window.api.held_invoices_delete(dbId);
-    
+    broadcastHeldInvoicesChanged();
+
     await loadHeldInvoicesList();
     
     setTimeout(() => {
@@ -5989,8 +5996,9 @@ function setupHeldInvoices(){
       return;
     }
     
+    broadcastHeldInvoicesChanged();
     await loadHeldInvoicesList();
-    
+
     showSuccessNotification(_t('notifDeleteHoldSuccess'));
   }
 }

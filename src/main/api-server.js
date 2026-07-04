@@ -767,7 +767,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         'prices_include_vat', 'allow_sell_zero_stock', 'allow_negative_inventory',
         'op_price_manual', 'cart_separate_duplicate_lines', 'zatca_enabled',
         'hide_product_images', 'show_quotation_button', 'show_selling_units',
-        'show_employee_selector', 'show_cart_item_description', 'recovery_unlocked', 'require_payment_before_print',
+        'show_employee_selector', 'show_cart_item_description', 'show_held_available_columns', 'quotation_hide_prices', 'recovery_unlocked', 'require_payment_before_print',
         'daily_email_enabled', 'db_backup_enabled', 'db_backup_local_enabled',
         'smtp_secure', 'show_trial_notice', 'show_email_in_invoice', 'show_barcode_in_a4',
         'print_show_change', 'allow_discount', 'barcode_show_shop_name',
@@ -833,7 +833,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         low_stock_email_per_item=?, low_stock_email_cooldown_hours=?,
         weight_mode_enabled=?, electronic_scale_enabled=?, electronic_scale_type=?,
         show_quotation_button=?, show_selling_units=?, show_employee_selector=?,
-        show_cart_item_description=?,
+        show_cart_item_description=?, show_held_available_columns=?, quotation_hide_prices=?,
         require_payment_before_print=?, require_customer_before_print=?, require_phone_min_10=?,
         customer_display_enabled=?, customer_display_simulator=?, customer_display_port=?,
         customer_display_baud_rate=?, customer_display_columns=?, customer_display_rows=?,
@@ -889,7 +889,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
           p.weight_mode_enabled ? 1 : 0, p.electronic_scale_enabled ? 1 : 0,
           p.electronic_scale_type==='price' ? 'price' : 'weight',
           p.show_quotation_button ? 1 : 0, p.show_selling_units ? 1 : 0, p.show_employee_selector ? 1 : 0,
-          p.show_cart_item_description ? 1 : 0,
+          p.show_cart_item_description ? 1 : 0, p.show_held_available_columns ? 1 : 0, p.quotation_hide_prices ? 1 : 0,
           p.require_payment_before_print ? 1 : 0, p.require_customer_before_print ? 1 : 0, p.require_phone_min_10 ? 1 : 0,
           p.customer_display_enabled ? 1 : 0, p.customer_display_simulator ? 1 : 0,
           p.customer_display_port||null, p.customer_display_baud_rate ? Number(p.customer_display_baud_rate) : 9600,
@@ -1439,7 +1439,16 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         return res.status(400).json({ ok: false, error: 'السلة فارغة' });
       }
       conn = await dbAdapter.getConnection();
+      const { adjustStockForHeldCart, checkStockForHeldCart, notifyProductsChanged } = require('./held_invoices');
+      // منع تعليق كميات أكبر من المتوفر في المخزون
+      const shortageMsg = await checkStockForHeldCart(conn, payload.cart);
+      if(shortageMsg) return res.status(400).json({ ok: false, error: shortageMsg });
       const [result] = await conn.query('INSERT INTO held_invoices (invoice_data) VALUES (?)', [JSON.stringify(payload)]);
+      // حجز الكميات المعلقة: خصم من المخزون
+      try{
+        await adjustStockForHeldCart(conn, payload.cart, -1);
+        notifyProductsChanged('held-reserved');
+      }catch(_){ }
       res.json({ ok: true, id: result.insertId });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -1453,7 +1462,17 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const id = Number(req.params.id);
       conn = await dbAdapter.getConnection();
+      // إعادة الكميات المحجوزة للمخزون قبل الحذف
+      const [rows] = await conn.query('SELECT invoice_data FROM held_invoices WHERE id=?', [id]);
       await conn.query('DELETE FROM held_invoices WHERE id=?', [id]);
+      if(rows && rows[0]){
+        try{
+          const { adjustStockForHeldCart, notifyProductsChanged } = require('./held_invoices');
+          const data = JSON.parse(rows[0].invoice_data);
+          await adjustStockForHeldCart(conn, data.cart, +1);
+          notifyProductsChanged('held-released');
+        }catch(_){ }
+      }
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });

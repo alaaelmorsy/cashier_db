@@ -191,6 +191,8 @@ function translateUI(isAr){
   __lblFor('f_show_selling_units', isAr ? 'إظهار وحدات البيع في شاشة المنتجات (كرتون، علبة، إلخ)' : 'Show selling units on products screen (carton, box, etc.)');
   __lblFor('f_show_employee_selector', isAr ? 'إظهار قائمة اختيار الموظف لكل منتج في الفاتورة' : 'Show employee selector for each product in invoice');
   __lblFor('f_show_cart_item_description', isAr ? 'إظهار خانة وصف الصنف في سلة البيع' : 'Show item description field in sales cart');
+  __lblFor('f_show_held_available_columns', isAr ? 'إظهار عمودي المعلق والمتوفر في شاشة المنتجات' : 'Show held/available columns on products screen');
+  __lblFor('f_quotation_hide_prices', isAr ? 'إخفاء الأسعار والضريبة في عرض السعر (يظهر اسم الصنف والعدد فقط)' : 'Hide prices and VAT in quotation (show item name & qty only)');
 
   __txt('sTitle-advanced', isAr ? 'التقارير والنسخ الاحتياطي' : 'Reports & Backup');
   __txt('sDesc-advanced', isAr ? 'إعداد التقارير اليومية والنسخ الاحتياطية' : 'Configure daily reports and backups');
@@ -348,6 +350,8 @@ const fShowQuotationButton = document.getElementById('f_show_quotation_button');
 const fShowSellingUnits = document.getElementById('f_show_selling_units');
 const fShowEmployeeSelector = document.getElementById('f_show_employee_selector');
 const fShowCartItemDescription = document.getElementById('f_show_cart_item_description');
+const fShowHeldAvailableColumns = document.getElementById('f_show_held_available_columns');
+const fQuotationHidePrices = document.getElementById('f_quotation_hide_prices');
 const fCartSeparateDup = document.getElementById('f_cart_separate_duplicate_lines');
 const fClosingHour = document.getElementById('f_closing_hour');
 // WhatsApp auto-send checkbox
@@ -574,6 +578,8 @@ async function loadSettings(){
   if (fShowSellingUnits) fShowSellingUnits.checked = (typeof s.show_selling_units === 'undefined') ? true : !!s.show_selling_units;
   if (fShowEmployeeSelector) fShowEmployeeSelector.checked = (typeof s.show_employee_selector === 'undefined') ? true : !!s.show_employee_selector;
   if (fShowCartItemDescription) fShowCartItemDescription.checked = (typeof s.show_cart_item_description === 'undefined') ? true : !!s.show_cart_item_description;
+  if (fShowHeldAvailableColumns) fShowHeldAvailableColumns.checked = (typeof s.show_held_available_columns === 'undefined') ? true : !!s.show_held_available_columns;
+  if (fQuotationHidePrices) fQuotationHidePrices.checked = !!s.quotation_hide_prices;
   if (fClosingHour) fClosingHour.value = s.closing_hour || '';
   // Low stock threshold
   try{
@@ -1018,6 +1024,8 @@ saveBtn.addEventListener('click', async () => {
     show_selling_units: !!(fShowSellingUnits?.checked),
     show_employee_selector: !!(fShowEmployeeSelector?.checked),
     show_cart_item_description: !!(fShowCartItemDescription?.checked),
+    show_held_available_columns: !!(fShowHeldAvailableColumns?.checked),
+    quotation_hide_prices: !!(fQuotationHidePrices?.checked),
     closing_hour: (fClosingHour?.value || '').trim() || null,
     // Print margins (mm)
     print_margin_right_mm: (fPrintMarginRight?.value==='' ? null : Number(fPrintMarginRight?.value)),
@@ -1128,6 +1136,10 @@ saveBtn.addEventListener('click', async () => {
     const quotationBtn = { show_quotation_button: !!payload.show_quotation_button };
     localStorage.setItem('pos_settings_quotation', JSON.stringify(quotationBtn));
     window.dispatchEvent(new StorageEvent('storage', { key: 'pos_settings_quotation', newValue: JSON.stringify(quotationBtn) }));
+    // بث إعداد عمودي المعلق والمتوفر في شاشة المنتجات
+    const heldCols = { show_held_available_columns: !!payload.show_held_available_columns };
+    localStorage.setItem('pos_settings_held_columns', JSON.stringify(heldCols));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pos_settings_held_columns', newValue: JSON.stringify(heldCols) }));
     // بث إعداد تحديث سعر المنتج عند تعديله في السلة
     const updatePriceOnEdit = { update_product_price_on_edit: !!payload.update_product_price_on_edit };
     localStorage.setItem('pos_settings_update_price_on_edit', JSON.stringify(updatePriceOnEdit));

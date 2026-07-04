@@ -138,6 +138,14 @@
       table.no-vat.no-op thead th:nth-child(4), table.no-vat.no-op tbody td:nth-child(4){ display: table-cell; width: 12%; text-align:center; }
       table.no-vat.no-op thead th:nth-child(5), table.no-vat.no-op tbody td:nth-child(5){ width: 17%; text-align:center; }
       table.no-vat.no-op thead th:nth-child(6), table.no-vat.no-op tbody td:nth-child(6){ width: 17%; text-align:center; }
+      /* إخفاء الأسعار والضريبة في عرض السعر: يبقى اسم الصنف والعدد فقط */
+      #itemsTable.hide-prices thead th:nth-child(n+6),
+      #itemsTable.hide-prices tbody tr.item-row td:nth-child(n+6){ display:none !important; }
+      #itemsTable.no-vat.no-op.hide-prices thead th:nth-child(n+5),
+      #itemsTable.no-vat.no-op.hide-prices tbody tr.item-row td:nth-child(n+5){ display:none !important; }
+      #itemsTable.hide-prices thead th:nth-child(3),
+      #itemsTable.hide-prices tbody tr.item-row td:nth-child(3){ width:70% !important; }
+
       #itemsTable tbody td.num{
         white-space: nowrap;
         overflow: hidden;
@@ -477,6 +485,13 @@
             const quantityLabel = settings.quantity_label || 'عدد';
             const thQuantity = document.getElementById('thQuantityQuotation');
             if(thQuantity) thQuantity.textContent = quantityLabel;
+          }catch(_){ /* ignore */ }
+          // إخفاء الأسعار والضريبة حسب الإعدادات (يبقى اسم الصنف والعدد فقط)
+          try{
+            if(settings.quotation_hide_prices){
+              const tbl = document.getElementById('itemsTable');
+              if(tbl) tbl.classList.add('hide-prices');
+            }
           }catch(_){ /* ignore */ }
           
           // Get cart data from sessionStorage

@@ -272,6 +272,14 @@ function registerSettingsIPC(){
     if(await missing('show_cart_item_description')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN show_cart_item_description TINYINT NOT NULL DEFAULT 1 AFTER show_employee_selector");
     }
+    // UI toggle for held/available columns in products screen
+    if(await missing('show_held_available_columns')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN show_held_available_columns TINYINT NOT NULL DEFAULT 1 AFTER show_cart_item_description");
+    }
+    // UI toggle: hide item prices and VAT columns in quotation (show only name & qty)
+    if(await missing('quotation_hide_prices')){
+      await conn.query("ALTER TABLE app_settings ADD COLUMN quotation_hide_prices TINYINT NOT NULL DEFAULT 0 AFTER show_held_available_columns");
+    }
     // UI toggle for appointments screen (show/hide appointments card in main screen)
     if(await missing('show_appointments')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN show_appointments TINYINT NOT NULL DEFAULT 0 AFTER show_employee_selector");
@@ -585,6 +593,8 @@ function registerSettingsIPC(){
         item.show_selling_units = (item.show_selling_units === undefined || item.show_selling_units === null) ? 1 : (item.show_selling_units ? 1 : 0);
         item.show_employee_selector = (item.show_employee_selector === undefined || item.show_employee_selector === null) ? 1 : (item.show_employee_selector ? 1 : 0);
         item.show_cart_item_description = (item.show_cart_item_description === undefined || item.show_cart_item_description === null) ? 1 : (item.show_cart_item_description ? 1 : 0);
+        item.show_held_available_columns = (item.show_held_available_columns === undefined || item.show_held_available_columns === null) ? 1 : (item.show_held_available_columns ? 1 : 0);
+        item.quotation_hide_prices = item.quotation_hide_prices ? 1 : 0;
         item.show_shifts = (item.show_shifts === undefined || item.show_shifts === null) ? 0 : (item.show_shifts ? 1 : 0);
         item.zatca_enabled = item.zatca_enabled ? 1 : 0;
         // Defaults for tobacco fee settings
@@ -767,6 +777,8 @@ function registerSettingsIPC(){
           show_selling_units=?,
           show_employee_selector=?,
           show_cart_item_description=?,
+          show_held_available_columns=?,
+          quotation_hide_prices=?,
           require_payment_before_print=?,
           require_customer_before_print=?,
           require_phone_min_10=?,
@@ -873,6 +885,8 @@ function registerSettingsIPC(){
           (p.show_selling_units ? 1 : 0),
           (p.show_employee_selector ? 1 : 0),
           (p.show_cart_item_description ? 1 : 0),
+          (p.show_held_available_columns ? 1 : 0),
+          (p.quotation_hide_prices ? 1 : 0),
           (p.require_payment_before_print ? 1 : 0),
           (p.require_customer_before_print ? 1 : 0),
           (p.require_phone_min_10 ? 1 : 0),
