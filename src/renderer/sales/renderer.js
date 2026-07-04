@@ -1683,7 +1683,7 @@ allowOnlyNumbersSales(acmVat);
 allowOnlyNumbersSales(acmCr);
 
 const DEFAULT_PAYMENT_METHODS = ['cash','card','mixed'];
-let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: DEFAULT_PAYMENT_METHODS, op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, require_phone_min_10: false, update_product_price_on_edit: false };
+let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: DEFAULT_PAYMENT_METHODS, op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, show_cart_item_description: 1, require_phone_min_10: false, update_product_price_on_edit: false };
 let cart = []; // {id, name, price, qty, image_path}
 let customerDisplayEnabled = false;
 let currencyCodeForDisplay = 'SAR';
@@ -2628,18 +2628,19 @@ function renderCart(){
     `;
     __cartFrag.appendChild(tr);
 
-    // صف ثانٍ للوصف فقط
-    const trDesc = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 6; // امتداد بعد إضافة عمود العملية
-    const descVal = escapeHtml(it.description||'');
-    td.innerHTML = `
-      <textarea data-idx="${idx}" class="desc" dir="auto" placeholder="${__isAr ? 'وصف الصنف (اختياري)' : 'Item description (optional)'}" rows="1"
-        style="width:100%; font-size:12px; line-height:1.3; padding:4px 6px; min-height:32px; resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere;" ${__isProcessingOld?'disabled':''}>${descVal}</textarea>
-    `;
-    trDesc.appendChild(td);
-    // أظهر صف ملاحظات الصنف دائمًا
-    __cartFrag.appendChild(trDesc);
+    // صف ثانٍ للوصف — يظهر حسب إعداد show_cart_item_description
+    if(settings.show_cart_item_description){
+      const trDesc = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 6; // امتداد بعد إضافة عمود العملية
+      const descVal = escapeHtml(it.description||'');
+      td.innerHTML = `
+        <textarea data-idx="${idx}" class="desc" dir="auto" placeholder="${__isAr ? 'وصف الصنف (اختياري)' : 'Item description (optional)'}" rows="1"
+          style="width:100%; font-size:12px; line-height:1.3; padding:4px 6px; min-height:32px; resize:vertical; white-space:pre-wrap; overflow-wrap:anywhere;" ${__isProcessingOld?'disabled':''}>${descVal}</textarea>
+      `;
+      trDesc.appendChild(td);
+      __cartFrag.appendChild(trDesc);
+    }
 
     // تعبئة العمليات للعنصر ووضع الاختيار في الصف الرئيسي
     (async () => {

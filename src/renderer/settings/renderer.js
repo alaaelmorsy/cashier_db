@@ -190,6 +190,7 @@ function translateUI(isAr){
   __lblFor('f_show_quotation_button', isAr ? 'إظهار زر عرض السعر في شاشة المبيعات' : 'Show quotation button on sales screen');
   __lblFor('f_show_selling_units', isAr ? 'إظهار وحدات البيع في شاشة المنتجات (كرتون، علبة، إلخ)' : 'Show selling units on products screen (carton, box, etc.)');
   __lblFor('f_show_employee_selector', isAr ? 'إظهار قائمة اختيار الموظف لكل منتج في الفاتورة' : 'Show employee selector for each product in invoice');
+  __lblFor('f_show_cart_item_description', isAr ? 'إظهار خانة وصف الصنف في سلة البيع' : 'Show item description field in sales cart');
 
   __txt('sTitle-advanced', isAr ? 'التقارير والنسخ الاحتياطي' : 'Reports & Backup');
   __txt('sDesc-advanced', isAr ? 'إعداد التقارير اليومية والنسخ الاحتياطية' : 'Configure daily reports and backups');
@@ -346,6 +347,7 @@ const fHideProductImages = document.getElementById('f_hide_product_images');
 const fShowQuotationButton = document.getElementById('f_show_quotation_button');
 const fShowSellingUnits = document.getElementById('f_show_selling_units');
 const fShowEmployeeSelector = document.getElementById('f_show_employee_selector');
+const fShowCartItemDescription = document.getElementById('f_show_cart_item_description');
 const fCartSeparateDup = document.getElementById('f_cart_separate_duplicate_lines');
 const fClosingHour = document.getElementById('f_closing_hour');
 // WhatsApp auto-send checkbox
@@ -571,6 +573,7 @@ async function loadSettings(){
   if (fShowQuotationButton) fShowQuotationButton.checked = (typeof s.show_quotation_button === 'undefined') ? true : !!s.show_quotation_button;
   if (fShowSellingUnits) fShowSellingUnits.checked = (typeof s.show_selling_units === 'undefined') ? true : !!s.show_selling_units;
   if (fShowEmployeeSelector) fShowEmployeeSelector.checked = (typeof s.show_employee_selector === 'undefined') ? true : !!s.show_employee_selector;
+  if (fShowCartItemDescription) fShowCartItemDescription.checked = (typeof s.show_cart_item_description === 'undefined') ? true : !!s.show_cart_item_description;
   if (fClosingHour) fClosingHour.value = s.closing_hour || '';
   // Low stock threshold
   try{
@@ -1014,6 +1017,7 @@ saveBtn.addEventListener('click', async () => {
     show_quotation_button: !!(fShowQuotationButton?.checked),
     show_selling_units: !!(fShowSellingUnits?.checked),
     show_employee_selector: !!(fShowEmployeeSelector?.checked),
+    show_cart_item_description: !!(fShowCartItemDescription?.checked),
     closing_hour: (fClosingHour?.value || '').trim() || null,
     // Print margins (mm)
     print_margin_right_mm: (fPrintMarginRight?.value==='' ? null : Number(fPrintMarginRight?.value)),

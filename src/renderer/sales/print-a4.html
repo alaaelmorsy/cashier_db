@@ -263,7 +263,8 @@
     </style>
   </head>
   <body>
-    <button class="close-btn" onclick="window.close()">إغلاق</button>
+    <button class="close-btn" onclick="window.close()">إغلاق (Esc)</button>
+    <script>document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ window.close(); } });</script>
     <button class="reprint-btn" id="reprintBtn" onclick="window.print()">إعادة طباعة</button>
     <button class="export-btn" id="exportBtn">تصدير PDF</button>
     <button class="whats-btn" id="whatsBtn">إرسال واتساب</button>
