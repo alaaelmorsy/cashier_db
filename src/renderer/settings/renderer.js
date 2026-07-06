@@ -357,6 +357,7 @@ const fClosingHour = document.getElementById('f_closing_hour');
 // WhatsApp auto-send checkbox
 const fWhatsAuto = document.getElementById('f_whatsapp_auto');
 const fWhatsAutoConnect = document.getElementById('f_whatsapp_auto_connect');
+const fWhatsFooterText = document.getElementById('f_whatsapp_footer_text');
 const fZatcaEnabled = document.getElementById('f_zatca_enabled');
 // Weight mode toggle
 const fWeightModeEnabled = document.getElementById('f_weight_mode_enabled');
@@ -597,6 +598,7 @@ async function loadSettings(){
   // WhatsApp auto-send
   if (fWhatsAuto) fWhatsAuto.checked = !!s.whatsapp_on_print;
   if (fWhatsAutoConnect) fWhatsAutoConnect.checked = !!s.whatsapp_auto_connect;
+  if (fWhatsFooterText) fWhatsFooterText.value = s.whatsapp_message || '';
   if (fZatcaEnabled) fZatcaEnabled.checked = !!s.zatca_enabled;
   if (fCartSeparateDup) fCartSeparateDup.checked = !!s.cart_separate_duplicate_lines;
   if (fWeightModeEnabled) fWeightModeEnabled.checked = !!s.weight_mode_enabled;
@@ -1033,7 +1035,7 @@ saveBtn.addEventListener('click', async () => {
     // WhatsApp auto-send
     whatsapp_on_print: !!(fWhatsAuto?.checked),
     whatsapp_auto_connect: !!(fWhatsAutoConnect?.checked),
-    whatsapp_message: null,
+    whatsapp_message: (fWhatsFooterText?.value || '').trim() || null,
     // Daily email scheduler fields (from modal)
     daily_email_enabled: !!(emEnabled?.checked),
     daily_email_time: (emTime?.value || '').trim() || null,

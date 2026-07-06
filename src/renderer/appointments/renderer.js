@@ -967,7 +967,8 @@ async function sendWhatsAppMessage(appointmentId, phone, customerName) {
     // 6. إرسال PDF عبر WhatsApp
     console.log('PDF created at:', pdfResult.path);
     const companyName = settings.seller_legal_name || settings.company_name || 'مؤسستنا';
-    const caption = `سند حجز موعد ${appointment.customer_name || ''} من ${companyName}`;
+    const waFooter = (settings && String(settings.whatsapp_message || '').trim()) ? `\n\n*${String(settings.whatsapp_message).trim()}*` : '';
+    const caption = `سند حجز موعد ${appointment.customer_name || ''} من ${companyName}` + waFooter;
     
     console.log('Sending to phone:', rawPhone);
     console.log('PDF path:', pdfResult.path);

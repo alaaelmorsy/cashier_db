@@ -1489,7 +1489,8 @@
                         const company = (settings && settings.seller_legal_name) ? 
                                        settings.seller_legal_name : 'فاتورة';
                         const invNo = String(sale.invoice_no||'');
-                        const caption = `فاتورة رقم ${invNo} من ${company}`;
+                        const waFooter = (settings && String(settings.whatsapp_message || '').trim()) ? `\n\n*${String(settings.whatsapp_message).trim()}*` : '';
+                  const caption = `فاتورة رقم ${invNo} من ${company}` + waFooter;
                         
                         false && console.log('Sending to phone:', rawPhone);
                         
@@ -1863,7 +1864,8 @@
                   const company = (settings && settings.seller_legal_name) ? 
                                  settings.seller_legal_name : 'فاتورة';
                   const invNo = String(sale.invoice_no||'');
-                  const caption = `فاتورة رقم ${invNo} من ${company}`;
+                  const waFooter = (settings && String(settings.whatsapp_message || '').trim()) ? `\n\n*${String(settings.whatsapp_message).trim()}*` : '';
+                  const caption = `فاتورة رقم ${invNo} من ${company}` + waFooter;
                   
                   false && console.log(`📤 [${Date.now()}] Sending PDF via WhatsApp to: ${rawPhone}`);
                   false && console.log(`📤 [${Date.now()}] File path: ${pdfResult.path}`);

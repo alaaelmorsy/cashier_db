@@ -1034,7 +1034,8 @@
                         const company = (settings && settings.seller_legal_name) ? 
                                        settings.seller_legal_name : 'عرض سعر';
                         const quotationNo = String(refNum||'');
-                        const caption = `عرض سعر رقم ${quotationNo} من ${company}`;
+                        const waFooter = (settings && String(settings.whatsapp_message || '').trim()) ? `\n\n*${String(settings.whatsapp_message).trim()}*` : '';
+                  const caption = `عرض سعر رقم ${quotationNo} من ${company}` + waFooter;
                         
                         const sendResult = await api.whatsapp_send_file(
                           rawPhone, 
@@ -1299,7 +1300,8 @@
                   const company = (settings && settings.seller_legal_name) ? 
                                  settings.seller_legal_name : 'عرض سعر';
                   const quotationNo = String(refNum||'');
-                  const caption = `عرض سعر رقم ${quotationNo} من ${company}`;
+                  const waFooter = (settings && String(settings.whatsapp_message || '').trim()) ? `\n\n*${String(settings.whatsapp_message).trim()}*` : '';
+                  const caption = `عرض سعر رقم ${quotationNo} من ${company}` + waFooter;
                   
                   console.log(`📤 Sending PDF via WhatsApp to: ${rawPhone}`);
                   
