@@ -1100,6 +1100,7 @@ let __globalOffer = null; // { mode, value }
 let __custDiscount = null; // { id, mode, value }
 if(cashReceived){
   cashReceived.addEventListener('input', () => {
+    try{ updateChangeBadge(); }catch(_){ }
     const s = (cashReceived.value||'').trim();
     // لا تعرض تحذيرًا إذا كان الحقل فارغًا
     if(s === ''){ setError(''); if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); } return; }
@@ -2513,7 +2514,45 @@ function computeTotals(){
     customer_discount: (__custDiscount ? { id: __custDiscount.id, mode: __custDiscount.mode, value: __custDiscount.value } : null),
   };
   if(grand > 0) cdTotal(Number(grand.toFixed(2)));
+  try{ updateChangeBadge(); }catch(_){ }
 }
+
+// شارة "الباقي/المتبقي" بجانب حقل المبلغ المدفوع — تظهر عند إدخال مبلغ وتختفي عند تركه فارغًا
+function updateChangeBadge(){
+  const badge = document.getElementById('changeDueBadge');
+  if(!badge) return;
+  // تظهر فقط مع طريقة الدفع كاش (لا تظهر في المختلط أو غيره)
+  if(!paymentMethod || paymentMethod.value !== 'cash'){
+    badge.style.display = 'none';
+    badge.textContent = '';
+    return;
+  }
+  const s = (cashReceived && !cashReceived.disabled) ? String(cashReceived.value||'').trim() : '';
+  const paid = Number(s);
+  if(s === '' || isNaN(paid) || paid < 0){
+    badge.style.display = 'none';
+    badge.textContent = '';
+    return;
+  }
+  const grand = Number(window.__sale_calcs?.grand_total || 0);
+  const diff = Number((paid - grand).toFixed(2));
+  if(diff >= 0){
+    badge.textContent = `الباقي: ${diff.toFixed(2)}`;
+    badge.style.background = '#dcfce7';
+    badge.style.color = '#166534';
+    badge.style.border = '1px solid #86efac';
+  } else {
+    badge.textContent = `المتبقي: ${Math.abs(diff).toFixed(2)}`;
+    badge.style.background = '#fee2e2';
+    badge.style.color = '#991b1b';
+    badge.style.border = '1px solid #fca5a5';
+  }
+  badge.style.display = '';
+}
+// حدث تغيير طريقة الدفع قد يعطّل الحقل أو يفرغه — حدّث الشارة بعد تنفيذ باقي المعالجات
+try{
+  if(paymentMethod){ paymentMethod.addEventListener('change', () => { setTimeout(() => { try{ updateChangeBadge(); }catch(_){ } }, 0); }); }
+}catch(_){ }
 
 const __rcEls = {
   couponCode: document.getElementById('couponCode'),
@@ -5713,10 +5752,13 @@ function setupHeldInvoices(){
         return;
       }
       
+      const heldCustomer = __selectedCustomerId ? __allCustomers.find(c => String(c.id) === String(__selectedCustomerId)) : null;
       const heldInvoice = {
         timestamp: new Date().toISOString(),
         cart: JSON.parse(JSON.stringify(cart)),
         customer: __selectedCustomerId || '',
+        customerName: heldCustomer ? (heldCustomer.name || '') : '',
+        customerPhone: heldCustomer ? (heldCustomer.phone || '') : '',
         driver: __selectedDriverId || '',
         paymentMethod: paymentMethod ? paymentMethod.value : 'cash',
         cashReceived: cashReceived ? cashReceived.value : '',
@@ -5799,10 +5841,11 @@ function setupHeldInvoices(){
   function getHeldCustomerLabel(invoice){
     if(!invoice || !invoice.customer) return '';
     const customer = __allCustomers.find(c => String(c.id) === String(invoice.customer));
-    if(!customer) return String(invoice.customer || '');
-    const name = customer.name || '';
-    const phone = customer.phone ? (' - ' + customer.phone) : '';
-    const idText = customer.id ? (' #' + customer.id) : '';
+    const name = (customer && customer.name) || invoice.customerName || '';
+    const phoneVal = (customer && customer.phone) || invoice.customerPhone || '';
+    if(!name && !phoneVal) return String(invoice.customer || '');
+    const phone = phoneVal ? (' - ' + phoneVal) : '';
+    const idText = invoice.customer ? (' #' + invoice.customer) : '';
     return `${name}${phone}${idText}`.trim();
   }
 
@@ -5811,7 +5854,7 @@ function setupHeldInvoices(){
     const filtered = normalizedTerm
       ? items.filter(invoice => {
           const customer = __allCustomers.find(c => String(c.id) === String(invoice.customer));
-          const blob = [invoice.customer, customer?.name, customer?.phone, customer?.id]
+          const blob = [invoice.customer, customer?.name, customer?.phone, customer?.id, invoice.customerName, invoice.customerPhone]
             .filter(Boolean)
             .join(' ');
           const normalizedBlob = normalizeDigits(blob || '').toLowerCase();
@@ -5900,9 +5943,9 @@ function setupHeldInvoices(){
     
     if(customerSearch && __selectedCustomerId){
       const c = __allCustomers.find(x => String(x.id)===String(__selectedCustomerId));
-      if(c){
-        customerSearch.value = (c.name||'') + (c.phone ? (' - ' + c.phone) : '');
-      }
+      const name = (c && c.name) || invoice.customerName || '';
+      const phone = (c && c.phone) || invoice.customerPhone || '';
+      customerSearch.value = name + (phone ? (' - ' + phone) : '');
     } else if(customerSearch){
       customerSearch.value = '';
     }

@@ -690,8 +690,8 @@ async function loadRange(startStr, endStr){
         voucher_type: 'receipt',
         entity_type: 'customer',
         entity_id: custId,
-        from_date: startStr.slice(0,10),
-        to_date: endStr.slice(0,10)
+        from_date: startStr,
+        to_date: endStr
       });
       vouchers = (vRes && vRes.ok) ? (vRes.items||[]) : [];
     }catch(_){ vouchers = []; }

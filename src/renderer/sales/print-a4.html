@@ -541,14 +541,14 @@
                 const bDisc = Number(baseSale.discount_amount||0);
                 if(bExtra > 0){
                   document.getElementById('extraRow').style.display='';
-                  document.getElementById('extra').textContent = Number(bExtra).toFixed(2);
+                  document.getElementById('extra').innerHTML = fmtTotal(bExtra);
                 }
                 if(bDisc > 0){
                   document.getElementById('discRow').style.display='';
                   const blabel = (baseSale.discount_type === 'amount') ? 'خصم نقدي' : (baseSale.discount_type === 'percentage' && Number(baseSale.discount_value||0) > 0 ? `خصم ${Number(baseSale.discount_value)}%` : 'خصم');
                   document.getElementById('discLabel').textContent = blabel;
-                  document.getElementById('disc').textContent = Number(Math.abs(bDisc)).toFixed(2);
-                  document.getElementById('afterDisc').textContent = Number(Math.abs(baseSale.total_after_discount ?? (Number(baseSale.sub_total||0) - bDisc))).toFixed(2);
+                  document.getElementById('disc').innerHTML = fmtTotal(Math.abs(bDisc));
+                  document.getElementById('afterDisc').innerHTML = fmtTotal(Math.abs(baseSale.total_after_discount ?? (Number(baseSale.sub_total||0) - bDisc)));
                   document.getElementById('afterDiscRow').style.display='';
                 }
               }
@@ -561,6 +561,21 @@
             try{
               // Return plain number without any currency word/symbol
               return n;
+            }catch(_){
+              return n;
+            }
+          }
+
+          // تنسيق مبالغ الإجماليات السفلية مع رمز الريال (مطابق للفاتورة الحرارية)
+          function fmtTotal(a){
+            const n = Number(a||0).toFixed(2);
+            try{
+              let sym = String((settings && settings.currency_symbol) || '').trim();
+              if(!sym){ sym = '﷼'; }
+              if(/﷼|SAR|SR|ريال|ر\.س|\uE900/i.test(sym)){ sym = "\ue900"; }
+              const symHtml = `<span class="currency-symbol" style="font-size:13px;font-family:'saudi_riyal',sans-serif;line-height:1;vertical-align:middle;">${sym}</span>`;
+              const pos = (settings && settings.currency_symbol_position) === 'before' ? 'before' : 'after';
+              return pos === 'before' ? `${symHtml} ${n}` : `${n} ${symHtml}`;
             }catch(_){
               return n;
             }
@@ -1077,23 +1092,23 @@
           window.addEventListener('beforeprint', () => { __adjustNumCells(); });
 
           const subValRaw = Number(sale.sub_total||0);
-          document.getElementById('sub').innerHTML = fmt(isCredit ? Math.abs(subValRaw) : subValRaw);
+          document.getElementById('sub').innerHTML = fmtTotal(isCredit ? Math.abs(subValRaw) : subValRaw);
           // extra value row
           const extraVal = Number(sale.extra_value||0);
           if(extraVal > 0){
             document.getElementById('extraRow').style.display='';
-            document.getElementById('extra').innerHTML = fmt(extraVal);
+            document.getElementById('extra').innerHTML = fmtTotal(extraVal);
           }
           // استخدم الخصم المحفوظ فقط، وأخفِ أي أثر للكوبون في الإخراج
           if(Number(sale.discount_amount||0) > 0){
             document.getElementById('discRow').style.display='';
             const label = (sale.discount_type === 'amount') ? 'خصم نقدي' : (( sale.discount_type === 'percent' || sale.discount_type === 'percentage' ) && Number(sale.discount_value||0) > 0 ? `خصم ${Number(sale.discount_value)}%` : 'خصم');
             document.getElementById('discLabel').textContent = label;
-            document.getElementById('disc').innerHTML = fmt(Math.abs(Number(sale.discount_amount||0)));
+            document.getElementById('disc').innerHTML = fmtTotal(Math.abs(Number(sale.discount_amount||0)));
             document.getElementById('afterDiscRow').style.display='';
           }
           const afterDiscValRaw = Number(sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0)));
-          document.getElementById('afterDisc').innerHTML = fmt(isCredit ? Math.abs(afterDiscValRaw) : afterDiscValRaw);
+          document.getElementById('afterDisc').innerHTML = fmtTotal(isCredit ? Math.abs(afterDiscValRaw) : afterDiscValRaw);
           // إظهار رسوم التبغ إن وُجدت
           try{
             const feeRow = document.getElementById('tobaccoFeeRow');
@@ -1105,8 +1120,8 @@
               if(tf > 0){
                 feeRow.style.display='';
                 try{
-                  feeVal.innerHTML = fmt(tf);
-                }catch(_){ feeVal.textContent = fmt(tf); }
+                  feeVal.innerHTML = fmtTotal(tf);
+                }catch(_){ feeVal.innerHTML = fmtTotal(tf); }
               }
               else { feeRow.style.display='none'; feeVal.textContent = ''; }
             }
@@ -1116,7 +1131,7 @@
           const effectiveVatTotal = (effectiveVatRate > 0)
             ? (isCreditAbs ? Math.abs(Number(sale.vat_total||0)) : Number(sale.vat_total||0))
             : 0;
-          document.getElementById('vat').innerHTML = fmt(effectiveVatTotal);
+          document.getElementById('vat').innerHTML = fmtTotal(effectiveVatTotal);
           // إخفاء صف الضريبة بالكامل إذا كانت نسبة الضريبة = 0 في الإعدادات أو إذا كانت الفاتورة zero_vat
           try{
             if(Number(settings?.vat_percent||0) === 0 || effectiveVatRate === 0){
@@ -1126,7 +1141,7 @@
           }catch(_){ /* ignore */ }
           const afterDiscForGrand = Number(sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0) + Number(sale.tobacco_fee||0)));
           const computedGrand = Number(sale.grand_total ?? (afterDiscForGrand + effectiveVatTotal));
-          document.getElementById('grand').innerHTML = fmt(isCreditAbs ? Math.abs(computedGrand) : computedGrand);
+          document.getElementById('grand').innerHTML = fmtTotal(isCreditAbs ? Math.abs(computedGrand) : computedGrand);
 
           // عند عدم وجود ضريبة: أعِد تسمية الصفوف وأخفِ صف "بعد الخصم"
           try{
@@ -1154,8 +1169,8 @@
           } else if(dbPaid > 0 || dbRemain > 0 || sale.payment_status === 'partial'){
             const paidRow = document.getElementById('paidRow');
             const paidEl = document.getElementById('paid');
-            if(dbPaid > 0){ paidEl.innerHTML = fmt(dbPaid); paidRow.style.display=''; } else { try{ paidRow.style.display='none'; }catch(_){} }
-            if(dbRemain > 0){ changeRow.querySelector('td:first-child').textContent = 'المتبقي'; changeEl.innerHTML = fmt(dbRemain); changeRow.style.display=''; } else { try{ changeRow.style.display='none'; }catch(_){} }
+            if(dbPaid > 0){ paidEl.innerHTML = fmtTotal(dbPaid); paidRow.style.display=''; } else { try{ paidRow.style.display='none'; }catch(_){} }
+            if(dbRemain > 0){ changeRow.querySelector('td:first-child').textContent = 'المتبقي'; changeEl.innerHTML = fmtTotal(dbRemain); changeRow.style.display=''; } else { try{ changeRow.style.display='none'; }catch(_){} }
           } else if(!isMixed){
             const pm = (pay||'');
             const grand = Number(sale.grand_total||0);
@@ -1204,22 +1219,22 @@
             const showChange = forceChange || (settings.print_show_change !== 0);
             if(showChange){
               if(forceChange){
-                paidEl.innerHTML = fmt(0);
+                paidEl.innerHTML = fmtTotal(0);
                 paidRow.style.display='';
-                changeEl.innerHTML = fmt(grand);
+                changeEl.innerHTML = fmtTotal(grand);
                 changeRow.style.display='';
               }else{
                 if(remaining > 0){
-                  paidEl.innerHTML = fmt(paid);
+                  paidEl.innerHTML = fmtTotal(paid);
                   paidRow.style.display='';
                   changeRow.querySelector('td:first-child').textContent = 'المتبقي';
-                  changeEl.innerHTML = fmt(remaining);
+                  changeEl.innerHTML = fmtTotal(remaining);
                   changeRow.style.display='';
                 } else if(change > 0){
-                  paidEl.innerHTML = fmt(paid);
+                  paidEl.innerHTML = fmtTotal(paid);
                   paidRow.style.display='';
                   changeRow.querySelector('td:first-child').textContent = 'الباقي';
-                  changeEl.innerHTML = fmt(change);
+                  changeEl.innerHTML = fmtTotal(change);
                   changeRow.style.display='';
                 }
               }
@@ -1249,12 +1264,12 @@
                 const cardRow = document.getElementById('paidCardRow');
                 const cardCell = document.getElementById('paidCard');
                 if(cashRow && cashCell && cardRow && cardCell){
-                  cashRow.style.display=''; cashCell.textContent = fmt(mp.cash);
-                  cardRow.style.display=''; cardCell.textContent = fmt(mp.card);
+                  cashRow.style.display=''; cashCell.innerHTML = fmtTotal(mp.cash);
+                  cardRow.style.display=''; cardCell.innerHTML = fmtTotal(mp.card);
                 } else {
                   const totals = document.querySelector('.totals tbody');
-                  const r1 = document.createElement('tr'); r1.innerHTML = `<td>المدفوع كاش</td><td style=\"text-align:left\">${fmt(mp.cash)}</td>`; totals.appendChild(r1);
-                  const r2 = document.createElement('tr'); r2.innerHTML = `<td>المدفوع شبكة</td><td style=\"text-align:left\">${fmt(mp.card)}</td>`; totals.appendChild(r2);
+                  const r1 = document.createElement('tr'); r1.innerHTML = `<td>المدفوع كاش</td><td style=\"text-align:left\">${fmtTotal(mp.cash)}</td>`; totals.appendChild(r1);
+                  const r2 = document.createElement('tr'); r2.innerHTML = `<td>المدفوع شبكة</td><td style=\"text-align:left\">${fmtTotal(mp.card)}</td>`; totals.appendChild(r2);
                 }
               }
             }

@@ -155,10 +155,12 @@ function registerVouchersIPC() {
         const p = {};
         if (filters.voucher_type) p.voucher_type = filters.voucher_type;
         if (filters.entity_type) p.entity_type = filters.entity_type;
-        if (filters.from) p.from = filters.from;
-        if (filters.to) p.to = filters.to;
+        if (filters.entity_id) p.entity_id = filters.entity_id;
+        if (filters.from_date) p.from = filters.from_date;
+        if (filters.to_date) p.to = filters.to_date;
+        if (filters.search) p.search = filters.search;
         const r = await fetchFromAPI('/vouchers', p);
-        if (r && r.ok) return { ok: true, vouchers: r.items || [], total: r.total || 0 };
+        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0 };
         return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
       } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
     }
@@ -185,16 +187,18 @@ function registerVouchersIPC() {
         params.push(filters.entity_id);
       }
       
+      // Values with a time component filter by exact datetime; date-only values cover the whole day
+      const hasTime = (v) => String(v).trim().length > 10;
       if (filters.from_date) {
-        sql += ' AND DATE(created_at) >= DATE(?)';
+        sql += hasTime(filters.from_date) ? ' AND created_at >= ?' : ' AND DATE(created_at) >= DATE(?)';
         params.push(filters.from_date);
       }
-      
+
       if (filters.to_date) {
-        sql += ' AND DATE(created_at) <= DATE(?)';
+        sql += hasTime(filters.to_date) ? ' AND created_at <= ?' : ' AND DATE(created_at) <= DATE(?)';
         params.push(filters.to_date);
       }
-      
+
       if (filters.search) {
         sql += ' AND (voucher_no LIKE ? OR entity_name LIKE ? OR invoice_no LIKE ?)';
         const searchTerm = `%${filters.search}%`;

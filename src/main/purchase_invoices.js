@@ -382,12 +382,16 @@ function registerPurchaseInvoicesIPC(){
 
   // List
   ipcMain.handle('purchase_invoices:list', async (_e, q) => {
+    q = q || {};
+    if (q.date_from && !q.from) q.from = q.date_from;
+    if (q.date_to && !q.to) q.to = q.date_to;
     if (isSecondaryDevice()) {
       try {
         const query = q || {};
         const p = {};
         if (query.from) p.from = query.from;
         if (query.to) p.to = query.to;
+        if (query.doc_type) p.doc_type = query.doc_type;
         if (query.supplier_id) p.supplier_id = query.supplier_id;
         if (query.invoice_no) p.search = query.invoice_no;
         if (query.page) { p.limit = query.pageSize || 50; p.offset = ((Number(query.page || 1) - 1) * Number(query.pageSize || 50)); }

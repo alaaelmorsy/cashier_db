@@ -2377,7 +2377,10 @@ table tr td, table tr th { vertical-align: middle; }
                       <label for="cashReceived" style="font-family:'Cairo',sans-serif; font-size:10px; font-weight:700; color:#0f172a; margin-bottom:2px; display:block; line-height:1;">
                         💵 المبلغ المدفوع
                       </label>
-                      <input id="cashReceived" type="number" step="0.01" placeholder="0.00" style="font-family:'Cairo',sans-serif; width:100%; padding:5px 8px; border:1px solid #e2e8f0; border-radius:4px; font-weight:800; font-size:12px; direction:ltr; text-align:left; background:#fff; height:32px; line-height:1.4;"/>
+                      <div style="display:flex; gap:3px; align-items:center;">
+                        <input id="cashReceived" type="number" step="0.01" placeholder="0.00" style="font-family:'Cairo',sans-serif; flex:1; min-width:0; padding:5px 8px; border:1px solid #e2e8f0; border-radius:4px; font-weight:800; font-size:12px; direction:ltr; text-align:left; background:#fff; height:32px; line-height:1.4;"/>
+                        <span id="changeDueBadge" style="display:none; font-family:'Cairo',sans-serif; font-size:11px; font-weight:900; padding:5px 6px; border-radius:4px; height:32px; line-height:22px; white-space:nowrap; direction:rtl;"></span>
+                      </div>
                     </div>
                     
                     <div>

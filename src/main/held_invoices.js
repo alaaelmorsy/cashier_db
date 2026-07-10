@@ -97,9 +97,6 @@ function registerHeldInvoicesIPC(){
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
-        // منع تعليق كميات أكبر من المتوفر في المخزون
-        const shortageMsg = await checkStockForHeldCart(conn, payload.cart);
-        if(shortageMsg) return { ok: false, error: shortageMsg };
         const invoiceData = JSON.stringify(payload);
         const [res] = await conn.query('INSERT INTO held_invoices (invoice_data) VALUES (?)', [invoiceData]);
         // حجز الكميات: خصم من المخزون حتى لا تُباع وهي معلقة

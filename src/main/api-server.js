@@ -1532,10 +1532,11 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/purchase-invoices', async (req, res) => {
     let conn;
     try {
-      const { limit = 50, offset = 0, supplier_id, from, to, search } = req.query;
+      const { limit = 50, offset = 0, supplier_id, from, to, search, doc_type } = req.query;
       conn = await dbAdapter.getConnection();
       const terms = []; const params = [];
       if (supplier_id) { terms.push('pi.supplier_id=?'); params.push(Number(supplier_id)); }
+      if (doc_type) { terms.push('pi.doc_type=?'); params.push(String(doc_type)); }
       if (from) { terms.push('pi.invoice_at >= ?'); params.push(from); }
       if (to) { terms.push('pi.invoice_at <= ?'); params.push(to); }
       if (search) { terms.push('(pi.invoice_no LIKE ? OR s.name LIKE ?)'); const sq = `%${search}%`; params.push(sq, sq); }
@@ -1578,17 +1579,25 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/vouchers', async (req, res) => {
     let conn;
     try {
-      const { limit = 50, offset = 0, voucher_type, from, to, entity_type } = req.query;
+      const { limit, offset = 0, voucher_type, from, to, entity_type, entity_id, search } = req.query;
       conn = await dbAdapter.getConnection();
       const terms = []; const params = [];
       if (voucher_type) { terms.push('voucher_type=?'); params.push(voucher_type); }
       if (entity_type) { terms.push('entity_type=?'); params.push(entity_type); }
-      if (from) { terms.push('DATE(created_at) >= ?'); params.push(from); }
-      if (to) { terms.push('DATE(created_at) <= ?'); params.push(to); }
+      if (entity_id) { terms.push('entity_id=?'); params.push(entity_id); }
+      const vHasTime = (v) => String(v).trim().length > 10;
+      if (from) { terms.push(vHasTime(from) ? 'created_at >= ?' : 'DATE(created_at) >= ?'); params.push(from); }
+      if (to) { terms.push(vHasTime(to) ? 'created_at <= ?' : 'DATE(created_at) <= ?'); params.push(to); }
+      if (search) { terms.push('(voucher_no LIKE ? OR entity_name LIKE ? OR invoice_no LIKE ?)'); const s = `%${search}%`; params.push(s, s, s); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
-      const lim = Math.min(parseInt(limit) || 50, 500);
       const [[cntRow]] = await conn.query(`SELECT COUNT(*) AS total FROM vouchers ${where}`, params);
-      const [rows] = await conn.query(`SELECT * FROM vouchers ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
+      let rows;
+      if (limit === undefined) {
+        [rows] = await conn.query(`SELECT * FROM vouchers ${where} ORDER BY id DESC`, params);
+      } else {
+        const lim = Math.min(parseInt(limit) || 50, 500);
+        [rows] = await conn.query(`SELECT * FROM vouchers ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, lim, parseInt(offset) || 0]);
+      }
       res.json({ ok: true, items: rows, total: Number(cntRow.total || 0) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
