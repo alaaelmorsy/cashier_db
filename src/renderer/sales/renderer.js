@@ -2632,7 +2632,7 @@ function renderCart(){
     tr.innerHTML = `
       <td>
         <div style="display:block; margin-bottom:3px;">
-          <span class="p-name" title="${escapeHtml(it.name)}" style="display:block; white-space:normal; word-break:break-word; overflow-wrap:anywhere; color:#0b3daa; font-weight:700; font-size:12px; line-height:1.25;">${nameHtml}${it.name_en ? `<div style='font-size:11px; color:#64748b; font-weight:500; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;'>${escapeHtml(it.name_en)}</div>`:''}</span>
+          <span class="p-name" title="${escapeHtml(it.name)}" style="display:block; white-space:normal; word-break:break-word; overflow-wrap:anywhere; color:#0b3daa; font-weight:700; font-size:12px; line-height:1.25;">${nameHtml}${it.name_en ? `<div style='font-size:12px; color:#0b3daa; font-weight:700; line-height:1.25; word-break:break-word; overflow-wrap:anywhere;'>${escapeHtml(it.name_en)}</div>`:''}</span>
           ${it.__pending ? `<span style="font-size:10px;color:#f59e0b;animation:spin 1s linear infinite;display:inline-block;">⟳</span>` : ''}
         </div>
         ${settings.show_employee_selector ? `<div style="display:block; margin-top:3px;"><select data-idx="${idx}" class="employee-select" title="${empTitle}" ${__isProcessingOld?'disabled':''}>
@@ -3141,7 +3141,7 @@ async function loadCatalog(){
         <div class="meta">
           <div class="pname" title="${escapeHtml(p.name)}">
             <span style="font-weight:700; font-size:12px; color:#1f2937;">${escapeHtml(p.name)}</span>
-            ${p.name_en? `<span style='font-size:10px; color:#6b7280; font-weight:400;'>${escapeHtml(p.name_en)}</span>`:''}
+            ${p.name_en? `<span style='font-size:12px; color:#1f2937; font-weight:700;'>${escapeHtml(p.name_en)}</span>`:''}
           </div>
           <div class="price-under">${Number(p.price||0).toFixed(2)}</div>
           <div class="bom-under" style="display:none;"></div>
