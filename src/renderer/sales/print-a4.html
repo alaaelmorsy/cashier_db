@@ -436,12 +436,24 @@
         const saleId = Number(params.get('id'));
         const pay = params.get('pay') || '';
         const cash = Number(params.get('cash')||0);
+        // وضع معاينة الفاتورة المعلقة: البيانات من localStorage بدل قاعدة البيانات (نفس التصميم بالضبط)
+        const __isHeldPreview = params.get('held') === '1';
+        const __getSaleData = (apiRef) => {
+          if(__isHeldPreview){
+            try{
+              const d = JSON.parse(localStorage.getItem('pos_held_preview')||'null');
+              if(d && d.sale){ return Promise.resolve({ ok:true, sale:d.sale, items:(d.items||[]) }); }
+            }catch(_){ }
+            return Promise.resolve({ ok:false });
+          }
+          return apiRef.sales_get(saleId);
+        };
         try{
           const api = (window.opener && window.opener.api) ? window.opener.api : (window.api || {});
-          
+
           // 🚀 تحميل الفاتورة والإعدادات والشعار بشكل متوازي - تحسين الأداء
           const [s, st, lg] = await Promise.all([
-            api.sales_get(saleId),
+            __getSaleData(api),
             api.settings_get(),
             api.settings_image_get()
           ]);
@@ -471,7 +483,7 @@
           // Rebind reprint button for silent mode and override inline onclick
           try{
             const reBtn = document.getElementById('reprintBtn');
-            if(reBtn && settings && settings.silent_print){
+            if(reBtn && settings && settings.silent_print && !__isHeldPreview){
               reBtn.onclick = async (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
                 try{

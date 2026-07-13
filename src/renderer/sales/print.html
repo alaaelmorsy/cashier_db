@@ -638,12 +638,24 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
         // data is expected in window.__PRINT_DATA injected via query or preload
         const params = new URLSearchParams(location.search);
         const saleId = Number(params.get('id'));
+        // وضع معاينة الفاتورة المعلقة: البيانات من localStorage بدل قاعدة البيانات (نفس التصميم بالضبط)
+        const __isHeldPreview = params.get('held') === '1';
+        const __getSaleData = (apiRef) => {
+          if(__isHeldPreview){
+            try{
+              const d = JSON.parse(localStorage.getItem('pos_held_preview')||'null');
+              if(d && d.sale){ return Promise.resolve({ ok:true, sale:d.sale, items:(d.items||[]) }); }
+            }catch(_){ }
+            return Promise.resolve({ ok:false });
+          }
+          return apiRef.sales_get(saleId);
+        };
         try{
           const api = (window.opener && window.opener.api) ? window.opener.api : (window.api || {});
-          
+
           // 🚀 تحميل الفاتورة والإعدادات والشعار بشكل متوازي - تحسين الأداء
           const [s, st, lg] = await Promise.all([
-            api.sales_get(saleId),
+            __getSaleData(api),
             api.settings_get(),
             api.settings_image_get()
           ]);
@@ -1299,7 +1311,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           // Reprint button: if silent_print enabled, override inline onclick to avoid dialog
           try{
             const reBtn = document.getElementById('reprintBtn');
-            if(reBtn && settings && settings.silent_print){
+            if(reBtn && settings && settings.silent_print && !__isHeldPreview){
               reBtn.onclick = async (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
                 try{

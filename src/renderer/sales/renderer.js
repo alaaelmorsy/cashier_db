@@ -1125,6 +1125,7 @@ const customerSearch = document.getElementById('customerSearch');
 const customerList = document.getElementById('customerList');
 let __allCustomers = []; // cache for filtering
 let __customerSearchResults = [];
+let __selectedCustomerObj = null; // بيانات العميل المختار (قد لا يكون ضمن __allCustomers عند البحث من الخادم)
 let __selectedCustomerId = '';
 
 // Drivers dropdown (select)
@@ -2927,6 +2928,7 @@ function renderCustomerList(q, list){
 
 async function selectCustomer(c){
   __selectedCustomerId = c && c.id ? String(c.id) : '';
+  __selectedCustomerObj = c && c.id ? c : null;
   customerSearch.value = c ? ((c.name||'') + (c.phone ? (' - ' + c.phone) : '')) : '';
   customerList.style.display = 'none';
   if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); }
@@ -5752,7 +5754,11 @@ function setupHeldInvoices(){
         return;
       }
       
-      const heldCustomer = __selectedCustomerId ? __allCustomers.find(c => String(c.id) === String(__selectedCustomerId)) : null;
+      const heldCustomer = __selectedCustomerId
+        ? ((__selectedCustomerObj && String(__selectedCustomerObj.id) === String(__selectedCustomerId)) ? __selectedCustomerObj : null)
+          || __allCustomers.find(c => String(c.id) === String(__selectedCustomerId))
+          || __customerSearchResults.find(c => String(c.id) === String(__selectedCustomerId))
+        : null;
       const heldInvoice = {
         timestamp: new Date().toISOString(),
         cart: JSON.parse(JSON.stringify(cart)),
@@ -5767,7 +5773,9 @@ function setupHeldInvoices(){
         extraValue: extraValueEl ? extraValueEl.value : '',
         coupon: __coupon ? JSON.parse(JSON.stringify(__coupon)) : null,
         notes: notes ? notes.value : '',
-        couponCode: couponCodeEl ? couponCodeEl.value : ''
+        couponCode: couponCodeEl ? couponCodeEl.value : '',
+        // لقطة من الحسابات لعرضها في معاينة الفاتورة المعلقة بنفس أرقام شاشة البيع
+        calcs: window.__sale_calcs ? JSON.parse(JSON.stringify(window.__sale_calcs)) : null
       };
       
       const result = await window.api.held_invoices_add(heldInvoice);
@@ -5886,6 +5894,7 @@ function setupHeldInvoices(){
         </div>
         <div class="held-invoice-actions">
           <button class="btn primary btn-restore" data-index="${invoice.__index ?? index}" data-db-id="${invoice.db_id}">📥 استرجاع</button>
+          <button class="btn btn-preview" data-index="${invoice.__index ?? index}" data-db-id="${invoice.db_id}" style="background:#0ea5e9; color:#fff;">👁️ معاينة</button>
           <button class="btn danger btn-delete" data-index="${invoice.__index ?? index}" data-db-id="${invoice.db_id}">🗑️ حذف</button>
         </div>
       `;
@@ -5901,6 +5910,14 @@ function setupHeldInvoices(){
       });
     });
 
+    window.heldInvoicesList.querySelectorAll('.btn-preview').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const dbId = btn.dataset.dbId;
+        const invoice = heldInvoicesCache.find(inv => String(inv.db_id) === String(dbId));
+        if(invoice){ previewHeldInvoice(invoice); }
+      });
+    });
+
     window.heldInvoicesList.querySelectorAll('.btn-delete').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const index = parseInt(btn.dataset.index);
@@ -5908,6 +5925,73 @@ function setupHeldInvoices(){
         await deleteHeldInvoice(index, dbId);
       });
     });
+  }
+
+  // معاينة الفاتورة المعلقة بنفس تصميم الفاتورة (حراري/A4) مع رقم خاص بها بدل رقم الفاتورة
+  function previewHeldInvoice(invoice){
+    const items = (invoice.cart || []).map(it => ({
+      product_id: it.id || it.product_id || null,
+      name: it.name || '',
+      description: (it.description || null),
+      operation_id: (typeof it.operation_id!=='undefined' && it.operation_id!=null && it.operation_id!=='') ? Number(it.operation_id) : null,
+      operation_name: it.operation_name || null,
+      price: Number(it.price||0),
+      qty: Number(it.qty||1),
+      unit_name: (it.unit_name || null),
+      unit_multiplier: (it.unit_multiplier != null ? Number(it.unit_multiplier) : 1),
+      line_total: Number(it.price||0) * Number(it.qty||1),
+      is_tobacco: Number(it.is_tobacco||0),
+      is_vat_exempt: Number(it.is_vat_exempt||0) || (it.is_vat_exempt===true ? 1 : 0),
+      employee_name: it.employee_name || null
+    }));
+
+    // استخدم لقطة الحسابات المحفوظة عند التعليق؛ وإلا احسب أساسي (فواتير معلقة قديمة)
+    let c = invoice.calcs || null;
+    if(!c){
+      const vatPct = (Number(settings.vat_percent) || 0) / 100;
+      let sub = 0, taxable = 0;
+      items.forEach(it => {
+        const exempt = Number(it.is_vat_exempt||0) === 1;
+        let base = it.line_total;
+        if(settings.prices_include_vat && !exempt){ base = it.line_total / (1 + vatPct); }
+        sub += base;
+        if(!exempt) taxable += base;
+      });
+      const vat = taxable * vatPct;
+      c = {
+        sub_total: Number(sub.toFixed(2)), extra_value: 0,
+        discount_type: 'none', discount_value: 0, discount_amount: 0,
+        sub_after_discount: Number(sub.toFixed(2)),
+        vat_total: Number(vat.toFixed(2)),
+        grand_total: Number((sub + vat).toFixed(2)),
+        tobacco_fee: 0
+      };
+    }
+
+    const driver = invoice.driver ? (__allDrivers || []).find(d => String(d.id) === String(invoice.driver)) : null;
+    const sale = {
+      invoice_no: 'HOLD-' + (invoice.db_id != null ? invoice.db_id : (invoice.id || '')),
+      created_at: invoice.timestamp || new Date().toISOString(),
+      payment_method: invoice.paymentMethod || 'cash',
+      sub_total: Number(c.sub_total||0),
+      extra_value: Number(c.extra_value||0),
+      discount_type: c.discount_type || 'none',
+      discount_value: Number(c.discount_value||0),
+      discount_amount: Number(c.discount_amount||0),
+      total_after_discount: (c.sub_after_discount != null) ? Number(c.sub_after_discount) : Number(c.sub_total||0),
+      vat_total: Number(c.vat_total||0),
+      grand_total: Number(c.grand_total||0),
+      tobacco_fee: Number(c.tobacco_fee||0),
+      customer_id: invoice.customer ? Number(invoice.customer) : null,
+      driver_name: driver ? (driver.name || '') : '',
+      driver_phone: driver ? (driver.phone || '') : '',
+      notes: invoice.notes || ''
+    };
+
+    try{ localStorage.setItem('pos_held_preview', JSON.stringify({ sale, items })); }catch(_){ return; }
+    const fmt = (settings && settings.default_print_format === 'a4') ? 'a4' : 'thermal';
+    const q = { held: '1', pay: sale.payment_method, cash: String(invoice.cashReceived || '') };
+    window.api.print_invoice_preview({ file: fmt === 'a4' ? 'print-a4.html' : 'print.html', format: fmt, query: q, silentMode: false }).catch(()=>{});
   }
 
   async function loadHeldInvoicesList(){
@@ -5924,6 +6008,30 @@ function setupHeldInvoices(){
     }
 
     heldInvoicesCache = heldInvoices.map((invoice, index)=>({ ...invoice, __index: index }));
+
+    // استكمال اسم/جوال العميل للفواتير القديمة المحفوظة بدونهما (العميل قد لا يكون ضمن __allCustomers)
+    const needsLookup = heldInvoicesCache.filter(inv => inv.customer && (!inv.customerPhone || !inv.customerName)
+      && !__allCustomers.find(c => String(c.id) === String(inv.customer)));
+    if(needsLookup.length){
+      const uniqueIds = [...new Set(needsLookup.map(inv => String(inv.customer)))];
+      try{
+        const results = await Promise.all(uniqueIds.map(id => window.api.customers_get(id).catch(()=>null)));
+        const byId = {};
+        uniqueIds.forEach((id, i)=>{
+          const r = results[i];
+          const item = r && r.ok ? (r.item || r.customer || r.data) : null;
+          if(item) byId[id] = item;
+        });
+        heldInvoicesCache.forEach(inv=>{
+          const c = inv.customer ? byId[String(inv.customer)] : null;
+          if(c){
+            if(!inv.customerName) inv.customerName = c.name || '';
+            if(!inv.customerPhone) inv.customerPhone = c.phone || '';
+          }
+        });
+      }catch(_){ }
+    }
+
     const term = heldInvoicesSearch ? normalizeDigits(heldInvoicesSearch.value || '').toLowerCase().trim() : '';
     renderHeldInvoicesList(heldInvoicesCache, term);
   }
