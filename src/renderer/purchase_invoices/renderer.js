@@ -269,13 +269,18 @@ async function buildInvoiceHTML(invoice, items, supplier, settings) {
   const vatPct = invoice.vat_percent != null ? Number(invoice.vat_percent) : 0;
   const divisor = 1 + (vatPct / 100);
   let itemsHTML = '';
+  const generalDiscount = Math.max(0, Number(invoice.discount_general || 0));
+  const grossLinesExclusive = items.reduce((sum, item) => sum + Math.abs(Number(item.line_total || 0)), 0);
+  const discountAllocations = PurchaseInvoiceAccounting.allocatedDiscounts(items, generalDiscount, grossLinesExclusive);
   
-  for (const item of items) {
+  for (const [itemIndex, item] of items.entries()) {
     const qty = Number(item.qty || 0);
     const uiUnit = (item.ui_unit_cost != null) ? Number(item.ui_unit_cost) : (Number(item.unit_cost || 0) * divisor);
     const unitExclusive = Number(item.unit_cost || 0);
     const lineDiscExclusive = Number(item.discount_line || 0);
-    const netExclusiveLine = (item.line_total != null) ? Number(item.line_total) : Number(((unitExclusive * qty) - lineDiscExclusive).toFixed(2));
+    const rawExclusiveLine = (item.line_total != null) ? Number(item.line_total) : Number(((unitExclusive * qty) - lineDiscExclusive).toFixed(2));
+    const allocatedGeneralDiscount = discountAllocations[itemIndex] || 0;
+    const netExclusiveLine = Number((rawExclusiveLine - allocatedGeneralDiscount).toFixed(2));
     const vatAmt = Number((netExclusiveLine * (vatPct / 100)).toFixed(2));
     const total = Number((netExclusiveLine + vatAmt).toFixed(2));
     
@@ -305,9 +310,9 @@ async function buildInvoiceHTML(invoice, items, supplier, settings) {
   // حساب المجاميع
   const subExclusive = Number(invoice.sub_total || 0);
   const discExclusive = Number(invoice.discount_general || 0);
-  const netExclusive = (subExclusive - discExclusive);
+  const netExclusive = subExclusive;
   const vatTotal = Number(invoice.vat_total || 0);
-  const grandInclusive = (netExclusive + vatTotal);
+  const grandInclusive = Number(invoice.grand_total || 0) || Number((netExclusive + vatTotal).toFixed(2));
   
   return `
     <div class="invoice-content-wrapper">
@@ -541,6 +546,8 @@ function computeTotals(){
   } else {
     discountExclusive = currentInputDiscount; // treat discount input as exclusive (pre-tax) always
   }
+  discountExclusive = Math.min(sub, discountExclusive);
+  discGenEl.value = discountExclusive.toFixed(2);
   currentTotalsState.discountGeneralExclusive = discountExclusive;
 
   const base = Math.max(0, sub - discountExclusive);

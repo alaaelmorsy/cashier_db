@@ -160,7 +160,7 @@ function registerVouchersIPC() {
         if (filters.to_date) p.to = filters.to_date;
         if (filters.search) p.search = filters.search;
         const r = await fetchFromAPI('/vouchers', p);
-        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0 };
+        if (r && r.ok) return { ok: true, items: r.items || [] };
         return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
       } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
     }
@@ -225,11 +225,16 @@ function registerVouchersIPC() {
 
   // Get single voucher by ID
   ipcMain.handle('vouchers:get', async (event, id) => {
+    const voucherId = Number(id);
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI(`/vouchers/${voucherId}`); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     const conn = await dbAdapter.getConnection();
     try {
       await ensureTable(conn);
       
-      const [rows] = await conn.query('SELECT * FROM vouchers WHERE id = ?', [id]);
+      const [rows] = await conn.query('SELECT * FROM vouchers WHERE id = ?', [voucherId]);
       
       if (rows.length === 0) {
         return { ok: false, error: 'Voucher not found' };

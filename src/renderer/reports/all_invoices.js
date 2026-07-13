@@ -37,6 +37,7 @@ function labelPaymentMethod(method){
   if(m==='tabby') return isAr ? 'تابي' : 'Tabby';
   if(m==='bank_transfer') return isAr ? 'تحويل بنكي' : 'Bank Transfer';
   if(m==='mixed') return isAr ? 'مختلط' : 'Mixed';
+  if(m==='unallocated') return isAr ? 'غير موزع (بيانات دفع ناقصة)' : 'Unallocated (missing payment data)';
   return method||'';
 }
 
@@ -227,7 +228,7 @@ function translateAllInvoicesUI(isAr){
       document.documentElement.dir = isAr ? 'rtl' : 'ltr';
       translateAllInvoicesUI(isAr);
       const fromStr = fromInputToStr(fromAtEl);
-      const toStr = fromInputToStr(toAtEl);
+      const toStr = fromInputToStr(toAtEl, true);
       if(fromStr && toStr) loadRange(fromStr, toStr, currentPage);
     });
   }catch(_){}
@@ -245,7 +246,7 @@ async function exportAllInvoicesPDF() {
   
   // Get date range from inputs
   const fromStr = fromInputToStr(fromAtEl);
-  const toStrValue = fromInputToStr(toAtEl);
+  const toStrValue = fromInputToStr(toAtEl, true);
   
   if (!fromStr || !toStrValue) {
     alert(t.selectPeriodAlert || 'يرجى تحديد الفترة كاملة');
@@ -285,9 +286,11 @@ async function exportAllInvoicesPDF() {
     t.total || 'الإجمالي'
   ];
   
-  // Calculate totals
-  let sumPre = 0, sumVat = 0, sumGrand = 0;
-  const payTotalsMap = new Map();
+  const accountingSummary = window.ReportAccounting.summarizeDocuments(items);
+  const sumPre = accountingSummary.subTotal;
+  const sumVat = accountingSummary.vatTotal;
+  const sumGrand = accountingSummary.grandTotal;
+  const payTotalsMap = new Map(Object.entries(accountingSummary.paymentTotals));
   
   // Build table rows
   const rows = items.map(s => {
@@ -306,38 +309,9 @@ async function exportAllInvoicesPDF() {
     const custPhone = s.customer_phone || s.disp_customer_phone || '';
     const cust = custPhone || (s.customer_name || s.disp_customer_name || '');
     
-    const pre = Number(s.sub_total || 0);
-    const vat = Number(s.vat_total || 0);
-    const grand = Number(s.grand_total || 0);
+    const { pre, vat, grand } = window.ReportAccounting.documentAmounts(s);
     
-    sumPre += pre;
-    sumVat += vat;
-    sumGrand += grand;
-    
-    // Payment method totals
     const pm = String(s.payment_method || '').toLowerCase();
-    const addAmt = (key, amount) => {
-      if (!key) return;
-      const k = (key === 'network' ? 'card' : key);
-      const prev = Number(payTotalsMap.get(k) || 0);
-      payTotalsMap.set(k, prev + Number(amount || 0) * (isCN ? -1 : 1));
-    };
-    
-    if (pm === 'mixed') {
-      const cashPart = Number(s.pay_cash_amount || 0);
-      const cardPart = Number(s.pay_card_amount || 0);
-      addAmt('cash', cashPart > 0 ? cashPart : (grand > 0 ? grand / 2 : 0));
-      addAmt('card', cardPart > 0 ? cardPart : (grand > 0 ? grand / 2 : 0));
-    } else if (pm === 'cash') {
-      // المبلغ الفعلي للفاتورة هو grand_total — لا تستخدم settled_cash لأنه قد يشمل الباقي المُعاد للعميل
-      addAmt('cash', grand);
-    } else if (pm === 'card' || pm === 'network' || pm === 'tamara' || pm === 'tabby' || pm === 'bank_transfer') {
-      const cardPart = Number(s.pay_card_amount || 0);
-      addAmt(pm, cardPart > 0 ? cardPart : grand);
-    } else if (pm) {
-      addAmt(pm, grand);
-    }
-    
     const payLabel = labelPaymentMethod(pm);
     const uid = (s.created_by_user_id != null ? Number(s.created_by_user_id) : null);
     const userDisp = (uid != null && __usersById.get(uid)) || s.created_by_username || (uid != null ? ('#' + uid) : '');
@@ -828,9 +802,9 @@ async function exportAllInvoicesPDF() {
   }
 })();
 
-function fromInputToStr(input){
+function fromInputToStr(input, endOfMinute = false){
   const v = (input?.value||'').trim();
-  return v ? v.replace('T',' ') + ':00' : '';
+  return v ? v.replace('T',' ') + (endOfMinute ? ':59' : ':00') : '';
 }
 function toStr(d){
   const pad2 = (v)=> String(v).padStart(2,'0');
@@ -838,7 +812,8 @@ function toStr(d){
 }
 
 let currentPage = 1;
-const PAGE_SIZE = 100;
+// Keep the rendered rows, PDF, Excel and print output on the same complete dataset.
+const PAGE_SIZE = 50000;
 
 async function loadRange(startStr, endStr, page = 1){
   currentPage = page;
@@ -883,9 +858,7 @@ async function loadRange(startStr, endStr, page = 1){
       })();
       const custPhone = s.customer_phone || s.disp_customer_phone || '';
       const cust = custPhone || (s.customer_name || s.disp_customer_name || '');
-      const pre = Number(s.sub_total||0);
-      const vat = Number(s.vat_total||0);
-      const grand = Number(s.grand_total||0);
+      const { pre, vat, grand } = window.ReportAccounting.documentAmounts(s);
       const pm = String(s.payment_method || '').toLowerCase();
       const payLabel = labelPaymentMethod(pm);
       const pmLower = pm;
@@ -910,41 +883,11 @@ async function loadRange(startStr, endStr, page = 1){
     if(invCount){ invCount.textContent = String(allItems.length||0); }
 
     // ====== الإجماليات من كامل الفترة (allItems) ======
-    let sumPre = 0, sumVat = 0, sumGrand = 0;
-    const payTotals = new Map(); // key: normalized method, value: total grand
-
-    const addAmt = (key, amount)=>{
-      if(!key) return;
-      const k = (key==='network' ? 'card' : key);
-      const prev = Number(payTotals.get(k)||0);
-      payTotals.set(k, prev + Number(amount||0));
-    };
-
-    allItems.forEach(s => {
-      const isCN = (String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-'));
-      const sign = isCN ? -1 : 1;
-      const pre = Number(s.sub_total||0) * sign;
-      const vat = Number(s.vat_total||0) * sign;
-      const grand = Number(s.grand_total||0) * sign;
-      sumPre += pre; sumVat += vat; sumGrand += grand;
-
-      const pm = String(s.payment_method || '').toLowerCase();
-      if(pm==='mixed'){
-        const cashPart = Number(s.pay_cash_amount || 0);
-        const cardPart = Number(s.pay_card_amount || 0);
-        const fallback = Math.abs(grand) > 0 ? Math.abs(grand)/2 : 0;
-        addAmt('cash', (cashPart>0 ? cashPart : fallback) * sign);
-        addAmt('card', (cardPart>0 ? cardPart : fallback) * sign);
-      } else if(pm==='cash'){
-        // المبلغ الفعلي للفاتورة هو grand_total — لا تستخدم settled_cash لأنه قد يشمل الباقي المُعاد للعميل
-        addAmt('cash', grand);
-      } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
-        const cardPart = Number(s.pay_card_amount || 0);
-        addAmt(pm, (cardPart>0 ? cardPart*sign : grand));
-      } else if(pm){
-        addAmt(pm, grand);
-      }
-    });
+    const accountingSummary = window.ReportAccounting.summarizeDocuments(allItems);
+    const sumPre = accountingSummary.subTotal;
+    const sumVat = accountingSummary.vatTotal;
+    const sumGrand = accountingSummary.grandTotal;
+    const payTotals = new Map(Object.entries(accountingSummary.paymentTotals));
 
     const set = (id, v)=>{ const el = document.getElementById(id); if(!el) return; el.textContent = (id==='sumCount') ? String(v) : fmt(v); };
     set('sumPre', sumPre);
@@ -1049,7 +992,7 @@ function initDefaultRange(){
 
 async function applyRange(){
   const s = fromInputToStr(fromAtEl);
-  const e = fromInputToStr(toAtEl);
+  const e = fromInputToStr(toAtEl, true);
   if(!s || !e){ 
     const t = window.__allInvoicesTranslations || {};
     alert(t.selectPeriodAlert || 'يرجى تحديد الفترة كاملة'); 

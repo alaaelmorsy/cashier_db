@@ -69,7 +69,7 @@ async function loadRange(startStr, endStr){
       const cnTimePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {hour:'2-digit', minute:'2-digit', hour12:true}).format(cnDate);
       const custPhone = s.customer_phone || s.disp_customer_phone || '';
       const cust = custPhone || (s.customer_name || s.disp_customer_name || '');
-      const cnAmount = Number(s.grand_total||0);
+      const cnAmount = Math.abs(ReportAccounting.documentAmounts(s).grand);
       sumGrand += cnAmount;
       const baseNo = s.base_invoice_no || s.ref_base_invoice_no || '';
       const baseLink = s.base_id ? `<button class="btn" data-view-base="${s.base_id}">${baseNo||'عرض'}</button>` : (baseNo||'');

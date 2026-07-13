@@ -239,7 +239,7 @@ function fromInputToStr(input){
 }
 
 let currentPage = 1;
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50000;
 
 async function loadRange(startStr, endStr, page = 1){
   currentPage = page;
@@ -262,15 +262,16 @@ async function loadRange(startStr, endStr, page = 1){
       
       const supplier = inv.supplier_name || '';
       const payment = labelPayment(inv.payment_method||'');
-      const sub = Number(inv.sub_total||0);
-      // For zero_vat invoices: recalculate with 0% VAT
+      const isReturn = inv.doc_type === 'return';
+      const sign = isReturn ? -1 : 1;
+      const legalAmounts = PurchaseReportAccounting.purchaseAmounts(inv);
+      const sub = legalAmounts.pre * sign;
+      const vat = legalAmounts.vat * sign;
+      const total = legalAmounts.grand * sign;
       const priceMode = String(inv.price_mode||'inclusive');
-      const vat = (priceMode === 'zero_vat') ? 0 : Number(inv.vat_total||0);
-      const total = (priceMode === 'zero_vat') ? sub : Number(inv.grand_total||0);
       const methodRaw = String(inv.payment_method||'').toLowerCase();
       const isCredit = (methodRaw === 'credit' || methodRaw === 'آجل' || methodRaw === 'اجل');
-      const isReturn = inv.doc_type === 'return';
-      const paid = isReturn ? (!isCredit ? Math.abs(total) : 0) : ((priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(inv.amount_paid||0));
+      const paid = isReturn ? (!isCredit ? -Math.abs(total) : 0) : ((priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(inv.amount_paid||0));
       const notes = inv.notes || '';
       const invId = inv.id || '';
 
@@ -300,7 +301,13 @@ async function loadRange(startStr, endStr, page = 1){
     }
 
     const set = (id,val)=>{ const el=document.getElementById(id); if(el){ el.textContent = (id==='sumCount') ? String(val) : fmt(val); } };
-    set('sumCount', sumCount); set('sumPre', sumPre); set('sumVat', sumVat); set('sumTotal', sumTotal); set('sumPaid', sumPaid);
+    if(typeof PurchaseReportAccounting !== 'undefined'){
+      const verified = PurchaseReportAccounting.summarizePurchaseLedger(invoices);
+      set('sumCount', verified.count + verified.returnsCount);
+      set('sumPre', verified.pre); set('sumVat', verified.vat); set('sumTotal', verified.grand); set('sumPaid', verified.paid);
+    } else {
+      set('sumCount', sumCount); set('sumPre', sumPre); set('sumVat', sumVat); set('sumTotal', sumTotal); set('sumPaid', sumPaid);
+    }
 
     const total = (res && res.total != null) ? res.total : invoices.length;
     const totalPages = Math.ceil(total / PAGE_SIZE) || 1;

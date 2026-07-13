@@ -223,11 +223,12 @@ async function loadRange(startStr, endStr){
       created = created ? new Date(created) : null;
       if(!created || isNaN(created.getTime())){ try{ created = new Date(String(created||s.created_at).replace(' ', 'T')); }catch(_){ created = new Date(); } }
       const dateStr = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
-      const sub = Math.abs(Number(s.sub_total||0));
-      const disc = Math.abs(Number(s.discount_amount||0));
-      const vat = Math.abs(Number(s.vat_total||0));
-      const tob = Math.abs(Number(s.tobacco_fee||0));
-      const grand = Math.abs(Number(s.grand_total||0));
+      const breakdown = ReportAccounting.documentBreakdown(s);
+      const sub = breakdown.sub;
+      const disc = breakdown.discount;
+      const vat = breakdown.vat;
+      const tob = breakdown.tobacco;
+      const grand = breakdown.grand;
       if(isCN){ sumSubCN += sub; sumDiscCN += disc; sumVatCN += vat; sumTobCN += tob; sumGrandCN += grand; cntCN++; }
       else { sumSubInv += sub; sumDiscInv += disc; sumVatInv += vat; sumTobInv += tob; sumGrandInv += grand; cntInv++; }
       sumSub += sub * (isCN ? -1 : 1);
@@ -316,8 +317,9 @@ async function loadRange(startStr, endStr){
         const prev = byKey.get(key) || { qty: 0, amount: 0, price: 0, priceCount: 0 };
         const price = Number(it.price||0);
         if(price){ prev.price += price; prev.priceCount += 1; }
-        prev.qty += Number(it.qty||0);
-        prev.amount += Number(it.line_total||0);
+        const signed = ReportAccounting.signedReportItem(it);
+        prev.qty += signed.qty;
+        prev.amount += signed.amount;
         byKey.set(key, prev);
       });
       const rows = Array.from(byKey.entries()).map(([key, v]) => {

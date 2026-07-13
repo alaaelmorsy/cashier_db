@@ -2,10 +2,15 @@
 const { ipcMain } = require('electron');
 const bcrypt = require('bcryptjs');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
+const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerUsersIPC(){
   // List users
   ipcMain.handle('users:list', async () => {
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI('/users'); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

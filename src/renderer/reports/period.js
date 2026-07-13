@@ -73,6 +73,7 @@ function translatePeriodUI(isAr){
     method: 'الطريقة',
     total: 'الإجمالي',
     grandTotal: 'الإجمالي الكلي',
+    collectedTotal: 'إجمالي المحصل',
     soldProducts: 'المنتجات المباعة',
     product: 'المنتج',
     quantity: 'الكمية',
@@ -130,6 +131,7 @@ function translatePeriodUI(isAr){
     method: 'Method',
     total: 'Total',
     grandTotal: 'Grand total',
+    collectedTotal: 'Total collected',
     soldProducts: 'Sold products',
     product: 'Product',
     quantity: 'Quantity',
@@ -179,6 +181,9 @@ function translatePeriodUI(isAr){
     
     const printReportBtn = document.getElementById('printReportBtn');
     if(printReportBtn) printReportBtn.textContent = t.printReportBtn;
+
+    const collectedTotalLabel = document.getElementById('collectedTotalLabel');
+    if(collectedTotalLabel) collectedTotalLabel.textContent = t.collectedTotal;
     
     const sections = document.querySelectorAll('.section h3');
     sections.forEach((h3) => {
@@ -267,7 +272,7 @@ function translatePeriodUI(isAr){
         }
         const footers = parent.querySelectorAll('tfoot th');
         if(footers.length >= 1){
-          footers[0].textContent = t.grandTotal;
+          footers[0].textContent = t.collectedTotal;
         }
       }
     });
@@ -1037,7 +1042,10 @@ function fromInputToStr(input){
   return v.replace('T', ' ') + ':00';
 }
 
+let reportLoadSequence = 0;
+
 async function loadRange(startStr, endStr){
+  const loadSequence = ++reportLoadSequence;
   try{
     // show range text
     if(rangeEl){ rangeEl.textContent = `الفترة: ${startStr} — ${endStr}`; }
@@ -1049,9 +1057,9 @@ async function loadRange(startStr, endStr){
     let purRes0, invRes0, payRes0;
     try{
       const [sumRes, detRes, salesRes, _purRes, _invRes, settingsRes, _payRes] = await Promise.all([
-        window.api.sales_items_summary({ date_from: startStr, date_to: endStr }),
-        window.api.sales_items_detailed({ date_from: startStr, date_to: endStr }),
-        window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 }),
+        window.api.sales_items_summary({ date_from: startStr, date_to: endStr, date_basis: 'document' }),
+        window.api.sales_items_detailed({ date_from: startStr, date_to: endStr, date_basis: 'document' }),
+        window.api.sales_list({ date_from: startStr, date_to: endStr, date_basis: 'document', pageSize: 50000 }),
         window.api.purchases_list({ from_at: startStr, to_at: endStr }),
         window.api.purchase_invoices_list({ from: startStr, to: endStr }),
         window.api.settings_get(),
@@ -1065,11 +1073,19 @@ async function loadRange(startStr, endStr){
       purRes0 = _purRes;
       invRes0 = _invRes;
     }catch(_){ }
+    if(loadSequence !== reportLoadSequence) return;
     // Removed fallback padding and unbounded fetch: show exactly the selected period
     // Keep allSales as returned by the API within [startStr, endStr] only
 
-    const invoices = allSales.filter(s => String(s.doc_type||'') !== 'credit_note' && !String(s.invoice_no||'').startsWith('CN-') && String(s.payment_status||'paid') === 'paid');
-    const creditNotes = allSales.filter(s => String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-'));
+    const normalSales = allSales.filter(s => String(s.doc_type||'') !== 'credit_note' && !String(s.invoice_no||'').startsWith('CN-'));
+    const selectedDocuments = ReportAccounting.selectNonCreditPeriodDocuments(allSales);
+    const reportSales = selectedDocuments.sales;
+    const reportCreditNotes = selectedDocuments.creditNotes;
+    const invoices = reportSales;
+    const creditNotes = reportCreditNotes;
+    const reportDocumentIds = new Set([...reportSales, ...reportCreditNotes].map(document => Number(document.id)));
+    soldItems = ReportAccounting.summarizeReportItems(soldItems, soldItemsDetailed, reportDocumentIds);
+    soldItemsDetailed = soldItemsDetailed.filter(item => reportDocumentIds.has(Number(item.sale_id)));
 
     let grossBefore = 0, vatBefore = 0, disc = 0;
     const payByMethod = new Map();
@@ -1092,6 +1108,9 @@ async function loadRange(startStr, endStr){
         const prev = Number(payByMethod.get(k)||0);
         payByMethod.set(k, prev + Number(amount||0));
       };
+      if(pm==='credit' || sale.settled_at){
+        return;
+      }
       if(pm==='mixed'){
         add('cash', payCashPart);
         add('card', payCardPart);
@@ -1102,9 +1121,6 @@ async function loadRange(startStr, endStr){
         add(pm==='network' ? 'card' : pm, (payCardPart>0 ? payCardPart : grand));
       } else {
         add(pm, grand);
-      }
-      if(pm==='credit' && String(sale.payment_status||'')!=='paid'){
-        add('credit', grand);
       }
     });
 
@@ -1136,6 +1152,20 @@ async function loadRange(startStr, endStr){
         sub(pm, Math.abs(grand));
       }
     });
+
+    const paymentTransactions = (payRes0 && payRes0.ok) ? (payRes0.items || []) : [];
+    paymentTransactions.forEach(transaction => {
+      const rawMethod = String(transaction.payment_method || '').toLowerCase();
+      const method = rawMethod === 'network' ? 'card' : rawMethod;
+      const amount = Number(transaction.amount || 0);
+      if(!method || !Number.isFinite(amount) || amount <= 0) return;
+      payByMethod.set(method, Number(payByMethod.get(method) || 0) + amount);
+    });
+    if(typeof ReportAccounting !== 'undefined' && ReportAccounting.summarizeDocuments){
+      payByMethod.clear();
+      Object.entries(ReportAccounting.summarizeDocuments(allSales).paymentTotals)
+        .forEach(([method, amount]) => payByMethod.set(method, amount));
+    }
 
     const grossAfter = grossBefore - refunds;
     const vatAfter = vatBefore - refundsVat;
@@ -1260,6 +1290,19 @@ async function loadRange(startStr, endStr){
     set('netVat', netVat);
     set('netAfter', netPre + netTob + netVat);
 
+    if(typeof ReportAccounting !== 'undefined' && ReportAccounting.calculateReportTotals){
+      const verified = ReportAccounting.calculateReportTotals({ basis: 'document', sales: reportSales, creditNotes: reportCreditNotes, payments: paymentTransactions, purchases });
+      set('salesPre', verified.sales.pre); set('salesVat', verified.sales.vat); set('salesAfter', verified.sales.after);
+      set('discTotal', verified.sales.after - verified.salesAfterDiscount.after);
+      set('salesAfterDiscPre', verified.salesAfterDiscount.pre); set('salesAfterDiscVat', verified.salesAfterDiscount.vat); set('salesAfterDiscAfter', verified.salesAfterDiscount.after);
+      set('retPre', verified.returns.pre); set('retVat', verified.returns.vat); set('retAfter', verified.returns.after);
+      set('purPre', verified.purchases.pre); set('purVat', verified.purchases.vat); set('purAfter', verified.purchases.after);
+      set('salesAfterDiscNetPre', verified.salesAfterDiscount.pre - verified.returns.pre);
+      set('salesAfterDiscNetVat', verified.salesAfterDiscount.vat - verified.returns.vat);
+      set('salesAfterDiscNetAfter', verified.salesAfterDiscount.after - verified.returns.after);
+      set('netPre', verified.net.pre); set('netTob', verified.net.tobacco); set('netVat', verified.net.vat); set('netAfter', verified.net.after);
+    }
+
     let paidBySale = new Map();
     try{
       const txs = (payRes0 && payRes0.ok) ? (payRes0.items||[]) : [];
@@ -1278,8 +1321,9 @@ async function loadRange(startStr, endStr){
     try{
       const profit = (typeof ReportProfitUtils !== 'undefined' && ReportProfitUtils.calcProfitabilityTotals)
         ? ReportProfitUtils.calcProfitabilityTotals({
-            allSales,
-            creditNotes,
+            basis: 'document',
+            allSales: [...reportSales, ...reportCreditNotes],
+            creditNotes: reportCreditNotes,
             soldItemsDetailed,
             paidBySale,
             vatPercent: settings.vat_percent,

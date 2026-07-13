@@ -76,11 +76,16 @@ function registerEmployeesIPC(){
   });
 
   ipcMain.handle('employees:get', async (_e, { id }) => {
+    const employeeId = Number(id);
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI(`/employees/${employeeId}`); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
-        const [[row]] = await conn.query('SELECT * FROM employees WHERE id=? LIMIT 1', [Number(id)]);
+        const [[row]] = await conn.query('SELECT * FROM employees WHERE id=? LIMIT 1', [employeeId]);
         if(!row) return { ok:false, error:'غير موجود' };
         return { ok:true, item: row };
       } finally { conn.release(); }

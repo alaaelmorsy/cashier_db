@@ -131,26 +131,13 @@ async function loadReport(){
     
     document.getElementById('reportContent').style.display = 'block';
     
-    let totalSales = 0;
-    let totalQty = 0;
-    invoices.forEach(inv => {
-      totalSales += Number(inv.employee_total||0);
-    });
-    products.forEach(p => {
-      totalQty += Number(p.total_qty||0);
-    });
-    
-    let totalCreditDeduction = 0;
-    let totalCreditQty = 0;
-    creditNotes.forEach(cn => {
-      totalCreditDeduction += Math.abs(Number(cn.employee_total||0));
-    });
-    creditProducts.forEach(cp => {
-      totalCreditQty += Math.abs(Number(cp.total_qty||0));
-    });
-    
-    const netTotal = totalSales - totalCreditDeduction;
-    const netQty = totalQty - totalCreditQty;
+    const verified = EmployeeReportAccounting.summarizeEmployeeReport({ invoices, products, creditNotes, creditProducts });
+    const totalSales = verified.sales;
+    const totalQty = verified.salesQty;
+    const totalCreditDeduction = verified.returns;
+    const totalCreditQty = verified.returnsQty;
+    const netTotal = verified.net;
+    const netQty = verified.netQty;
     
     document.getElementById('totalInvoices').textContent = invoices.length;
     document.getElementById('totalSales').textContent = fmt(totalSales);

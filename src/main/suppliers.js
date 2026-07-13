@@ -95,6 +95,10 @@ function registerSuppliersIPC(){
   ipcMain.handle('suppliers:get', async (_e, id) => {
     const sid = (id && id.id) ? id.id : id;
     if(!sid) return { ok:false, error:'معرّف مفقود' };
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI(`/suppliers/${sid}`); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

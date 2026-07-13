@@ -650,6 +650,10 @@ function registerProductsIPC(){
   ipcMain.handle('products:get_by_expiry', async (_e, params) => {
     const { from_date, to_date, status } = params;
     if(!from_date || !to_date || !status) return { ok:false, error:'معلمات مفقودة' };
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI('/products-expiry', { from_date, to_date, status }); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

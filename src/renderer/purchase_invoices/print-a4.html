@@ -314,6 +314,7 @@
       </div>
     </div>
 
+    <script src="../../shared/purchase-invoice-accounting.js"></script>
     <script>
       (async function(){
         try{
@@ -550,13 +551,16 @@
 
           const tbody = document.getElementById('tbody');
           const divisor = 1 + (vatPct/100);
+          const generalDiscount = Math.max(0, Number(it.discount_general || 0));
+          const grossLinesExclusive = details.reduce((sum, detail) => sum + Math.abs(Number(detail.line_total || 0)), 0);
+          const discountAllocations = PurchaseInvoiceAccounting.allocatedDiscounts(details, generalDiscount, grossLinesExclusive);
           const productCache = {};
           const getProductName = async(id)=>{
             if(productCache[id]) return productCache[id];
             try{ const pr = await window.opener?.api?.products_get(id); const nm = (pr && pr.ok && pr.item) ? (pr.item.name || pr.item.name_en || ('#'+id)) : ('#'+id); productCache[id]=nm; return nm; }catch(_){ return '#'+id; }
           };
           let rowNum = 0;
-          for(const x of details){
+          for(const [detailIndex, x] of details.entries()){
             rowNum++;
             const tr = document.createElement('tr');
             const qty = Number(x.qty||0);
@@ -564,7 +568,9 @@
             const unitExclusive = Number(x.unit_cost||0);
             const lineDiscExclusive = Number(x.discount_line||0);
             // Net exclusive for the line: qty * unitExclusive - discount_line (already stored in line_total)
-            const netExclusiveLine = (x.line_total!=null) ? Number(x.line_total) : Number(((unitExclusive*qty) - lineDiscExclusive).toFixed(2));
+            const rawExclusiveLine = (x.line_total!=null) ? Number(x.line_total) : Number(((unitExclusive*qty) - lineDiscExclusive).toFixed(2));
+            const allocatedGeneralDiscount = discountAllocations[detailIndex] || 0;
+            const netExclusiveLine = Number((rawExclusiveLine - allocatedGeneralDiscount).toFixed(2));
             const vatAmt = Number((netExclusiveLine * (vatPct/100)).toFixed(2));
             const total = Number((netExclusiveLine + vatAmt).toFixed(2));
             const prodName = await getProductName(x.product_id);

@@ -402,7 +402,7 @@ function toStr(d){
 }
 
 let currentPage = 1;
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50000;
 
 async function loadRange(startStr, endStr, page = 1){
   currentPage = page;
@@ -426,9 +426,7 @@ async function loadRange(startStr, endStr, page = 1){
       // Prefer phone; fallback to stored snapshot name if phone missing
       const custPhone = s.customer_phone || s.disp_customer_phone || '';
       const cust = custPhone || (s.customer_name || s.disp_customer_name || '');
-      const pre = Number(s.sub_total||0);
-      const vat = Number(s.vat_total||0);
-      const grand = Number(s.grand_total||0);
+      const { pre, vat, grand } = ReportAccounting.documentAmounts(s);
       sumPre += pre; sumVat += vat; sumGrand += grand;
       const pm = String(s.payment_method || '').toLowerCase();
       const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='tamara'?'تمارا':(m==='tabby'?'تابي':(m==='bank_transfer'?'تحويل بنكي':(m==='mixed'?'مختلط': m))))));
@@ -436,8 +434,11 @@ async function loadRange(startStr, endStr, page = 1){
       const addAmt = (key, amount)=>{
         if(!key) return; const k=(key==='network'?'card':key); const prev=Number(payTotals.get(k)||0); payTotals.set(k, prev + Number(amount||0)); };
       if(pm==='mixed'){
-        addAmt('cash', Number(s.pay_cash_amount||0) || grand/2);
-        addAmt('card', Number(s.pay_card_amount||0) || grand/2);
+        const cashPart = Number(s.pay_cash_amount||0);
+        const cardPart = Number(s.pay_card_amount||0);
+        addAmt('cash', cashPart);
+        addAmt('card', cardPart);
+        addAmt('unallocated', grand - cashPart - cardPart);
       } else if(pm==='cash'){
         addAmt('cash', Number(s.settled_cash||0) || Number(s.pay_cash_amount||0) || grand);
       } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
@@ -449,7 +450,13 @@ async function loadRange(startStr, endStr, page = 1){
 
     if(invTbody){ invTbody.innerHTML = rows || '<tr><td colspan="8" class="muted">لا توجد فواتير ضمن الفترة</td></tr>'; }
     const set = (id, v)=>{ const el = document.getElementById(id); if(!el) return; el.textContent = (id==='sumCount') ? String(v) : fmt(v); };
-    set('sumPre', sumPre); set('sumVat', sumVat); set('sumGrand', sumGrand); set('sumCount', items.length||0);
+    if(typeof ReportAccounting !== 'undefined'){
+      const verified = ReportAccounting.summarizeDocuments(items);
+      set('sumPre', verified.subTotal); set('sumVat', verified.vatTotal); set('sumGrand', verified.grandTotal); set('sumCount', verified.documentCount);
+      payTotals.clear(); Object.entries(verified.paymentTotals).forEach(([key, value]) => payTotals.set(key, value));
+    } else {
+      set('sumPre', sumPre); set('sumVat', sumVat); set('sumGrand', sumGrand); set('sumCount', items.length||0);
+    }
 
     const total = (res && res.total != null) ? res.total : items.length;
     const totalPages = Math.ceil(total / PAGE_SIZE) || 1;

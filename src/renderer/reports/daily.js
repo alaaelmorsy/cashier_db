@@ -862,9 +862,13 @@ function computeDailyRange(closingHour){
   return { now, start, end, startStr: toStr(start), endStr: toStr(end) };
 }
 
+let reportLoadSequence = 0;
+
 async function load(){
+  const loadSequence = ++reportLoadSequence;
   try{
     const st = await window.api.settings_get();
+    if(loadSequence !== reportLoadSequence) return;
     const s = (st && st.ok) ? st.item : {};
     const closingHour = s.closing_hour || '00:00';
     const { start, end, startStr, endStr } = computeDailyRange(closingHour);
@@ -876,9 +880,9 @@ async function load(){
     let salesRes, purRes0, invRes0, payRes0;
     try{
       const [sumRes, detRes, _salesRes, _purRes, _invRes, _payRes] = await Promise.all([
-        window.api.sales_items_summary({ date_from: startStr, date_to: endStr }),
-        window.api.sales_items_detailed({ date_from: startStr, date_to: endStr }),
-        window.api.sales_list({ date_from: startStr, date_to: endStr, pageSize: 50000 }),
+        window.api.sales_items_summary({ date_from: startStr, date_to: endStr, date_basis: 'activity' }),
+        window.api.sales_items_detailed({ date_from: startStr, date_to: endStr, date_basis: 'activity' }),
+        window.api.sales_list({ date_from: startStr, date_to: endStr, date_basis: 'activity', pageSize: 50000 }),
         window.api.purchases_list({ from_at: startStr, to_at: endStr }),
         window.api.purchase_invoices_list({ from: startStr, to: endStr }),
         window.api.sales_list_payments({ date_from: startStr, date_to: endStr })
@@ -890,36 +894,14 @@ async function load(){
       invRes0 = _invRes;
       payRes0 = _payRes;
     }catch(_){ salesRes = null; purRes0 = null; invRes0 = null; payRes0 = null; }
+    if(loadSequence !== reportLoadSequence) return;
 
     let allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
     
-    // If empty and we're close to edges, retry with 1-hour padding on both sides to avoid timezone/seconds mismatch
-    if(!allSales.length){
-      try{
-        const padMs = 60*60*1000; // 1h
-        const start2 = new Date(start.getTime() - padMs);
-        const end2 = new Date(end.getTime() + padMs);
-        const pad2 = (v)=> String(v).padStart(2,'0');
-        const toStr = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`;
-        const s2 = toStr(start2), e2 = toStr(end2);
-        salesRes = await window.api.sales_list({ date_from: s2, date_to: e2, pageSize: 50000 });
-        allSales = (salesRes && salesRes.ok) ? (salesRes.items||[]) : [];
-      }catch(_){ }
-    }
-    // Enforce strict in-range filtering to avoid showing old invoices when day is empty
-    // For settled invoices (settled_at IS NOT NULL), use settled_at for range check
-    try{
-      const inRange = (rec) => {
-        const useSettled = rec.settled_at != null;
-        const d = new Date(useSettled ? rec.settled_at : (rec.created_at || rec.invoice_date));
-        return d >= start && d < end;
-      };
-      allSales = Array.isArray(allSales) ? allSales.filter(inRange) : [];
-    }catch(_){ }
-
     // split into normal invoices and credit notes
     // include PAID invoices and PARTIAL credit invoices (for badge display); exclude credit notes
-    const invoices = allSales.filter(s => {
+    const normalSales = allSales.filter(s => !(String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-')));
+    const invoices = normalSales.filter(s => {
       const isCN = String(s.doc_type||'') === 'credit_note' || String(s.invoice_no||'').startsWith('CN-');
       if(isCN) return false;
       const status = String(s.payment_status||'').toLowerCase();
@@ -954,7 +936,7 @@ async function load(){
         const prev = Number(payByMethod.get(k)||0);
         payByMethod.set(k, prev + Number(amount||0));
       };
-      if(pm==='credit'){
+      if(pm==='credit' || sale.settled_at){
         // skip; partial and full settlements are captured via payment transactions
         return;
       }
@@ -1028,38 +1010,11 @@ async function load(){
         const sid = Number(tx.sale_id||0);
         if(sid>0){ paidBySale.set(sid, Number(paidBySale.get(sid)||0) + val); }
       });
-    }catch(_){ }
-
-    // Remove double-counting for invoices settled via settle_partial (multiple installments):
-    // These invoices appear in allSales (via settled_at) AND also have transactions in paidBySale.
-    // Their invoice grand_total was already added to payByMethod; now subtract it so only
-    // the transaction amounts remain (avoiding counting the same amount twice).
-    try{
-      invoices.forEach(dedup => {
-        if(!dedup.settled_at) return;
-        const sid = Number(dedup.id||0);
-        if(!paidBySale.has(sid)) return;
-        const dpm = String(dedup.payment_method||'').toLowerCase();
-        const dCash = Number(dedup.settled_cash || 0);
-        const dCashPart = Number(dedup.pay_cash_amount || 0);
-        const dCardPart = Number(dedup.pay_card_amount || 0);
-        const dGrand = Number(dedup.grand_total||0);
-        const sub = (method, amount)=>{
-          if(!method) return;
-          const k = (method==='network') ? 'card' : String(method).toLowerCase();
-          payByMethod.set(k, (Number(payByMethod.get(k)||0)) - Number(amount||0));
-        };
-        if(dpm==='mixed'){
-          sub('cash', dCashPart);
-          sub('card', dCardPart);
-        } else if(dpm==='cash'){
-          sub('cash', dGrand);
-        } else if(['card','network','tamara','tabby','bank_transfer'].includes(dpm)){
-          sub(dpm, dCardPart>0 ? dCardPart : dGrand);
-        } else if(dpm){
-          sub(dpm, dGrand);
-        }
-      });
+      if(typeof ReportAccounting !== 'undefined' && ReportAccounting.summarizeReportPayments){
+        payByMethod.clear();
+        Object.entries(ReportAccounting.summarizeReportPayments({ sales: normalSales, creditNotes, payments: txs }))
+          .forEach(([method, amount]) => payByMethod.set(method, amount));
+      }
     }catch(_){ }
 
     // Merge and apply credit rules: exclude unpaid credit invoices, include only paid amount for partial credit
@@ -1217,6 +1172,24 @@ async function load(){
       set('netTob', netTob);
       set('netVat', netVat);
       set('netAfter', netAfter);
+
+      if(typeof ReportAccounting !== 'undefined' && ReportAccounting.calculateReportTotals){
+        const verified = ReportAccounting.calculateReportTotals({
+          sales: normalSales,
+          creditNotes,
+          payments: (payRes && payRes.ok) ? (payRes.items||[]) : [],
+          purchases
+        });
+        set('salesPre', verified.sales.pre); set('salesVat', verified.sales.vat); set('salesAfter', verified.sales.after);
+        set('discTotal', verified.sales.after - verified.salesAfterDiscount.after);
+        set('salesAfterDiscPre', verified.salesAfterDiscount.pre); set('salesAfterDiscVat', verified.salesAfterDiscount.vat); set('salesAfterDiscAfter', verified.salesAfterDiscount.after);
+        set('retPre', verified.returns.pre); set('retVat', verified.returns.vat); set('retAfter', verified.returns.after);
+        set('purPre', verified.purchases.pre); set('purVat', verified.purchases.vat); set('purAfter', verified.purchases.after);
+        set('salesAfterDiscNetPre', verified.salesAfterDiscount.pre - verified.returns.pre);
+        set('salesAfterDiscNetVat', verified.salesAfterDiscount.vat - verified.returns.vat);
+        set('salesAfterDiscNetAfter', verified.salesAfterDiscount.after - verified.returns.after);
+        set('netPre', verified.net.pre); set('netTob', verified.net.tobacco); set('netVat', verified.net.vat); set('netAfter', verified.net.after);
+      }
 
       // Profitability: cash basis + proportional share for partial credit (same ratio as summary scaleForPartial)
       try{

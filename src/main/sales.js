@@ -3,6 +3,7 @@ const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI, postToAPI, putToAPI } = require('./api-client');
 const LocalZatcaBridge = require('./local-zatca');
+const { buildReportDateFilter } = require('../shared/report-date-filter');
 
 function registerSalesIPC(){
   // Cache flag: check invoice counter only once per session
@@ -827,6 +828,7 @@ function registerSalesIPC(){
         if (_q.payment_status) apiParams.payment_status = _q.payment_status;
         if (_q.date_from) apiParams.date_from = _q.date_from;
         if (_q.date_to) apiParams.date_to = _q.date_to;
+        if (_q.date_basis) apiParams.date_basis = _q.date_basis;
         if (_q.user_id) apiParams.user_id = _q.user_id;
         if (_q.type) apiParams.type = _q.type;
         if (_q.customers_only) apiParams.customers_only = '1';
@@ -965,19 +967,10 @@ function registerSalesIPC(){
           }
         }
 
-        // datetime filters (from/to). Accepts 'YYYY-MM-DD' or full 'YYYY-MM-DD HH:MM' formats
-        // For settled credit invoices (settled_at IS NOT NULL), filter by settled_at so they appear
-        // in the report of the day they were paid, not the day they were created.
-        if(q.date_from && q.date_to){
-          terms.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
-          params.push(q.date_from, q.date_to, q.date_from, q.date_to);
-        } else if(q.date_from){
-          terms.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
-          params.push(q.date_from, q.date_from);
-        } else if(q.date_to){
-          terms.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
-          params.push(q.date_to, q.date_to);
-        }
+        const dateFilter = buildReportDateFilter({
+          tableAlias: 's', from: q.date_from, to: q.date_to, basis: q.date_basis || 'document'
+        });
+        if(dateFilter.clause){ terms.push(dateFilter.clause); params.push(...dateFilter.params); }
         const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
         
         // Optimized count strategy for large tables (300k+ records)
@@ -1021,16 +1014,10 @@ function registerSalesIPC(){
           } else if(q.zatca_status === 'not_sent'){
             countTerms.push("(s.zatca_status IS NULL OR s.zatca_status NOT IN ('rejected','submitted','accepted')) AND s.zatca_submitted IS NULL");
           }
-          if(q.date_from && q.date_to){
-            countTerms.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
-            countParams.push(q.date_from, q.date_to, q.date_from, q.date_to);
-          } else if(q.date_from){
-            countTerms.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
-            countParams.push(q.date_from, q.date_from);
-          } else if(q.date_to){
-            countTerms.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
-            countParams.push(q.date_to, q.date_to);
-          }
+          const countDateFilter = buildReportDateFilter({
+            tableAlias: 's', from: q.date_from, to: q.date_to, basis: q.date_basis || 'document'
+          });
+          if(countDateFilter.clause){ countTerms.push(countDateFilter.clause); countParams.push(...countDateFilter.params); }
           
           // Add free-text search if exists (only sales fields)
           if(q.q){
@@ -1432,10 +1419,17 @@ function registerSalesIPC(){
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
+        await conn.beginTransaction();
         const [[sale]] = await conn.query('SELECT * FROM sales WHERE id=? LIMIT 1', [id]);
-        if(!sale){ return { ok:false, error:'الفاتورة غير موجودة' }; }
-        if(String(sale.payment_method).toLowerCase() !== 'credit'){ return { ok:false, error:'ليست فاتورة آجل' }; }
-        if(String(sale.payment_status||'paid') === 'paid'){ return { ok:false, error:'الفاتورة مدفوعة مسبقًا' }; }
+        if(!sale){ await conn.rollback(); return { ok:false, error:'الفاتورة غير موجودة' }; }
+        if(String(sale.payment_method).toLowerCase() !== 'credit'){ await conn.rollback(); return { ok:false, error:'ليست فاتورة آجل' }; }
+        if(String(sale.payment_status||'paid') === 'paid'){ await conn.rollback(); return { ok:false, error:'الفاتورة مدفوعة مسبقًا' }; }
+        const settlementAmount = Math.max(0, Number(sale.remaining_amount || sale.grand_total || 0));
+        if(!settlementAmount){ await conn.rollback(); return { ok:false, error:'لا يوجد مبلغ متبقٍ للسداد' }; }
+        await conn.query(
+          'INSERT INTO payment_transactions (sale_id, amount, payment_method, cash_received, notes, created_by_user_id, created_by_username) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [id, settlementAmount, method, cash, p.notes || null, p.user_id || null, p.username || null]
+        );
         // For CASH settlement, store amount in settled_cash. For CARD/Tamara/Tabby, set to NULL.
         // Update method and settlement info
         await conn.query('UPDATE sales SET payment_method=?, payment_status="paid", settled_at=NOW(), settled_method=?, settled_cash=?, paid_amount=grand_total, remaining_amount=0 WHERE id=?', [method, method, (method==='cash'?cash:null), id]);
@@ -1445,12 +1439,16 @@ function registerSalesIPC(){
         } else if(method==='card' || method==='tamara' || method==='tabby' || method==='bank_transfer'){
           await conn.query('UPDATE sales SET pay_cash_amount = NULL, pay_card_amount = grand_total WHERE id=?', [id]);
         }
+        await conn.commit();
         // Notify update
         try{
           const { BrowserWindow } = require('electron');
           BrowserWindow.getAllWindows().forEach(w => w.webContents.send('sales:changed', { action: 'settled', sale_id: id, method, cash: (cash||0) }));
         }catch(_){ }
         return { ok:true, sale_id: id, method, cash: (cash||0) };
+      } catch (error) {
+        try { await conn.rollback(); } catch (_) { }
+        throw error;
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'تعذر تسوية الفاتورة' }; }
   });
@@ -1661,6 +1659,7 @@ function registerSalesIPC(){
         if (q.date_to) apiParams.date_to = q.date_to;
         if (q.from_at) apiParams.from_at = q.from_at;
         if (q.to_at) apiParams.to_at = q.to_at;
+        if (q.date_basis) apiParams.date_basis = q.date_basis;
         if (q.exclude_unpaid_credit) apiParams.exclude_unpaid_credit = 1;
         const result = await fetchFromAPI('/sales-items-summary', apiParams);
         if (result && result.ok) {
@@ -1678,8 +1677,8 @@ function registerSalesIPC(){
     const to = q.date_to || q.to_at || null;
     const terms = [];
     const params = [];
-    if(from){ terms.push('s.created_at >= ?'); params.push(from); }
-    if(to){ terms.push('s.created_at <= ?'); params.push(to); }
+    const dateFilter = buildReportDateFilter({ tableAlias: 's', from, to, basis: q.date_basis || 'document' });
+    if(dateFilter.clause){ terms.push(dateFilter.clause); params.push(...dateFilter.params); }
     // Treat NULL doc_type as 'invoice'
     terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
     // For profitability: exclude credit (آجل) invoices that are not yet fully paid.
@@ -1693,14 +1692,16 @@ function registerSalesIPC(){
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTables(conn);
-        const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
+        const sql = `SELECT si.product_id, si.name,
+                            SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END) AS qty_total,
+                            SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END) AS amount_total,
                             COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
                             COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
                      FROM sales_items si INNER JOIN sales s ON s.id = si.sale_id
                      LEFT JOIN products p ON p.id = si.product_id
                      ${where}
                      GROUP BY si.product_id, si.name, p.cost, p.price, p.stock, p.is_vat_exempt
-                     ORDER BY SUM(si.qty) DESC`;
+                     ORDER BY qty_total DESC, si.product_id ASC, si.name ASC`;
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows };
       } finally { conn.release(); }
@@ -1717,6 +1718,7 @@ function registerSalesIPC(){
         if (q.date_to) apiParams.date_to = q.date_to;
         if (q.from_at) apiParams.from_at = q.from_at;
         if (q.to_at) apiParams.to_at = q.to_at;
+        if (q.date_basis) apiParams.date_basis = q.date_basis;
         if (q.only_tobacco) apiParams.only_tobacco = '1';
         if (q.product_id) apiParams.product_id = q.product_id;
         const result = await fetchFromAPI('/sales-items-detailed', apiParams);
@@ -1732,8 +1734,8 @@ function registerSalesIPC(){
     const onlyTobacco = !!q.only_tobacco;
     const terms = [];
     const params = [];
-    if(from){ terms.push('s.created_at >= ?'); params.push(from); }
-    if(to){ terms.push('s.created_at <= ?'); params.push(to); }
+    const dateFilter = buildReportDateFilter({ tableAlias: 's', from, to, basis: q.date_basis || 'document' });
+    if(dateFilter.clause){ terms.push(dateFilter.clause); params.push(...dateFilter.params); }
     terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
     if(onlyTobacco){ terms.push('(p.is_tobacco = 1)'); }
     if(q.product_id){ terms.push('si.product_id = ?'); params.push(Number(q.product_id)); }
@@ -1744,7 +1746,7 @@ function registerSalesIPC(){
         await ensureTables(conn);
         const sql = `
           SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
-                 si.product_id, si.name, si.description, si.operation_name, si.price, si.qty, si.line_total,
+                 si.product_id, si.name, si.description, si.operation_name, si.unit_multiplier, si.price, si.qty, si.line_total,
                  p.category, p.is_tobacco,
                  COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
           FROM sales_items si
@@ -1761,6 +1763,10 @@ function registerSalesIPC(){
   // Inventory report: active products with sold qty in period and current stock
   ipcMain.handle('reports:inventory', async (_e, query) => {
     const q = query || {};
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI('/reports-inventory', q); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     const from = q.date_from ? q.date_from.replace('T', ' ').substring(0, 16) + ':00' : null;
     const to   = q.date_to   ? q.date_to.replace('T', ' ').substring(0, 16) + ':59' : null;
     const reportType = q.report_type || 'sold';
@@ -1780,21 +1786,25 @@ function registerSalesIPC(){
             FROM products p
             WHERE p.is_active = 1
               AND p.id NOT IN (
-                SELECT DISTINCT si.product_id FROM sales_items si
+                SELECT si.product_id FROM sales_items si
+                INNER JOIN sales sx ON sx.id = si.sale_id
                 WHERE si.sale_id IN (${salesSubquery})
+                GROUP BY si.product_id
+                HAVING SUM(CASE WHEN sx.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END) > 0
               )
-            ORDER BY p.name ASC`;
+            ORDER BY p.name ASC, p.id ASC`;
         } else {
           sql = `
             SELECT p.id, p.name, COALESCE(p.barcode,'') AS barcode, COALESCE(p.category,'') AS category,
                    COALESCE(p.stock, 0) AS stock_qty,
-                   COALESCE(SUM(si.qty), 0) AS qty_sold
+                   COALESCE(SUM(CASE WHEN si.sale_id IN (SELECT id FROM sales WHERE doc_type='credit_note') THEN -ABS(si.qty) ELSE ABS(si.qty) END), 0) AS qty_sold
             FROM products p
             INNER JOIN sales_items si ON si.product_id = p.id
               AND si.sale_id IN (${salesSubquery})
             WHERE p.is_active = 1
             GROUP BY p.id, p.name, p.barcode, p.category, p.stock
-            ORDER BY p.name ASC`;
+            HAVING qty_sold > 0
+            ORDER BY p.name ASC, p.id ASC`;
         }
         const [rows] = await conn.query(sql, params);
         return { ok:true, items: rows };
@@ -2250,6 +2260,10 @@ function registerSalesIPC(){
   });
 
   ipcMain.handle('sales:employee_report', async (_e, query) => {
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI('/employee-report', query || {}); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try {
       const conn = await dbAdapter.getConnection();
       try {

@@ -646,10 +646,10 @@ async function loadRange(startStr, endStr){
       const datePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit'}).format(created);
       const timePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
       
-      let pre = Number(pi.sub_total||0);
-      const priceMode = String(pi.price_mode||'inclusive');
-      let vat = (priceMode === 'zero_vat') ? 0 : Number(pi.vat_total||0);
-      let grand = (priceMode === 'zero_vat') ? pre : Number(pi.grand_total||0);
+      const legalAmounts = StatementAccounting.documentAmounts(pi);
+      let pre = legalAmounts.pre;
+      let vat = legalAmounts.vat;
+      let grand = legalAmounts.grand;
       
       // For returns, use absolute values for calculation but display as negative
       if(isReturn){
@@ -758,10 +758,10 @@ async function loadRange(startStr, endStr){
     set('netInvoicesGrand', netInvoiceGrand);
     
     // Calculate net paid invoices (paid - paid returns)
-    const netPaidCount = Math.max(0, paidCount - returnCount);
-    const netPaidPre = Math.max(0, paidPre - returnPaidPre);
-    const netPaidVat = Math.max(0, paidVat - returnPaidVat);
-    const netPaidGrand = Math.max(0, paidGrand - returnPaidGrand);
+    const netPaidCount = paidCount - returnCount;
+    const netPaidPre = paidPre - returnPaidPre;
+    const netPaidVat = paidVat - returnPaidVat;
+    const netPaidGrand = paidGrand - returnPaidGrand;
     
     set('paidCount', netPaidCount);
     set('paidPre', netPaidPre);
@@ -827,7 +827,7 @@ async function loadRange(startStr, endStr){
         }
         const vTot = document.getElementById('vouchersTotal'); if(vTot) vTot.textContent = fmt(vouchersTotal);
         const vCnt = document.getElementById('vouchersCount'); if(vCnt) vCnt.textContent = String(vouchersCount);
-        const vouchersPre = vouchersTotal / 1.15;
+        const vouchersPre = creditGrand ? vouchersTotal * (creditPre / creditGrand) : vouchersTotal;
         const vouchersVat = vouchersTotal - vouchersPre;
         set('voucherCount', vouchersCount);
         set('vouchersPre', vouchersPre);
@@ -841,6 +841,19 @@ async function loadRange(startStr, endStr){
         const netEl = document.getElementById('netBalance'); if(netEl) netEl.textContent = fmt(net);
       }
     }catch(_){ }
+
+    if(typeof StatementAccounting !== 'undefined'){
+      const verified = StatementAccounting.summarizeSupplierStatement({ invoices, returns, vouchers });
+      set('invoicesPre', verified.invoices.pre); set('invoicesVat', verified.invoices.vat); set('invoicesGrand', verified.invoices.grand);
+      set('returnsPre', verified.returns.pre); set('returnsVat', verified.returns.vat); set('returnsGrand', verified.returns.grand);
+      set('netInvoiceCount', verified.net.count); set('netInvoicesPre', verified.net.pre); set('netInvoicesVat', verified.net.vat); set('netInvoicesGrand', verified.net.grand);
+      set('sumPre', verified.net.pre); set('sumVat', verified.net.vat); set('sumGrand', verified.net.grand);
+      set('summaryCount', verified.invoices.count + verified.returns.count); set('summaryPre', verified.net.pre); set('summaryVat', verified.net.vat); set('summaryGrand', verified.net.grand);
+      set('paidCount', verified.paid.count); set('paidPre', verified.paid.pre); set('paidVat', verified.paid.vat); set('paidGrand', verified.paid.grand);
+      set('creditCount', verified.credit.count); set('creditPre', verified.credit.pre); set('creditVat', verified.credit.vat); set('creditGrand', verified.credit.grand);
+      set('voucherCount', verified.vouchers.count); set('vouchersPre', verified.vouchers.pre); set('vouchersVat', verified.vouchers.vat); set('vouchersGrand', verified.vouchers.grand);
+      set('netBalancePre', verified.balance.pre); set('netBalanceVat', verified.balance.vat); set('netBalance', verified.balance.grand);
+    }
 
     try{
       const container = document.getElementById('payTotals');

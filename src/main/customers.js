@@ -142,12 +142,13 @@ function registerCustomersIPC(){
       try {
         const query = q || {};
         const p = {};
-        if (query.q) p.search = query.q;
+        if (query.q || query.search) p.search = query.q || query.search;
         if (query.active) p.active = query.active === '1' ? '1' : undefined;
         if (query.sort) p.sort = query.sort;
-        if (query.page) p.limit = Number(query.pageSize || 20); p.offset = ((Number(query.page || 1) - 1) * Number(query.pageSize || 20));
+        p.limit = Number(query.pageSize || 20);
+        p.offset = ((Number(query.page || 1) - 1) * p.limit);
         const r = await fetchFromAPI('/customers', p);
-        if (r && r.ok) return { ok: true, items: r.customers || [], total: r.total || 0 };
+        if (r && r.ok) return { ok: true, items: r.customers || [], total: r.total || 0, page: Math.max(1, Number(query.page || 1)), pageSize: Number(query.pageSize || 20) };
         return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
       } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
     }
@@ -204,6 +205,12 @@ function registerCustomersIPC(){
   ipcMain.handle('customers:get', async (_e, id) => {
     const cid = (id && id.id) ? id.id : id;
     if(!cid) return { ok:false, error:'معرّف مفقود' };
+    if (isSecondaryDevice()) {
+      try {
+        const result = await fetchFromAPI(`/customers/${cid}`);
+        return result && result.ok ? { ok:true, item:result.customer } : result;
+      } catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const conn = await dbAdapter.getConnection();
       try{

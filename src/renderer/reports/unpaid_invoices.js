@@ -61,7 +61,9 @@ async function loadRange(startStr, endStr){
       if(!created || isNaN(created.getTime())){ try{ created = new Date(String(s.created_at||'').replace(' ', 'T')); }catch(_){ created = new Date(); } }
       const dateStr = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
       const cust = s.customer_name || s.disp_customer_name || '';
-      const grand = Number(s.grand_total||0);
+      const grand = (typeof ReportAccounting !== 'undefined' && ReportAccounting.outstandingAmount)
+        ? ReportAccounting.outstandingAmount(s)
+        : Math.max(0, Number(s.remaining_amount ?? s.grand_total ?? 0));
       sumGrand += grand;
       const payLabels = { cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي', refund:'إشعار دائن' };
       const payKey = String(s.payment_method||'').toLowerCase();

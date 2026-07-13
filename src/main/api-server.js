@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const fs = require('fs');
+const path = require('path');
 const { dbAdapter } = require('../db/db-adapter');
+const { buildReportDateFilter } = require('../shared/report-date-filter');
 
 const DEFAULT_API_PORT = 4310;
 const DEFAULT_API_HOST = '0.0.0.0';
@@ -89,6 +92,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         type,
         customers_only,
         zatca_status,
+        date_basis,
       } = req.query;
 
       const rawLim = req.query.limit;
@@ -101,16 +105,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
 
       conn = await dbAdapter.getConnection();
 
-      const SELECT_COLS = `s.id, s.invoice_no, s.order_no, s.doc_type, s.created_at,
-        s.customer_id, s.customer_name, s.customer_phone, s.customer_vat,
-        s.payment_method, s.payment_status, s.sub_total, s.vat_total, s.grand_total,
-        s.total_after_discount, s.discount_type, s.discount_value, s.discount_amount,
-        s.paid_amount, s.remaining_amount, s.settled_at, s.settled_method, s.settled_cash,
-        s.pay_cash_amount, s.pay_card_amount, s.shift_id,
-        s.zatca_uuid, s.zatca_submitted, s.zatca_status, s.zatca_rejection_reason, s.zatca_response,
-        s.created_by_user_id, s.created_by_username,
-        s.ref_base_sale_id, s.ref_base_invoice_no,
-        c.name AS disp_customer_name, c.phone AS disp_customer_phone`;
+      const SELECT_COLS = `s.*, c.name AS disp_customer_name, c.phone AS disp_customer_phone`;
 
       const whereClauses = [];
       const params = [];
@@ -150,16 +145,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         whereClauses.push("(s.zatca_status IS NULL OR s.zatca_status NOT IN ('rejected','submitted','accepted')) AND s.zatca_submitted IS NULL");
       }
 
-      if (date_from && date_to) {
-        whereClauses.push('((s.settled_at IS NULL AND s.created_at >= ? AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ? AND s.settled_at <= ?))');
-        params.push(date_from, date_to, date_from, date_to);
-      } else if (date_from) {
-        whereClauses.push('((s.settled_at IS NULL AND s.created_at >= ?) OR (s.settled_at IS NOT NULL AND s.settled_at >= ?))');
-        params.push(date_from, date_from);
-      } else if (date_to) {
-        whereClauses.push('((s.settled_at IS NULL AND s.created_at <= ?) OR (s.settled_at IS NOT NULL AND s.settled_at <= ?))');
-        params.push(date_to, date_to);
-      }
+      const dateFilter = buildReportDateFilter({
+        tableAlias: 's', from: date_from, to: date_to, basis: date_basis || 'document'
+      });
+      if (dateFilter.clause) { whereClauses.push(dateFilter.clause); params.push(...dateFilter.params); }
 
       const where = whereClauses.length ? ('WHERE ' + whereClauses.join(' AND ')) : '';
 
@@ -354,15 +343,15 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/sales-items-summary', async (req, res) => {
     let conn;
     try {
-      const { date_from, date_to, from_at, to_at, exclude_unpaid_credit } = req.query;
+      const { date_from, date_to, from_at, to_at, exclude_unpaid_credit, date_basis } = req.query;
       const from = date_from || from_at || null;
       const to = date_to || to_at || null;
       
       conn = await dbAdapter.getConnection();
       const terms = [];
       const params = [];
-      if (from) { terms.push('s.created_at >= ?'); params.push(from); }
-      if (to) { terms.push('s.created_at <= ?'); params.push(to); }
+      const dateFilter = buildReportDateFilter({ tableAlias: 's', from, to, basis: date_basis || 'document' });
+      if (dateFilter.clause) { terms.push(dateFilter.clause); params.push(...dateFilter.params); }
       terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
       // For profitability: exclude credit (آجل) invoices that are not yet fully paid.
       if (exclude_unpaid_credit) {
@@ -370,7 +359,9 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       
-      const sql = `SELECT si.product_id, si.name, SUM(si.qty) AS qty_total, SUM(si.line_total) AS amount_total,
+      const sql = `SELECT si.product_id, si.name,
+                          SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END) AS qty_total,
+                          SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END) AS amount_total,
                           COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
                           COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
                    FROM sales_items si 
@@ -378,7 +369,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
                    LEFT JOIN products p ON p.id = si.product_id
                    ${where}
                    GROUP BY si.product_id, si.name, p.cost, p.price, p.stock, p.is_vat_exempt
-                   ORDER BY SUM(si.qty) DESC`;
+                   ORDER BY qty_total DESC, si.product_id ASC, si.name ASC`;
       
       const [rows] = await conn.query(sql, params);
       res.json({ ok: true, items: rows });
@@ -394,22 +385,22 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/sales-items-detailed', async (req, res) => {
     let conn;
     try {
-      const { date_from, date_to, from_at, to_at, only_tobacco, product_id } = req.query;
+      const { date_from, date_to, from_at, to_at, only_tobacco, product_id, date_basis } = req.query;
       const from = date_from || from_at || null;
       const to = date_to || to_at || null;
       const onlyTobacco = only_tobacco === '1' || only_tobacco === 'true';
       conn = await dbAdapter.getConnection();
       const terms = [];
       const params = [];
-      if (from) { terms.push('s.created_at >= ?'); params.push(from); }
-      if (to) { terms.push('s.created_at <= ?'); params.push(to); }
+      const dateFilter = buildReportDateFilter({ tableAlias: 's', from, to, basis: date_basis || 'document' });
+      if (dateFilter.clause) { terms.push(dateFilter.clause); params.push(...dateFilter.params); }
       terms.push("(s.doc_type IS NULL OR s.doc_type IN ('invoice','credit_note'))");
       if (onlyTobacco) { terms.push('(p.is_tobacco = 1)'); }
       if (product_id) { terms.push('si.product_id = ?'); params.push(Number(product_id)); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const sql = `
         SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
-               si.product_id, si.name, si.description, si.operation_name, si.price, si.qty, si.line_total,
+               si.product_id, si.name, si.description, si.operation_name, si.unit_multiplier, si.price, si.qty, si.line_total,
                p.category, p.is_tobacco,
                COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
         FROM sales_items si
@@ -653,7 +644,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/customers', async (req, res) => {
     let conn;
     try {
-      const { limit = 500, offset = 0, search } = req.query;
+      const { limit = 20, offset = 0, search } = req.query;
       conn = await dbAdapter.getConnection();
       let sql = 'SELECT * FROM customers WHERE 1=1';
       const params = [];
@@ -667,8 +658,10 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       sql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
       params.push(parseInt(limit), parseInt(offset));
 
+      const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) AS total').replace(/ ORDER BY[\s\S]*$/, '');
+      const [[countRow]] = await conn.query(countSql, params);
       const [rows] = await conn.query(sql, params);
-      res.json({ ok: true, customers: rows });
+      res.json({ ok: true, customers: rows, total: Number(countRow.total || 0) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     } finally {
@@ -1806,6 +1799,132 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  // Report parity endpoints used by secondary devices
+  app.get('/api/users', async (_req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [items] = await conn.query("SELECT id, username, full_name, role, is_active, created_at FROM users WHERE username <> 'superAdmin' ORDER BY id DESC");
+      res.json({ ok:true, items });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/employees/:id', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[item]] = await conn.query('SELECT * FROM employees WHERE id=? LIMIT 1', [Number(req.params.id)]);
+      if (!item) return res.status(404).json({ ok:false, error:'غير موجود' });
+      res.json({ ok:true, item });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/suppliers/:id', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[supplier]] = await conn.query('SELECT * FROM suppliers WHERE id=? LIMIT 1', [Number(req.params.id)]);
+      if (!supplier) return res.status(404).json({ ok:false, error:'غير موجود' });
+      const balance = Number(supplier.balance || 0);
+      res.json({ ok:true, item:{ ...supplier, balance, total_due:balance } });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/vouchers/:id', async (req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[item]] = await conn.query('SELECT * FROM vouchers WHERE id=? LIMIT 1', [Number(req.params.id)]);
+      if (!item) return res.status(404).json({ ok:false, error:'Voucher not found' });
+      res.json({ ok:true, item });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/settings-image', async (_req, res) => {
+    let conn;
+    try {
+      conn = await dbAdapter.getConnection();
+      const [[settings]] = await conn.query('SELECT logo_blob, logo_mime, logo_path FROM app_settings WHERE id=1 LIMIT 1');
+      if (settings?.logo_blob) return res.json({ ok:true, base64:Buffer.from(settings.logo_blob).toString('base64'), mime:settings.logo_mime || 'image/png' });
+      const logoPath = settings?.logo_path;
+      if (logoPath) {
+        const absolutePath = path.isAbsolute(logoPath) ? logoPath : path.resolve(__dirname, '..', '..', logoPath);
+        if (fs.existsSync(absolutePath)) return res.json({ ok:true, base64:fs.readFileSync(absolutePath).toString('base64'), mime:settings.logo_mime || 'image/png' });
+      }
+      res.json({ ok:true, base64:null, mime:null });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/products-expiry', async (req, res) => {
+    let conn;
+    try {
+      const { from_date, to_date, status } = req.query;
+      if (!from_date || !to_date || !status) return res.status(400).json({ ok:false, error:'معلمات مفقودة' });
+      conn = await dbAdapter.getConnection();
+      const today = new Date(); today.setHours(0,0,0,0);
+      const todayStr = today.toISOString().split('T')[0];
+      const terms = ['expiry_date IS NOT NULL', 'expiry_date BETWEEN ? AND ?'];
+      const params = [from_date, to_date];
+      if (status === 'expired') { terms.push('expiry_date < ?'); params.push(todayStr); }
+      if (status === 'valid') { terms.push('expiry_date >= ?'); params.push(todayStr); }
+      const [products] = await conn.query(`SELECT id,name,name_en,barcode,price,cost,stock,category,description,image_path,is_tobacco,is_active,expiry_date,created_at FROM products WHERE ${terms.join(' AND ')} ORDER BY expiry_date ASC`, params);
+      res.json({ ok:true, products });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/reports-inventory', async (req, res) => {
+    let conn;
+    try {
+      const from = req.query.date_from ? String(req.query.date_from).replace('T', ' ').substring(0, 16) + ':00' : null;
+      const to = req.query.date_to ? String(req.query.date_to).replace('T', ' ').substring(0, 16) + ':59' : null;
+      const reportType = req.query.report_type || 'sold';
+      const params = [];
+      let salesSubquery = `SELECT id FROM sales WHERE (doc_type IS NULL OR doc_type IN ('invoice','credit_note'))`;
+      if (from) { salesSubquery += ' AND created_at >= ?'; params.push(from); }
+      if (to) { salesSubquery += ' AND created_at <= ?'; params.push(to); }
+      const sql = reportType === 'not_sold' ? `
+        SELECT p.id,p.name,COALESCE(p.barcode,'') barcode,COALESCE(p.category,'') category,COALESCE(p.stock,0) stock_qty,0 qty_sold
+        FROM products p WHERE p.is_active=1 AND p.id NOT IN (
+          SELECT si.product_id FROM sales_items si INNER JOIN sales sx ON sx.id=si.sale_id
+          WHERE si.sale_id IN (${salesSubquery}) GROUP BY si.product_id
+          HAVING SUM(CASE WHEN sx.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END)>0
+        ) ORDER BY p.name ASC, p.id ASC` : `
+        SELECT p.id,p.name,COALESCE(p.barcode,'') barcode,COALESCE(p.category,'') category,COALESCE(p.stock,0) stock_qty,
+          COALESCE(SUM(CASE WHEN si.sale_id IN (SELECT id FROM sales WHERE doc_type='credit_note') THEN -ABS(si.qty) ELSE ABS(si.qty) END),0) qty_sold
+        FROM products p INNER JOIN sales_items si ON si.product_id=p.id AND si.sale_id IN (${salesSubquery})
+        WHERE p.is_active=1 GROUP BY p.id,p.name,p.barcode,p.category,p.stock HAVING qty_sold>0 ORDER BY p.name ASC, p.id ASC`;
+      conn = await dbAdapter.getConnection();
+      const [items] = await conn.query(sql, params);
+      res.json({ ok:true, items });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
+  app.get('/api/employee-report', async (req, res) => {
+    let conn;
+    try {
+      const employeeId = Number(req.query.employee_id || 0);
+      const fromDate = req.query.from_date || '';
+      const toDate = req.query.to_date || '';
+      if (!employeeId || !fromDate || !toDate) return res.status(400).json({ ok:false, error:'بيانات التقرير مطلوبة' });
+      const from = String(fromDate).includes(':') ? fromDate : `${fromDate} 00:00:00`;
+      const to = String(toDate).includes(':') ? toDate : `${toDate} 23:59:59`;
+      conn = await dbAdapter.getConnection();
+      const [invoices] = await conn.query(`SELECT DISTINCT s.id,s.invoice_no,s.grand_total,s.payment_method,s.created_at,s.settled_cash,s.pay_cash_amount,c.name customer_name,GROUP_CONCAT(DISTINCT si.name SEPARATOR ', ') products_list,SUM(si.line_total) employee_total FROM sales s INNER JOIN sales_items si ON si.sale_id=s.id AND si.employee_id=? LEFT JOIN customers c ON c.id=s.customer_id WHERE s.doc_type='invoice' AND s.created_at>=? AND s.created_at<=? GROUP BY s.id ORDER BY s.created_at DESC`, [employeeId, from, to]);
+      const [products] = await conn.query(`SELECT si.product_id,si.name product_name,SUM(si.qty) total_qty,AVG(si.price) avg_price,SUM(si.line_total) total_amount FROM sales_items si INNER JOIN sales s ON s.id=si.sale_id WHERE si.employee_id=? AND s.doc_type='invoice' AND s.created_at>=? AND s.created_at<=? GROUP BY si.product_id,si.name ORDER BY total_amount DESC`, [employeeId, from, to]);
+      const [creditNotes] = await conn.query(`SELECT DISTINCT s.id,s.invoice_no,s.grand_total,s.payment_method,s.created_at,s.settled_cash,s.pay_cash_amount,s.ref_base_invoice_no,c.name customer_name,GROUP_CONCAT(DISTINCT si.name SEPARATOR ', ') products_list,SUM(si.line_total) employee_total FROM sales s INNER JOIN sales_items si ON si.sale_id=s.id AND si.employee_id=? LEFT JOIN customers c ON c.id=s.customer_id WHERE s.doc_type='credit_note' AND s.created_at>=? AND s.created_at<=? GROUP BY s.id ORDER BY s.created_at DESC`, [employeeId, from, to]);
+      const [creditProducts] = await conn.query(`SELECT si.product_id,si.name product_name,SUM(si.qty) total_qty,AVG(si.price) avg_price,SUM(si.line_total) total_amount FROM sales_items si INNER JOIN sales s ON s.id=si.sale_id WHERE si.employee_id=? AND s.doc_type='credit_note' AND s.created_at>=? AND s.created_at<=? GROUP BY si.product_id,si.name ORDER BY total_amount DESC`, [employeeId, from, to]);
+      res.json({ ok:true, data:{ invoices, products, creditNotes, creditProducts } });
+    } catch (error) { res.status(500).json({ ok:false, error:error.message }); }
+    finally { if (conn) conn.release(); }
+  });
+
   // Permissions Endpoints
   // ═══════════════════════════════════════════════════════════════
   app.get('/api/permissions/:user_id', async (req, res) => {

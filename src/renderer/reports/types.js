@@ -177,8 +177,9 @@ async function loadRange(startStr, endStr, filterProductId){
         arr.forEach(it => {
           const key = `${it.name||''}||${it.category||''}||${it.operation_name||''}`;
           const prev = grouped.get(key) || { qty: 0, amount: 0 };
-          prev.qty += Number(it.qty||0);
-          prev.amount += Number(it.line_total||0);
+          const signed = ReportAccounting.signedReportItem(it);
+          prev.qty += signed.qty;
+          prev.amount += signed.amount;
           grouped.set(key, prev);
         });
         const tbody = Array.from(grouped.entries()).map(([key, v]) => {
@@ -228,8 +229,9 @@ async function loadRange(startStr, endStr, filterProductId){
         const key = `${it.category||'غير مصنف'}||${it.operation_name||'غير محدد'}`;
         const prev = byKey.get(key) || { count:0, qty:0, amount:0 };
         prev.count += 1;
-        prev.qty += Number(it.qty||0);
-        prev.amount += Number(it.line_total||0);
+        const signed = ReportAccounting.signedReportItem(it);
+        prev.qty += signed.qty;
+        prev.amount += signed.amount;
         byKey.set(key, prev);
       });
       const sumRows = Array.from(byKey.entries()).map(([key, v]) => {
@@ -247,6 +249,7 @@ async function loadRange(startStr, endStr, filterProductId){
 
       const tobRows = det.map(it => {
         const dateStr = fmtDateEn(it.created_at);
+        const signed = ReportAccounting.signedReportItem(it);
         return `<tr>
           <td>${dateStr}</td>
           <td>${it.invoice_no||''}</td>
@@ -254,9 +257,9 @@ async function loadRange(startStr, endStr, filterProductId){
           <td>${it.name}</td>
           <td>${it.category||''}</td>
           <td>${it.operation_name||''}</td>
-          <td>${fmt(it.qty)}</td>
+          <td>${fmt(signed.qty)}</td>
           <td>${fmt(it.price)}</td>
-          <td class=\"right\">${fmt(it.line_total)}</td>
+          <td class=\"right\">${fmt(signed.amount)}</td>
         </tr>`;
       });
       const tobTbody = document.getElementById('tobaccoTbody');

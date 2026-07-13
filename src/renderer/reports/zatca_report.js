@@ -395,9 +395,7 @@ function renderInvoices(items) {
   setText('invSectionTitle', _t('invoicesSectionWithCount', { count: items.length }));
 
   const rows = items.map((s) => {
-    const pre = Number(s.sub_total || 0);
-    const vat = Number(s.vat_total || 0);
-    const grand = Number(s.grand_total || 0);
+    const { pre, vat, grand } = ReportAccounting.documentAmounts(s);
     _invSumPre += pre;
     _invSumVat += vat;
     _invSumGrand += grand;
@@ -449,9 +447,10 @@ function renderCreditNotes(items) {
   setText('cnSectionTitle', _t('creditNotesSectionWithCount', { count: items.length }));
 
   const rows = items.map((s) => {
-    const pre = Math.abs(Number(s.sub_total || 0));
-    const vat = Math.abs(Number(s.vat_total || 0));
-    const grand = Math.abs(Number(s.grand_total || 0));
+    const legalAmounts = ReportAccounting.documentAmounts(s);
+    const pre = Math.abs(legalAmounts.pre);
+    const vat = Math.abs(legalAmounts.vat);
+    const grand = Math.abs(legalAmounts.grand);
     _cnSumPre += pre;
     _cnSumVat += vat;
     _cnSumGrand += grand;
@@ -493,6 +492,7 @@ function renderExpenses(simplePur, invPur) {
 
   const normalized = [
     ...simplePur.map((p) => ({
+      doc_type: p.doc_type || 'invoice',
       name: p.title || p.name || '',
       payment_method: p.payment_method || 'cash',
       sub_total: Number(p.sub_total || 0),
@@ -506,6 +506,7 @@ function renderExpenses(simplePur, invPur) {
       const vat = priceMode === 'zero_vat' ? 0 : Number(pi.vat_total || 0);
       const grand = priceMode === 'zero_vat' ? sub : Number(pi.grand_total || 0);
       return {
+        doc_type: pi.doc_type || 'invoice',
         name: getPurchaseInvoiceName(pi.invoice_no),
         payment_method: pi.payment_method || 'cash',
         sub_total: sub,
@@ -527,9 +528,11 @@ function renderExpenses(simplePur, invPur) {
   setText('expSectionTitle', _t('expensesSectionWithCount', { count: normalized.length }));
 
   const rows = normalized.map((p) => {
-    const pre = Number(p.sub_total || 0);
-    const vat = Number(p.vat_total || 0);
-    const grand = Number(p.grand_total || 0);
+    const sign = String(p.doc_type || '').toLowerCase() === 'return' ? -1 : 1;
+    const legalAmounts = PurchaseReportAccounting.purchaseAmounts(p);
+    const pre = legalAmounts.pre * sign;
+    const vat = legalAmounts.vat * sign;
+    const grand = legalAmounts.grand * sign;
     _expSumPre += pre;
     _expSumVat += vat;
     _expSumGrand += grand;
@@ -543,6 +546,11 @@ function renderExpenses(simplePur, invPur) {
       <td>${fmt(grand)}</td>
     </tr>`;
   }).join('');
+
+  if (typeof PurchaseReportAccounting !== 'undefined') {
+    const verified = PurchaseReportAccounting.summarizePurchaseLedger(normalized);
+    _expSumPre = verified.pre; _expSumVat = verified.vat; _expSumGrand = verified.grand;
+  }
 
   tbody.innerHTML = rows;
   setEl('expSumPre', _expSumPre);
@@ -690,9 +698,7 @@ async function exportZatcaPDF() {
   let sumInvVat = 0;
   let sumInvGrand = 0;
   const invRows = salesInvoices.map((s) => {
-    const pre = Number(s.sub_total || 0);
-    const vat = Number(s.vat_total || 0);
-    const grand = Number(s.grand_total || 0);
+    const { pre, vat, grand } = ReportAccounting.documentAmounts(s);
     sumInvPre += pre;
     sumInvVat += vat;
     sumInvGrand += grand;
@@ -714,9 +720,10 @@ async function exportZatcaPDF() {
   let sumCnVat = 0;
   let sumCnGrand = 0;
   const cnRows = cnItems.map((s) => {
-    const pre = Math.abs(Number(s.sub_total || 0));
-    const vat = Math.abs(Number(s.vat_total || 0));
-    const grand = Math.abs(Number(s.grand_total || 0));
+    const legalAmounts = ReportAccounting.documentAmounts(s);
+    const pre = Math.abs(legalAmounts.pre);
+    const vat = Math.abs(legalAmounts.vat);
+    const grand = Math.abs(legalAmounts.grand);
     sumCnPre += pre;
     sumCnVat += vat;
     sumCnGrand += grand;
@@ -734,6 +741,7 @@ async function exportZatcaPDF() {
 
   const normalizedPur = [
     ...simplePur.map((p) => ({
+      doc_type: p.doc_type || 'invoice',
       name: p.title || p.name || '',
       payment_method: p.payment_method || 'cash',
       sub_total: Number(p.sub_total || 0),
@@ -747,6 +755,7 @@ async function exportZatcaPDF() {
       const vat = priceMode === 'zero_vat' ? 0 : Number(pi.vat_total || 0);
       const grand = priceMode === 'zero_vat' ? sub : Number(pi.grand_total || 0);
       return {
+        doc_type: pi.doc_type || 'invoice',
         name: getPurchaseInvoiceName(pi.invoice_no),
         payment_method: pi.payment_method || 'cash',
         sub_total: sub,
@@ -761,14 +770,21 @@ async function exportZatcaPDF() {
   let sumExpVat = 0;
   let sumExpGrand = 0;
   const expRows = normalizedPur.map((p) => {
-    const pre = Number(p.sub_total || 0);
-    const vat = Number(p.vat_total || 0);
-    const grand = Number(p.grand_total || 0);
+    const sign = String(p.doc_type || '').toLowerCase() === 'return' ? -1 : 1;
+    const legalAmounts = PurchaseReportAccounting.purchaseAmounts(p);
+    const pre = legalAmounts.pre * sign;
+    const vat = legalAmounts.vat * sign;
+    const grand = legalAmounts.grand * sign;
     sumExpPre += pre;
     sumExpVat += vat;
     sumExpGrand += grand;
     return `<tr><td>${p.name}</td><td>${formatDate(p.at)}</td><td>${labelPaymentMethod(p.payment_method)}</td><td>${fmt(pre)}</td><td>${fmt(vat)}</td><td>${fmt(grand)}</td></tr>`;
   }).join('');
+
+  if (typeof PurchaseReportAccounting !== 'undefined') {
+    const verified = PurchaseReportAccounting.summarizePurchaseLedger(normalizedPur);
+    sumExpPre = verified.pre; sumExpVat = verified.vat; sumExpGrand = verified.grand;
+  }
 
   const absCnPrePdf = Math.abs(sumCnPre);
   const absCnVatPdf = Math.abs(sumCnVat);

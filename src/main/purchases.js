@@ -90,7 +90,7 @@ function registerPurchasesIPC(){
         if (q2.page) { p.limit = q2.pageSize || 50; p.offset = ((Number(q2.page || 1) - 1) * Number(q2.pageSize || 50)); }
         else { p.limit = 999999; }
         const r = await fetchFromAPI('/purchases', p);
-        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0 };
+        if (r && r.ok) return { ok: true, items: r.items || [], total: r.total || 0, page: Math.max(1, Number(q2.page || 1)), pageSize: Math.max(1, Math.min(1000, Number(q2.pageSize || 20))) };
         return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
       } catch (err) { return { ok: false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
     }

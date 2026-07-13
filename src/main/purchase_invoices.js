@@ -6,6 +6,7 @@
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
+const { calculateEditedSettlement, calculateReturnLines, supplierDue } = require('../shared/purchase-invoice-accounting');
 
 function registerPurchaseInvoicesIPC(){
   async function ensureTables(conn){
@@ -206,8 +207,8 @@ function registerPurchaseInvoicesIPC(){
     for(const ln of lines){ sub += Number(ln.line_total||0); }
     sub = Number(sub.toFixed(2));
 
-    const discountGeneral = Math.max(0, Number(payload.discount_general||0));
-    const vatPercent = Math.max(0, Number(payload.vat_percent||15));
+    const discountGeneral = Math.min(sub, Math.max(0, Number(payload.discount_general||0)));
+    const vatPercent = Math.max(0, Number(payload.vat_percent ?? 15));
     const applyVat = payload.apply_vat !== false;
     const priceMode = String(payload.price_mode||'inclusive');
 
@@ -273,7 +274,7 @@ function registerPurchaseInvoicesIPC(){
       const qty = Number(it.qty||0);
       const unitExclusive = Number(Number(it.unit_cost||0).toFixed(4));
       const discountExclusive = Math.max(0, Number(Number(it.discount_line||0).toFixed(2)));
-      if(!pid || qty<=0 || unitExclusive<0) return { error: 'بيانات صنف غير صحيحة' };
+      if(!pid || !Number.isFinite(qty) || qty<=0 || !Number.isFinite(unitExclusive) || unitExclusive<0 || !Number.isFinite(discountExclusive)) return { error: 'بيانات صنف غير صحيحة' };
       const lineTotalExclusive = Math.max(0, (qty * unitExclusive) - discountExclusive);
       const description = (it.description && String(it.description).trim()) ? String(it.description).trim() : null;
       out.push({ product_id: pid, qty, unit_cost: unitExclusive, discount_line: discountExclusive, line_total: Number(lineTotalExclusive.toFixed(2)), description });
@@ -469,21 +470,35 @@ function registerPurchaseInvoicesIPC(){
         await conn.beginTransaction();
         const [[old]] = await conn.query('SELECT * FROM purchase_invoices WHERE id=? LIMIT 1', [id]);
         if(!old){ await conn.rollback(); return { ok:false, error:'غير موجود' }; }
+        if(header.isCredit && Number(old.amount_paid || 0) > header.grand){
+          await conn.rollback();
+          return { ok:false, error:'لا يمكن جعل إجمالي الفاتورة أقل من المبلغ المسدد سابقاً' };
+        }
+        const [[paymentHistory]] = await conn.query('SELECT COUNT(*) AS count FROM purchase_payments WHERE purchase_id=?', [id]);
+        const paymentMethodChanged = String(old.payment_method || '').toLowerCase() !== header.method;
+        if(Number(paymentHistory.count || 0) > 0 && (Number(old.supplier_id) !== supplierId || paymentMethodChanged)){
+          await conn.rollback();
+          return { ok:false, error:'لا يمكن تغيير المورد أو طريقة الدفع بعد تسجيل سداد على الفاتورة' };
+        }
+        const [[linkedReturn]] = await conn.query('SELECT COUNT(*) AS count FROM purchase_invoices WHERE ref_base_purchase_id=? AND doc_type=?', [id, 'return']);
+        if(Number(linkedReturn.count || 0) > 0){
+          await conn.rollback();
+          return { ok:false, error:'لا يمكن تعديل فاتورة شراء بعد إنشاء مرتجع مرتبط بها' };
+        }
+        const editedSettlement = calculateEditedSettlement(old, header.grand, header.method);
         const [oldDetails] = await conn.query('SELECT * FROM purchase_invoice_details WHERE purchase_id=?', [id]);
         // Revert stock for old details
         for(const od of oldDetails){ await conn.query('UPDATE products SET stock = stock - ? WHERE id=?', [od.qty, od.product_id]); }
         // Adjust old supplier balance if old was credit (check both Arabic 'آجل' and English 'credit')
-        const oldMethod = String(old.payment_method).toLowerCase();
-        if(oldMethod === 'credit' || oldMethod === 'آجل'){
-          await conn.query('UPDATE suppliers SET balance = balance - ? WHERE id=?', [old.grand_total, old.supplier_id]);
-        }
+        const oldSupplierDue = supplierDue(old);
+        if(oldSupplierDue > 0) await conn.query('UPDATE suppliers SET balance = GREATEST(0, balance - ?) WHERE id=?', [oldSupplierDue, old.supplier_id]);
         // Replace details
         await conn.query('DELETE FROM purchase_invoice_details WHERE purchase_id=?', [id]);
         // Update header (keep invoice_no)
         const discountGeneralUi = Number(p.discount_general||0);
         await conn.query(
           `UPDATE purchase_invoices SET invoice_at=?, supplier_id=?, payment_method=?, price_mode=?, reference_no=?, notes=?, sub_total=?, discount_general=?, discount_general_ui=?, vat_percent=?, vat_total=?, grand_total=?, amount_paid=?, amount_due=? WHERE id=?`,
-          [atStr, supplierId, header.method, String(p.price_mode||'exclusive'), referenceNo, notes, header.sub, header.discountGeneral, discountGeneralUi, header.vatPercent, header.vatTotal, header.grand, header.amountPaid, header.amountDue, id]
+          [atStr, supplierId, header.method, String(p.price_mode||'exclusive'), referenceNo, notes, header.sub, header.discountGeneral, discountGeneralUi, header.vatPercent, header.vatTotal, header.grand, editedSettlement.amountPaid, editedSettlement.amountDue, id]
         );
         // Insert new details and apply stock
         for(const ln of lines){
@@ -501,7 +516,7 @@ function registerPurchaseInvoicesIPC(){
         }
         // Apply new supplier balance if credit
         if(header.isCredit){
-          await conn.query('UPDATE suppliers SET balance = balance + ? WHERE id=?', [header.grand, supplierId]);
+          await conn.query('UPDATE suppliers SET balance = balance + ? WHERE id=?', [editedSettlement.amountDue, supplierId]);
         }
         await conn.commit();
         try{ const { BrowserWindow } = require('electron'); BrowserWindow.getAllWindows().forEach(w => w.webContents.send('products:changed', { action:'stock-recomputed', purchase_id: id })); }catch(_){ }
@@ -522,14 +537,22 @@ function registerPurchaseInvoicesIPC(){
         await conn.beginTransaction();
         const [[inv]] = await conn.query('SELECT * FROM purchase_invoices WHERE id=? LIMIT 1', [id]);
         if(!inv){ await conn.rollback(); return { ok:false, error:'غير موجود' }; }
+        const [[paymentHistory]] = await conn.query('SELECT COUNT(*) AS count FROM purchase_payments WHERE purchase_id=?', [id]);
+        if(Number(paymentHistory.count || 0) > 0){
+          await conn.rollback();
+          return { ok:false, error:'لا يمكن حذف فاتورة شراء تم تسجيل سداد عليها' };
+        }
+        const [[linkedReturn]] = await conn.query('SELECT COUNT(*) AS count FROM purchase_invoices WHERE ref_base_purchase_id=? AND doc_type=?', [id, 'return']);
+        if(Number(linkedReturn.count || 0) > 0){
+          await conn.rollback();
+          return { ok:false, error:'لا يمكن حذف فاتورة شراء لها مرتجعات مرتبطة' };
+        }
         const [rows] = await conn.query('SELECT * FROM purchase_invoice_details WHERE purchase_id=?', [id]);
         // Revert stock
         for(const r of rows){ await conn.query('UPDATE products SET stock = stock - ? WHERE id=?', [r.qty, r.product_id]); }
         // Adjust supplier balance if credit (check both Arabic 'آجل' and English 'credit')
-        const invMethod = String(inv.payment_method).toLowerCase();
-        if(invMethod === 'credit' || invMethod === 'آجل'){
-          await conn.query('UPDATE suppliers SET balance = balance - ? WHERE id=?', [inv.grand_total, inv.supplier_id]);
-        }
+        const invoiceSupplierDue = supplierDue(inv);
+        if(invoiceSupplierDue > 0) await conn.query('UPDATE suppliers SET balance = GREATEST(0, balance - ?) WHERE id=?', [invoiceSupplierDue, inv.supplier_id]);
         // Delete master (details cascade)
         await conn.query('DELETE FROM purchase_invoices WHERE id=?', [id]);
         await conn.commit();
@@ -646,7 +669,7 @@ function registerPurchaseInvoicesIPC(){
         
         // Validate return quantities
         for(const item of selectedItems){
-          const originalItem = originalItems.find(oi => oi.product_id === item.product_id);
+          const originalItem = originalItems.find(oi => Number(oi.product_id) === Number(item.product_id));
           if(!originalItem) {
             await conn.rollback();
             return { ok:false, error:`الصنف ${item.product_id} غير موجود في الفاتورة الأصلية` };
@@ -655,6 +678,11 @@ function registerPurchaseInvoicesIPC(){
           const originalQty = Number(originalItem.qty||0);
           const alreadyReturned = returnedQty[item.product_id] || 0;
           const availableForReturn = originalQty - alreadyReturned;
+          const requestedQty = Number(item.qty);
+          if(!Number.isFinite(requestedQty) || requestedQty <= 0){
+            await conn.rollback();
+            return { ok:false, error:'الكمية المرتجعة يجب أن تكون أكبر من صفر' };
+          }
           
           if(Number(item.qty||0) > availableForReturn){
             await conn.rollback();
@@ -670,30 +698,12 @@ function registerPurchaseInvoicesIPC(){
         const returnNo = 'PR-' + String(row.seq).padStart(5, '0');
         
         // Compute return totals (negative values)
-        let subTotal = 0;
-        const returnLines = selectedItems.map(item => {
-          const originalItem = originalItems.find(oi => oi.product_id === item.product_id);
-          const qty = Number(item.qty||0);
-          const unitCost = Number(originalItem.unit_cost||0);
-          const lineTotal = qty * unitCost;
-          subTotal += lineTotal;
-          
-          return {
-            product_id: item.product_id,
-            description: originalItem.description,
-            qty: qty,
-            unit_cost: unitCost,
-            discount_line: 0,
-            line_total: lineTotal,
-            ui_unit_cost: Number(originalItem.ui_unit_cost||0),
-            ui_line_total: Number(originalItem.ui_line_total||0)
-          };
-        });
-        
-        subTotal = Number(subTotal.toFixed(2));
-        const vatPercent = Number(original.vat_percent||0);
-        const vatTotal = Number((subTotal * (vatPercent/100)).toFixed(2));
-        const grandTotal = Number((subTotal + vatTotal).toFixed(2));
+        const returnCalculation = calculateReturnLines(original, originalItems, selectedItems);
+        const returnLines = returnCalculation.lines;
+        const subTotal = returnCalculation.subTotal;
+        const vatPercent = String(original.price_mode || '') === 'zero_vat' ? 0 : Number(original.vat_percent ?? 0);
+        const vatTotal = returnCalculation.vatTotal;
+        const grandTotal = returnCalculation.grandTotal;
         
         // Create return invoice
         const atStr = toAtString(p.return_dt);

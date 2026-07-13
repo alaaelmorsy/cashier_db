@@ -500,6 +500,27 @@ function registerSettingsIPC(){
             item.payment_methods = [];
           }
         }catch(_){ item.payment_methods = []; }
+        item.commercial_register = item.commercial_register || '';
+        item.national_number = item.national_number || '';
+        item.closing_hour = item.closing_hour ? String(item.closing_hour).slice(0, 5) : null;
+        item.daily_email_time = item.daily_email_time ? String(item.daily_email_time).slice(0, 5) : null;
+        item.db_backup_time = item.db_backup_time ? String(item.db_backup_time).slice(0, 5) : null;
+        item.db_backup_local_path = item.db_backup_local_path || '';
+        item.print_margin_right_mm = item.print_margin_right_mm == null || item.print_margin_right_mm === '' ? null : Number(item.print_margin_right_mm);
+        item.print_margin_left_mm = item.print_margin_left_mm == null || item.print_margin_left_mm === '' ? null : Number(item.print_margin_left_mm);
+        item.tobacco_fee_percent = Number(item.tobacco_fee_percent || 100);
+        item.tobacco_min_fee_amount = Number(item.tobacco_min_fee_amount || 25);
+        item.barcode_paper_width_mm = item.barcode_paper_width_mm == null || item.barcode_paper_width_mm === '' ? 40 : Number(item.barcode_paper_width_mm);
+        item.barcode_paper_height_mm = item.barcode_paper_height_mm == null || item.barcode_paper_height_mm === '' ? 25 : Number(item.barcode_paper_height_mm);
+        for (const key of ['barcode_label_offset_right_mm', 'barcode_label_offset_left_mm', 'barcode_label_offset_top_mm', 'barcode_label_offset_bottom_mm']) {
+          item[key] = Number(item[key] || 0);
+        }
+        for (const key of Object.keys(item)) {
+          const value = item[key];
+          if (key.endsWith('_blob') && value && value.type === 'Buffer' && Array.isArray(value.data)) {
+            item[key] = Buffer.from(value.data);
+          }
+        }
         return { ok:true, item };
       }catch(e){ return { ok:false, error:e.message }; }
     }
@@ -667,6 +688,10 @@ function registerSettingsIPC(){
 
   // Fetch logo image (BLOB or legacy path) as base64 for preview/printing
   ipcMain.handle('settings:image_get', async () => {
+    if (isSecondaryDevice()) {
+      try { return await fetchFromAPI('/settings-image'); }
+      catch (error) { return { ok:false, error:error.message }; }
+    }
     try{
       const fs = require('fs');
       const path = require('path');

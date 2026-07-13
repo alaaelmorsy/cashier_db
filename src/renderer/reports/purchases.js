@@ -238,6 +238,7 @@ async function loadRange(startStr, endStr){
     // طبيع الشكل إلى عناصر موحّدة
     const normalized = [
       ...simple.map(p => ({
+        doc_type: p.doc_type || 'invoice',
         kind: 'simple',
         name: p.title || p.name || '',
         payment_method: p.payment_method || 'cash',
@@ -257,6 +258,7 @@ async function loadRange(startStr, endStr){
         const isCredit = (methodRaw === 'credit' || methodRaw === 'آجل' || methodRaw === 'اجل');
         const paid = (priceMode === 'zero_vat') ? (isCredit ? 0 : sub) : Number(pi.amount_paid||0);
         return {
+          doc_type: pi.doc_type || 'invoice',
           kind: 'invoice',
           name: (()=>{ const m = String(pi.invoice_no||'').match(/^PI-\d{6}-(\d+)$/); const printed = m ? String(Number(m[1])) : (pi.invoice_no||''); return printed ? `فاتورة شراء ${printed}` : 'فاتورة شراء'; })(),
           payment_method: pi.payment_method || 'cash',
@@ -277,22 +279,12 @@ async function loadRange(startStr, endStr){
       // Exclude fully unpaid credit invoices; include partial by paid amount only
       const methodRaw = (p.payment_method==null?'':String(p.payment_method));
       const isCredit = (methodRaw.toLowerCase()==='credit' || methodRaw==='آجل' || methodRaw==='اجل');
-      const grand = Number(p.grand_total||0);
-      const paid = Number(p.amount_paid||0); // available for purchase invoices
-      const effectiveAfter = isCredit ? Math.min(paid, grand) : grand;
+      const legal = ReportAccounting.calculateReportTotals({ purchases: [p] }).purchases;
+      const effectiveAfter = legal.after;
       if(isCredit && effectiveAfter<=0){ return ''; }
 
-      // Split paid amount proportionally to sub_total and vat_total
-      const sub = Number(p.sub_total||0);
-      const vatTot = Number(p.vat_total||0);
-      let pre=0, vat=0;
-      if(effectiveAfter>0 && (sub+vatTot)>0){
-        const ratio = effectiveAfter / (sub + vatTot);
-        pre = Number((sub * ratio).toFixed(2));
-        vat = Number((vatTot * ratio).toFixed(2));
-      } else {
-        pre = sub; vat = vatTot;
-      }
+      const pre = legal.pre;
+      const vat = legal.vat;
 
       sumCount += 1;
       sumPre += pre; sumVat += vat; sumAfter += effectiveAfter;
@@ -305,7 +297,12 @@ async function loadRange(startStr, endStr){
     if(purTbody){ purTbody.innerHTML = rows || '<tr><td colspan="7" class="muted">لا توجد مشتريات ضمن الفترة</td></tr>'; }
 
     const set = (id,val)=>{ const el=document.getElementById(id); if(el){ el.textContent = (id==='sumCount') ? String(val) : fmt(val); } };
-    set('sumCount', sumCount); set('sumPre', sumPre); set('sumVat', sumVat); set('sumAfter', sumAfter);
+    if(typeof ReportAccounting !== 'undefined' && ReportAccounting.calculateReportTotals){
+      const verified = ReportAccounting.calculateReportTotals({ purchases: normalized }).purchases;
+      set('sumCount', sumCount); set('sumPre', verified.pre); set('sumVat', verified.vat); set('sumAfter', verified.after);
+    } else {
+      set('sumCount', sumCount); set('sumPre', sumPre); set('sumVat', sumVat); set('sumAfter', sumAfter);
+    }
   }catch(e){ console.error(e); }
 }
 

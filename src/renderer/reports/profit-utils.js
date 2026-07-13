@@ -1,5 +1,6 @@
-// Profitability helpers: cash-basis with proportional partial credit collections (matches daily summary scaling)
 (function(global){
+  const roundMoney = (amount) => Number(Number(amount || 0).toFixed(2));
+
   function buildPaidBySale(payments){
     const paidBySale = new Map();
     (payments || []).forEach(tx => {
@@ -50,11 +51,13 @@
       creditNotes = [],
       soldItemsDetailed = [],
       paidBySale = new Map(),
+      basis = 'collection',
       vatPercent = 15,
       costIncludesVat = 1
     } = opts || {};
 
-    const vatPct = Number(vatPercent || 15) / 100;
+    const parsedVatPercent = Number(vatPercent);
+    const vatPct = (Number.isFinite(parsedVatPercent) ? parsedVatPercent : 15) / 100;
     const costIncl = Boolean(Number(costIncludesVat ?? 1));
     const saleById = new Map();
     (allSales || []).forEach(s => {
@@ -68,10 +71,11 @@
       if(!sale) return;
       const isCN = String(it.doc_type || sale.doc_type || '') === 'credit_note'
         || String(sale.invoice_no || '').startsWith('CN-');
-      const scale = getProfitCollectionScale(sale, paidBySale);
+      const scale = basis === 'document' ? 1 : getProfitCollectionScale(sale, paidBySale);
       if(scale <= 0) return;
       const sign = isCN ? -1 : 1;
-      const qty = sign * Number(it.qty || 0) * scale;
+      const unitMultiplier = Math.abs(Number(it.unit_multiplier ?? 1)) || 1;
+      const qty = sign * Math.abs(Number(it.qty || 0)) * unitMultiplier * scale;
       if(!qty) return;
       const cost = Number(it.cost_price || 0);
       const parts = itemCostParts(cost, it.is_vat_exempt, vatPct, costIncl);
@@ -84,7 +88,7 @@
     (allSales || []).forEach(sv => {
       const isCN = String(sv.doc_type || '') === 'credit_note' || String(sv.invoice_no || '').startsWith('CN-');
       if(isCN) return;
-      const scale = getProfitCollectionScale(sv, paidBySale);
+      const scale = basis === 'document' ? 1 : getProfitCollectionScale(sv, paidBySale);
       if(scale <= 0) return;
       const grand = Number(sv.grand_total || 0);
       const vat = Number(sv.vat_total || 0);
@@ -101,18 +105,20 @@
     const salesTotalWithVat = profitSalesWithVat;
     const salesTotalExVat = profitSalesExVat;
     return {
-      costTotalWithVat,
-      costTotalExVat,
-      salesTotalWithVat,
-      salesTotalExVat,
-      profitNetWithVat: Number(salesTotalWithVat - costTotalWithVat),
-      profitNetExVat: Number(salesTotalExVat - costTotalExVat)
+      costTotalWithVat: roundMoney(costTotalWithVat),
+      costTotalExVat: roundMoney(costTotalExVat),
+      salesTotalWithVat: roundMoney(salesTotalWithVat),
+      salesTotalExVat: roundMoney(salesTotalExVat),
+      profitNetWithVat: roundMoney(salesTotalWithVat - costTotalWithVat),
+      profitNetExVat: roundMoney(salesTotalExVat - costTotalExVat)
     };
   }
 
-  global.ReportProfitUtils = {
+  const profitUtils = {
     buildPaidBySale,
     getProfitCollectionScale,
     calcProfitabilityTotals
   };
+  global.ReportProfitUtils = profitUtils;
+  if(typeof module === 'object' && module.exports){ module.exports = profitUtils; }
 })(typeof window !== 'undefined' ? window : globalThis);

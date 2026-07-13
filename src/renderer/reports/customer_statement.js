@@ -730,9 +730,7 @@ async function loadRange(startStr, endStr){
       const datePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {year:'numeric', month:'2-digit', day:'2-digit'}).format(created);
       const timePart = new Intl.DateTimeFormat('en-GB-u-ca-gregory', {hour:'2-digit', minute:'2-digit', hour12:true}).format(created);
       const custPhone = s.customer_phone || s.disp_customer_phone || '';
-      const pre = Number(s.sub_total||0);
-      const vat = Number(s.vat_total||0);
-      const grand = Number(s.grand_total||0);
+      const { pre, vat, grand } = StatementAccounting.documentAmounts(s);
       
       const pm = String(s.payment_method || '').toLowerCase();
       const payLabel = (m)=> m==='cash' ? 'نقدًا' : (m==='card'||m==='network' ? 'شبكة' : (m==='credit' ? 'آجل' : (m==='mixed'?'مختلط': m)));
@@ -767,8 +765,11 @@ async function loadRange(startStr, endStr){
       const addAmt = (key, amount)=>{
         if(!key) return; const k=(key==='network'?'card':key); const prev=Number(payTotals.get(k)||0); payTotals.set(k, prev + (Number(amount||0) * multiplier)); };
       if(pm==='mixed'){
-        addAmt('cash', Number(s.pay_cash_amount||0) || grand/2);
-        addAmt('card', Number(s.pay_card_amount||0) || grand/2);
+        const cashPart = Number(s.pay_cash_amount||0);
+        const cardPart = Number(s.pay_card_amount||0);
+        addAmt('cash', cashPart);
+        addAmt('card', cardPart);
+        addAmt('unallocated', Math.abs(grand) - Math.abs(cashPart) - Math.abs(cardPart));
       } else if(pm==='cash'){
         addAmt('cash', Number(s.settled_cash||0) || Number(s.pay_cash_amount||0) || grand);
       } else if(pm==='card' || pm==='network' || pm==='tamara' || pm==='tabby' || pm==='bank_transfer'){
@@ -885,7 +886,7 @@ async function loadRange(startStr, endStr){
         const rTot = document.getElementById('receiptsTotal'); if(rTot) rTot.textContent = fmt(receiptsTotal);
         const rCnt = document.getElementById('receiptsCount'); if(rCnt) rCnt.textContent = String(receiptsCount);
         // Calculate vouchers pre-tax and VAT (assuming 15% VAT is included)
-        const receiptsPre = receiptsTotal / 1.15;
+        const receiptsPre = creditDueGrand ? receiptsTotal * (creditDuePre / creditDueGrand) : receiptsTotal;
         const receiptsVat = receiptsTotal - receiptsPre;
         // Update summary row for vouchers (treated as deduction)
         set('receiptVoucherCount', receiptsCount);
@@ -901,6 +902,23 @@ async function loadRange(startStr, endStr){
         const netEl = document.getElementById('netBalance'); if(netEl) netEl.textContent = fmt(net);
       }
     }catch(_){ }
+
+    if(typeof StatementAccounting !== 'undefined'){
+      const applicableVouchers = (vouchers || []).filter(v => {
+        const invoiceNo = String(v.invoice_no || '').trim();
+        return !invoiceNo || !returnedInvoiceNumbers.has(invoiceNo);
+      });
+      const verified = StatementAccounting.summarizeCustomerStatement({ documents: items, vouchers: applicableVouchers });
+      set('invoicesPre', verified.invoices.pre); set('invoicesVat', verified.invoices.vat); set('invoicesGrand', verified.invoices.grand);
+      set('creditsPre', verified.returns.pre); set('creditsVat', verified.returns.vat); set('creditsGrand', verified.returns.grand);
+      set('sumPre', verified.netDocuments.pre); set('sumVat', verified.netDocuments.vat); set('sumGrand', verified.netDocuments.grand);
+      set('summaryCount', verified.invoices.count + verified.returns.count); set('summaryPre', verified.netDocuments.pre); set('summaryVat', verified.netDocuments.vat); set('summaryGrand', verified.netDocuments.grand);
+      set('collectedCount', verified.collected.count); set('collectedPre', verified.collected.pre); set('collectedVat', verified.collected.vat); set('collectedGrand', verified.collected.grand);
+      set('creditDueCount', verified.deferred.count); set('creditDuePre', verified.deferred.pre); set('creditDueVat', verified.deferred.vat); set('creditDueGrand', verified.deferred.grand);
+      set('receiptVoucherCount', verified.vouchers.count); set('receiptVouchersPre', verified.vouchers.pre); set('receiptVouchersVat', verified.vouchers.vat); set('receiptVouchersGrand', verified.vouchers.grand);
+      set('netBalancePre', verified.balance.pre); set('netBalanceVat', verified.balance.vat); set('netBalance', verified.balance.grand);
+      payTotals.clear(); Object.entries(verified.paymentTotals).forEach(([key, value]) => payTotals.set(key, value));
+    }
 
     try{
       const container = document.getElementById('payTotals');
