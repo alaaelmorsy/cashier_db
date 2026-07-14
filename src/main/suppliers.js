@@ -62,6 +62,7 @@ function registerSuppliersIPC(){
         const p = {};
         if (query.q) p.search = query.q;
         if (query.active === '1') p.active = '1';
+        if (query.sort) p.sort = query.sort;
         const r = await fetchFromAPI('/suppliers', p);
         if (r && r.ok) return { ok: true, items: r.items || [] };
         return { ok: false, error: r && r.error ? r.error : 'فشل الاتصال بالجهاز الرئيسي' };
@@ -74,7 +75,7 @@ function registerSuppliersIPC(){
     if(query.active==="1" || query.active==="0"){ where.push('is_active=?'); params.push(Number(query.active)); }
     const whereSql = where.length ? ('WHERE ' + where.join(' AND ')) : '';
     let order = 'ORDER BY id DESC';
-    if(query.sort === 'name_asc') order = 'ORDER BY name ASC';
+    if(query.sort === 'name_asc') order = 'ORDER BY name ASC, id ASC';
     try{
       const conn = await dbAdapter.getConnection();
       try{

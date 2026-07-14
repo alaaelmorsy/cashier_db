@@ -1480,13 +1480,14 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
   app.get('/api/suppliers', async (req, res) => {
     let conn;
     try {
-      const { search, active } = req.query;
+      const { search, active, sort } = req.query;
       conn = await dbAdapter.getConnection();
       const terms = []; const params = [];
       if (active === '1') { terms.push('is_active=1'); }
       if (search) { terms.push('(name LIKE ? OR phone LIKE ?)'); const s = `%${search}%`; params.push(s, s); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
-      const [rows] = await conn.query(`SELECT * FROM suppliers ${where} ORDER BY id DESC`, params);
+      const order = sort === 'name_asc' ? 'ORDER BY name ASC, id ASC' : 'ORDER BY id DESC';
+      const [rows] = await conn.query(`SELECT * FROM suppliers ${where} ${order}`, params);
       const items = rows.map(r => ({ ...r, balance: Number(r.balance || 0), total_due: Number(r.balance || 0) }));
       res.json({ ok: true, items });
     } catch (err) {
