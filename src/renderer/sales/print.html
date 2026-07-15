@@ -1720,7 +1720,11 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                 return btoa(bin);
               }
               const issueISO = new Date(sale.created_at).toISOString();
-              const b64 = genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
+              // فاتورة مقبولة لدى الهيئة (الربط المباشر): يُطبع QR المرحلة الثانية
+              // المخزن كما ورد من التوقيع؛ وإلا يُولَّد QR المرحلة الأولى محليًا.
+              const b64 = (sale.zatca_qr && String(sale.zatca_qr).length > 0)
+                ? String(sale.zatca_qr)
+                : genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
               // Try SVG first (crisp for print), then fallback to PNG data URL, then Base64 text
               try{
                 const svg = await api.qr_to_svg(b64, { width: 120, margin: 1 });

@@ -193,6 +193,7 @@ function translateCustomersUI(isAr){
     }
     
     window.__customersTranslations = t;
+    refreshZatcaAddressRequirement();
   }catch(_){}
 }
 
@@ -308,6 +309,13 @@ const f_postal = document.getElementById('f_postal');
 const f_street = document.getElementById('f_street');
 const f_subnumber = document.getElementById('f_subnumber');
 const f_notes = document.getElementById('f_notes');
+const f_zatca_street = document.getElementById('f_zatca_street');
+const f_zatca_building = document.getElementById('f_zatca_building');
+const f_zatca_district = document.getElementById('f_zatca_district');
+const f_zatca_city = document.getElementById('f_zatca_city');
+const zatcaAddressPanel = document.getElementById('zatcaAddressPanel');
+const zatcaAddressRequirement = document.getElementById('zatcaAddressRequirement');
+const zatcaAddressError = document.getElementById('zatcaAddressError');
 const dlgSave = document.getElementById('dlgSave');
 const dlgCancel = document.getElementById('dlgCancel');
 
@@ -321,7 +329,76 @@ const confirmCancel = document.getElementById('confirmCancel');
 let editId = null;
 
 function setError(msg){ errorDiv.textContent = msg || ''; }
-function clearDialog(){ f_name.value=''; f_phone.value=''; f_email.value=''; f_address.value=''; f_vat.value=''; f_cr.value=''; f_nataddr.value=''; f_postal.value=''; f_street.value=''; f_subnumber.value=''; f_notes.value=''; }
+const zatcaBuyerAddressFields = [
+  { key: 'zatca_street', element: f_zatca_street, ar: 'الشارع', en: 'Street' },
+  { key: 'zatca_building', element: f_zatca_building, ar: 'رقم المبنى', en: 'Building number' },
+  { key: 'zatca_district', element: f_zatca_district, ar: 'الحي', en: 'District' },
+  { key: 'zatca_city', element: f_zatca_city, ar: 'المدينة', en: 'City' },
+  { key: 'postal_code', element: f_postal, ar: 'الرمز البريدي', en: 'Postal code' }
+];
+
+function isArabicCustomersUI(){ return document.documentElement.lang !== 'en'; }
+function clearZatcaMissingState(){
+  zatcaBuyerAddressFields.forEach(({ element }) => element?.classList.remove('zatca-field-missing'));
+}
+function clearZatcaAddressError(){
+  if(!zatcaAddressError) return;
+  zatcaAddressError.textContent = '';
+  zatcaAddressError.hidden = true;
+}
+function showZatcaAddressError(message, field){
+  if(zatcaAddressError){
+    zatcaAddressError.textContent = message;
+    zatcaAddressError.hidden = false;
+    zatcaAddressError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  field?.focus();
+}
+function refreshZatcaAddressRequirement(){
+  const required = !!f_vat?.value.trim();
+  zatcaAddressPanel?.classList.toggle('zatca-required', required);
+  zatcaBuyerAddressFields.forEach(({ element }) => {
+    if(!element) return;
+    element.required = required;
+    element.setAttribute('aria-required', required ? 'true' : 'false');
+    const label = element.previousElementSibling;
+    const oldMark = label?.querySelector('.zatca-required-mark');
+    if(required && label && !oldMark){
+      const mark = document.createElement('span');
+      mark.className = 'zatca-required-mark';
+      mark.textContent = '*';
+      mark.setAttribute('aria-hidden', 'true');
+      label.appendChild(mark);
+    } else if(!required && oldMark){ oldMark.remove(); }
+  });
+  if(zatcaAddressRequirement){
+    const ar = isArabicCustomersUI();
+    zatcaAddressRequirement.textContent = required
+      ? (ar ? 'الرقم الضريبي مُدخل؛ يجب إكمال عنوان ZATCA بالكامل قبل الحفظ.' : 'A VAT number is entered; complete the full ZATCA address before saving.')
+      : (ar ? 'بيانات عنوان ZATCA اختيارية ما لم يتم إدخال رقم ضريبي للعميل.' : 'The ZATCA address is optional unless a customer VAT number is entered.');
+    zatcaAddressRequirement.className = required
+      ? 'mb-4 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-sm font-semibold text-amber-900'
+      : 'mb-4 px-3 py-2 rounded-lg border border-blue-200 bg-white text-sm font-medium text-blue-800';
+  }
+  if(!required) clearZatcaMissingState();
+}
+function validateVatCustomerAddress(payload){
+  clearZatcaMissingState();
+  clearZatcaAddressError();
+  if(!payload.vat_number) return true;
+  const ar = isArabicCustomersUI();
+  if(!/^3\d{13}3$/.test(payload.vat_number)){
+    showZatcaAddressError(ar ? 'الرقم الضريبي السعودي يجب أن يتكون من 15 رقمًا ويبدأ وينتهي بالرقم 3.' : 'Saudi VAT number must be 15 digits and start and end with 3.', f_vat);
+    return false;
+  }
+  const missing = zatcaBuyerAddressFields.filter(({ key }) => !payload[key]);
+  if(!missing.length){ clearZatcaAddressError(); return true; }
+  missing.forEach(({ element }) => element?.classList.add('zatca-field-missing'));
+  const names = missing.map((field) => ar ? field.ar : field.en).join(ar ? '، ' : ', ');
+  showZatcaAddressError(ar ? `عند إدخال الرقم الضريبي يجب إكمال: ${names}` : `With a VAT number, complete: ${names}`, missing[0].element);
+  return false;
+}
+function clearDialog(){ f_name.value=''; f_phone.value=''; f_email.value=''; f_address.value=''; f_vat.value=''; f_cr.value=''; f_nataddr.value=''; f_postal.value=''; f_street.value=''; f_subnumber.value=''; f_notes.value=''; try{ f_zatca_street.value=''; f_zatca_building.value=''; f_zatca_district.value=''; f_zatca_city.value=''; }catch(_){ } clearZatcaMissingState(); clearZatcaAddressError(); refreshZatcaAddressRequirement(); }
 
 // Toast notification at top of screen
 let toastTimer = null;
@@ -363,6 +440,9 @@ function openEditDialog(item){
   dlgTitle.textContent=t.editCustomerTitle;
   f_name.value=item.name||''; f_phone.value=item.phone||''; f_email.value=item.email||'';
   f_address.value=item.address||''; f_vat.value=item.vat_number||''; f_cr.value=item.cr_number||''; f_nataddr.value=item.national_address||''; f_postal.value=item.postal_code||''; f_street.value=item.street_number||''; f_subnumber.value=item.sub_number||''; f_notes.value=item.notes||'';
+  try{ f_zatca_street.value=item.zatca_street||''; f_zatca_building.value=item.zatca_building||''; f_zatca_district.value=item.zatca_district||''; f_zatca_city.value=item.zatca_city||''; }catch(_){ }
+  clearZatcaAddressError();
+  refreshZatcaAddressRequirement();
   safeShowModal(dlg);
   focusFirstField();
 }
@@ -605,6 +685,8 @@ function allowOnlyNumbers(inputElement) {
 // تطبيق التحقق على الحقول الرقمية
 if(f_phone) allowOnlyNumbers(f_phone);
 if(f_vat) allowOnlyNumbers(f_vat);
+if(f_vat) f_vat.addEventListener('input', () => { clearZatcaAddressError(); refreshZatcaAddressRequirement(); });
+zatcaBuyerAddressFields.forEach(({ element }) => element?.addEventListener('input', () => { element.classList.remove('zatca-field-missing'); clearZatcaAddressError(); }));
 if(f_cr) allowOnlyNumbers(f_cr);
 
 dlgCancel.addEventListener('click', closeDialog);
@@ -622,11 +704,15 @@ dlgSave.addEventListener('click', async () => {
     postal_code: f_postal.value.trim() || null,
     street_number: f_street.value.trim() || null,
     sub_number: f_subnumber.value.trim() || null,
+    zatca_street: f_zatca_street.value.trim() || null,
+    zatca_building: f_zatca_building.value.trim() || null,
+    zatca_district: f_zatca_district.value.trim() || null,
+    zatca_city: f_zatca_city.value.trim() || null,
     notes: f_notes.value.trim() || null,
   };
   if(payload.phone && !/^\d+$/.test(payload.phone)){ showToast('❌ رقم الجوال يجب أن يحتوي على أرقام فقط', '#dc2626', 4000); return; }
   if(payload.phone && __custSettings.require_phone_min_10 && payload.phone.length < 10){ showToast('❌ رقم الجوال يجب أن يكون 10 أرقام على الأقل', '#dc2626', 4000); return; }
-  if(payload.vat_number && !/^\d{15}$/.test(payload.vat_number)){ showToast('❌ الرقم الضريبي يجب أن يكون 15 رقماً بالضبط', '#dc2626', 4000); return; }
+  if(!validateVatCustomerAddress(payload)) return;
   if(payload.cr_number && !/^\d+$/.test(payload.cr_number)){ showToast('❌ رقم السجل التجاري يجب أن يحتوي على أرقام فقط', '#dc2626', 4000); return; }
   if(!payload.name){ showToast('❌ يرجى إدخال اسم العميل - هذا الحقل مطلوب', '#dc2626', 4000); return; }
   let res;

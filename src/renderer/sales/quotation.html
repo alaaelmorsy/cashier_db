@@ -369,6 +369,11 @@
             <div class="cust-row" id="a4cVat" style="display:none;">الرقم الضريبي: <span></span></div>
             <div class="cust-row" id="a4cCR" style="display:none;">السجل التجاري: <span></span></div>
             <div class="cust-row" id="a4cNat" style="display:none;">العنوان الوطني: <span></span></div>
+            <div class="cust-row" id="a4cPostal" style="display:none;">الرمز البريدي: <span></span></div>
+            <div class="cust-row" id="a4cZatcaStreet" style="display:none;">الشارع: <span></span></div>
+            <div class="cust-row" id="a4cZatcaBuilding" style="display:none;">رقم المبنى: <span></span></div>
+            <div class="cust-row" id="a4cZatcaDistrict" style="display:none;">الحي: <span></span></div>
+            <div class="cust-row" id="a4cZatcaCity" style="display:none;">المدينة: <span></span></div>
             <div class="cust-row" id="a4cNotes" style="display:none;">ملاحظات: <span></span></div>
           </div>
         </div>
@@ -639,7 +644,10 @@
             if(customerId){
               const c = await api.customers_get(customerId);
               if(c && c.ok && c.item){
-                const { name, phone, email, address, vat_number, cr_number, national_address, notes } = c.item;
+                const {
+                  name, phone, email, address, vat_number, cr_number, national_address,
+                  postal_code, zatca_street, zatca_building, zatca_district, zatca_city, notes
+                } = c.item;
                 const box = document.getElementById('custBox');
                 const cName = document.getElementById('a4cName');
                 const cPhone = document.getElementById('a4cPhone');
@@ -648,6 +656,11 @@
                 const cVat = document.getElementById('a4cVat');
                 const cCR = document.getElementById('a4cCR');
                 const cNat = document.getElementById('a4cNat');
+                const cPostal = document.getElementById('a4cPostal');
+                const cZatcaStreet = document.getElementById('a4cZatcaStreet');
+                const cZatcaBuilding = document.getElementById('a4cZatcaBuilding');
+                const cZatcaDistrict = document.getElementById('a4cZatcaDistrict');
+                const cZatcaCity = document.getElementById('a4cZatcaCity');
                 const cNotes = document.getElementById('a4cNotes');
                 if(name){ cName.textContent = 'اسم العميل: ' + name; cName.style.display='block'; cName.style.gridColumn='auto'; cName.style.background=''; cName.style.fontWeight='900'; cName.style.borderBottom=''; } else { cName.style.display='none'; }
                 if(phone){ cPhone.style.display='block'; cPhone.querySelector('span').textContent = phone; }
@@ -656,8 +669,13 @@
                 if(vat_number){ cVat.style.display='block'; cVat.querySelector('span').textContent = vat_number; }
                 if(cr_number){ cCR.style.display='block'; cCR.querySelector('span').textContent = cr_number; }
                 if(national_address){ cNat.style.display='block'; cNat.querySelector('span').textContent = national_address; }
+                if(postal_code){ cPostal.style.display='block'; cPostal.querySelector('span').textContent = postal_code; }
+                if(zatca_street){ cZatcaStreet.style.display='block'; cZatcaStreet.querySelector('span').textContent = zatca_street; }
+                if(zatca_building){ cZatcaBuilding.style.display='block'; cZatcaBuilding.querySelector('span').textContent = zatca_building; }
+                if(zatca_district){ cZatcaDistrict.style.display='block'; cZatcaDistrict.querySelector('span').textContent = zatca_district; }
+                if(zatca_city){ cZatcaCity.style.display='block'; cZatcaCity.querySelector('span').textContent = zatca_city; }
                 if(notes){ cNotes.style.display='block'; cNotes.querySelector('span').textContent = notes; }
-                const hasAny = (name||phone||email||address||vat_number||cr_number||national_address||notes);
+                const hasAny = (name||phone||email||address||vat_number||cr_number||national_address||postal_code||zatca_street||zatca_building||zatca_district||zatca_city||notes);
                 box.style.display = hasAny ? 'block' : 'none';
                 const title = document.getElementById('customerTitle');
                 if(title) title.style.display = hasAny ? 'block' : 'none';

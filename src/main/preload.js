@@ -875,12 +875,15 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 })();
 
 // Auto-apply saved zoom factor on every window load
-(function () {
+const savedZoomReady = (function () {
   try {
     const apply = (f) => { try { if (f >= 0.5 && f <= 2.0) webFrame.setZoomFactor(f); } catch (_) {} };
-    ipcRenderer.invoke('zoom:get').then(f => apply(f)).catch(() => {});
+    const ready = ipcRenderer.invoke('zoom:get').then(f => { apply(f); return f; }).catch(() => 1.0);
     ipcRenderer.on('zoom:apply', (_, f) => apply(f));
-  } catch (_) {}
+    return ready;
+  } catch (_) {
+    return Promise.resolve(1.0);
+  }
 })();
 
 contextBridge.exposeInMainWorld('api', {
@@ -920,6 +923,7 @@ contextBridge.exposeInMainWorld('api', {
   window_set_size: (opts) => ipcRenderer.invoke('window:set_size', opts),
 
   zoom_get: () => ipcRenderer.invoke('zoom:get'),
+  zoom_ready: () => savedZoomReady,
   zoom_set: (factor) => {
     try { webFrame.setZoomFactor(factor); } catch (_) {}
     return ipcRenderer.invoke('zoom:set', factor);
@@ -1370,5 +1374,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
         throw new Error('فشل الإرسال: ' + (e && e.message || String(e)));
       }
     }
+  },
+
+  // الربط المباشر مع ZATCA (بدون وسيط) — specs/002-zatca-direct-integration/contracts/ipc-api.md
+  zatcaDirect: {
+    getStatus: () => ipcRenderer.invoke('zatca-direct:get-status'),
+    getSettings: () => ipcRenderer.invoke('zatca-direct:get-settings'),
+    saveSettings: (payload) => ipcRenderer.invoke('zatca-direct:save-settings', payload),
+    generateCsr: (payload) => ipcRenderer.invoke('zatca-direct:generate-csr', payload),
+    requestComplianceCsid: (otp) => ipcRenderer.invoke('zatca-direct:request-compliance-csid', { otp }),
+    runComplianceChecks: () => ipcRenderer.invoke('zatca-direct:run-compliance-checks'),
+    requestProductionCsid: () => ipcRenderer.invoke('zatca-direct:request-production-csid'),
+    setMode: (mode) => ipcRenderer.invoke('zatca-direct:set-mode', { mode }),
+    submitSale: (saleId) => ipcRenderer.invoke('zatca-direct:submit-sale', { saleId }),
+    submitCreditNote: (saleId) => ipcRenderer.invoke('zatca-direct:submit-credit-note', { saleId }),
+    retryUnsent: (limit) => ipcRenderer.invoke('zatca-direct:retry-unsent', { limit }),
+    getDocumentStatus: (documentType, documentId) => ipcRenderer.invoke('zatca-direct:get-document-status', { documentType, documentId }),
+    downloadXml: (documentType, documentId) => ipcRenderer.invoke('zatca-direct:download-xml', { documentType, documentId })
   }
 });

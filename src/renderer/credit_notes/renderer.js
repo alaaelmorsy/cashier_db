@@ -1,15 +1,45 @@
 const tbody = document.getElementById('tbody');
-const errorDiv = document.getElementById('error');
 
-let toastTimer = null;
-function showToast(message, bgColor = '#16a34a', duration = 3000){
-  const toast = document.getElementById('toast');
-  if(!toast) return;
-  toast.style.background = bgColor;
-  toast.textContent = message;
-  toast.classList.add('show');
-  if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.classList.remove('show'); }, duration);
+function showNotice(icon, title, text){
+  return window.Swal.fire({
+    icon,
+    title,
+    text: String(text || ''),
+    confirmButtonText: 'حسنًا',
+    confirmButtonColor: icon === 'error' ? '#dc2626' : '#0f766e',
+  });
+}
+
+function showSendingNotice(){
+  return window.Swal.fire({
+    title: 'جاري إرسال إشعار الدائن',
+    text: 'يرجى الانتظار أثناء الاتصال بهيئة الزكاة والضريبة والجمارك.',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => window.Swal.showLoading(),
+  });
+}
+
+function formatZatcaResponse(raw){
+  if(typeof raw !== 'string') return JSON.stringify(raw || {}, null, 2);
+  try{
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  }catch(_){
+    return raw;
+  }
+}
+
+function showZatcaResponseNotice(raw){
+  return window.Swal.fire({
+    icon: 'info',
+    title: 'تفاصيل رد هيئة الزكاة',
+    text: formatZatcaResponse(raw),
+    width: 760,
+    confirmButtonText: 'إغلاق',
+    confirmButtonColor: '#2563eb',
+    customClass: { htmlContainer: 'zatca-response-text' },
+  });
 }
 
 let __perms = new Set();
@@ -20,13 +50,26 @@ const q2 = document.getElementById('q2');
 const dateFrom = document.getElementById('dateFrom');
 const dateTo = document.getElementById('dateTo');
 
-function setError(m){ errorDiv.textContent = m || ''; }
 function fmtDate(s){
   try{
     return new Intl.DateTimeFormat('en-GB-u-ca-gregory', {
       year:'numeric', month:'2-digit', day:'2-digit', hour:'numeric', minute:'2-digit', hour12:true
     }).format(new Date(s));
   }catch(_){ return s; }
+}
+
+async function submitCreditNoteByActiveMode(saleId){
+  const status = await window.electronAPI.zatcaDirect.getStatus();
+  if(!status || status.success !== true){
+    throw new Error(status?.message || 'تعذر تحديد وضع الربط الإلكتروني');
+  }
+  if(status.mode === 'direct'){
+    return window.electronAPI.zatcaDirect.submitCreditNote(saleId);
+  }
+  if(status.mode === 'legacy'){
+    return window.electronAPI.localZatca.submitBySaleId(saleId);
+  }
+  throw new Error('الربط الإلكتروني غير مفعّل على هذا الجهاز');
 }
 
 let __all = [];
@@ -120,28 +163,27 @@ function onTableAction(e){
   if(act === 'send'){
     const id = Number(b.getAttribute('data-id'));
     const old = b.textContent; b.disabled = true; b.textContent = '⏳ جاري الإرسال...'; 
-    showToast('⏳ جاري الإرسال للهيئة...', '#06b6d4');
+    showSendingNotice();
     (async()=>{
       try{
-        const resp = await window.electronAPI.localZatca.submitBySaleId(id);
-        const raw = resp?.data;
-        const asStr = (typeof raw==='string') ? raw : JSON.stringify(raw||'');
-        const obj = (()=>{ try{ return (typeof raw==='string')? JSON.parse(raw) : raw; }catch(_){ return null; } })();
-        const notReported = /NOT[_\s-]?REPORTED/i.test(asStr) || (obj && (obj.statusCode==='NOT_REPORTED' || obj.status==='NOT_REPORTED' || obj?.data?.status==='NOT_REPORTED'));
+        const resp = await submitCreditNoteByActiveMode(id);
+        const rawResponse = resp?.data;
+        const responseText = (typeof rawResponse==='string') ? rawResponse : JSON.stringify(rawResponse||'');
+        const parsedResponse = (()=>{ try{ return (typeof rawResponse==='string')? JSON.parse(rawResponse) : rawResponse; }catch(_){ return null; } })();
+        const notReported = /NOT[_\s-]?REPORTED/i.test(responseText) || (parsedResponse && (parsedResponse.statusCode==='NOT_REPORTED' || parsedResponse.status==='NOT_REPORTED' || parsedResponse?.data?.status==='NOT_REPORTED'));
         if(resp && resp.success && !notReported){
-          const msg = (typeof resp.data==='string') ? resp.data : JSON.stringify(resp.data);
-          showToast('✅ تم الإرسال بنجاح', '#16a34a');
-          try{ showZatcaResponseModal(raw); }catch(_){ }
+          window.Swal.close();
+          showNotice('success', 'تم الإرسال بنجاح', 'تم إرسال إشعار الدائن إلى الهيئة بنجاح.');
         }else{
-          const msg = resp?.message || asStr || 'غير معروف';
-          showToast('❌ فشل الإرسال', '#ef4444');
-          try{ showZatcaResponseModal(msg); }catch(_){ }
+          const failureMessage = resp?.message || responseText || 'غير معروف';
+          window.Swal.close();
+          showNotice('error', 'فشل إرسال إشعار الدائن', failureMessage);
         }
         await load();
       }catch(e){
-        const msg = e?.message || String(e);
-        showToast('❌ تعذر الإرسال: ' + msg, '#ef4444');
-        try{ showZatcaResponseModal(msg); }catch(_){ }
+        const failureMessage = e?.message || String(e);
+        window.Swal.close();
+        showNotice('error', 'تعذر إرسال إشعار الدائن', failureMessage);
       }finally{
         try{ b.disabled = false; b.textContent = old; }catch(_){ }
       }
@@ -152,13 +194,12 @@ function onTableAction(e){
     const row = __all.find(x=>Number(x.id)===id);
     if(row){
       const resp = row.zatca_response || row.zatca_rejection_reason || '';
-      showZatcaResponseModal(resp);
+      showZatcaResponseNotice(resp);
     }
   }
 }
 
 async function load(){
-  setError('');
   // إعادة تحميل إعدادات ZATCA لتحديث حالة الأزرار
   try{
     const s = await window.api.settings_get();
@@ -177,11 +218,17 @@ async function load(){
   if(df){ query.date_from = df.replace('T',' ') + (df.length===16 ? ':00' : ''); }
   if(dt){ query.date_to = dt.replace('T',' ') + (dt.length===16 ? ':59' : ''); }
   __page = 1;
-  const r = await window.api.sales_list(query);
-  if(!r || !r.ok){ setError(r?.error||'تعذر تحميل الفواتير الدائنة'); return; }
-  // keep only credit notes in case backend filter not applied in older schema
-  __all = (r.items||[]).filter(x => String(x.doc_type||'')==='credit_note');
-  renderRows(__all);
+  try{
+    const response = await window.api.sales_list(query);
+    if(!response || !response.ok){
+      throw new Error(response?.error || 'حدث خطأ أثناء تحميل البيانات');
+    }
+    // keep only credit notes in case backend filter not applied in older schema
+    __all = (response.items||[]).filter(x => String(x.doc_type||'')==='credit_note');
+    renderRows(__all);
+  }catch(error){
+    await showNotice('error', 'تعذر تحميل الإشعارات الدائنة', error?.message || String(error));
+  }
 }
 
 (function(){ let t=null; const trigger=()=>{ clearTimeout(t); t=setTimeout(()=>load(), 250); }; q.addEventListener('input', trigger); q2.addEventListener('input', trigger); })();
@@ -195,20 +242,5 @@ if(pageSizeSel){ pageSizeSel.addEventListener('change', ()=>{ __pageSize = Numbe
 
 const btnBack = document.getElementById('btnBack');
 if(btnBack){ btnBack.onclick = ()=>{ history.back(); }; }
-
-(function(){
-  const modal = document.getElementById('zatcaModal');
-  const closeBtn = document.getElementById('zatcaClose');
-  if(closeBtn){ closeBtn.onclick = ()=>{ modal.classList.remove('flex'); modal.classList.add('hidden'); }; }
-  if(modal){ modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.classList.remove('flex'); modal.classList.add('hidden'); } }); }
-})();
-function showZatcaResponseModal(raw){
-  const modal = document.getElementById('zatcaModal');
-  const pre = document.getElementById('zatcaContent');
-  let text = raw;
-  try{ const obj = (typeof raw==='string') ? JSON.parse(raw) : raw; text = JSON.stringify(obj, null, 2); }catch(_){ text = String(raw||''); }
-  if(pre) pre.textContent = text; 
-  if(modal){ modal.classList.remove('hidden'); modal.classList.add('flex'); }
-}
 
 load();

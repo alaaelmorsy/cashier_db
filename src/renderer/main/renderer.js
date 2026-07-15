@@ -33,105 +33,109 @@ if (cardAppointments) {
   });
 }
 
-// Hide/disable cards by permissions (from DB at runtime)
-async function applyPermissions(){
-  let keys = [];
-  try{
-    const u = JSON.parse(localStorage.getItem('pos_user')||'null');
-    if(u && u.id){
-      const r = await window.api.perms_get_for_user(u.id);
-      if(r && r.ok){ keys = r.keys || []; }
-    }
-  }catch(_){ keys = []; }
-  
-  const need = {
-    cardUsers: 'users',
-    cardPermissions: 'permissions',
-    cardCustomers: 'customers',
-    cardAppointments: 'appointments',
-    cardNewInvoice: 'sales',
-    cardInvoices: 'invoices',
-    cardCreditNotes: 'credit_notes',
-    cardQuotations: 'quotations',
-    cardPayments: 'payments',
-    cardVouchers: 'vouchers',
-    cardShifts: 'shifts',
-    cardProducts: 'products',
-    // Removed Rooms permission mapping
-    cardTypes: 'types',
-    cardSettings: 'settings',
-    cardOperations: 'operations',
-    cardKitchen: 'kitchen',
-    cardPurchases: 'purchases',
-    cardPurchaseInvoices: 'purchase_invoices',
-    cardSuppliers: 'suppliers',
-    cardEmployees: 'employees',
-    // Removed Inventory permission mapping
-    cardCustomerPricing: 'customer_pricing',
-    cardOffers: 'offers',
-    cardDrivers: 'drivers',
-    cardReports: 'reports',
-    cardWhatsApp: 'whatsapp',
-    cardZatca: 'zatca',
+const MAIN_CARD_SETTINGS_CACHE_KEY = 'pos_main_card_settings';
+
+function cachedMainCardState() {
+  try {
+    const cachedPermissions = localStorage.getItem('pos_perms');
+    const cachedSettings = localStorage.getItem(MAIN_CARD_SETTINGS_CACHE_KEY);
+    if (cachedPermissions === null || cachedSettings === null) return null;
+    const permissions = JSON.parse(cachedPermissions);
+    const settings = JSON.parse(cachedSettings);
+    if (!Array.isArray(permissions)) return null;
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return null;
+    return { permissions, settings };
+  } catch (error) {
+    console.warn('Ignoring invalid main screen cache:', error);
+    return null;
+  }
+}
+
+function cacheMainCardSettings(settings) {
+  const cardSettings = {
+    show_appointments: settings.show_appointments,
+    show_shifts: settings.show_shifts
   };
-  Object.entries(need).forEach(([id, key]) => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    
-    if(!keys.includes(key)){
-      // Hide completely to avoid partial styles/layout shifts
-      el.classList.add('hidden');
-      el.removeAttribute('style');
-      try{ el.setAttribute('aria-hidden','true'); }catch(_){ }
-    } else {
-      el.classList.remove('hidden');
-      try{ el.removeAttribute('aria-hidden'); }catch(_){ }
-    }
+  localStorage.setItem(MAIN_CARD_SETTINGS_CACHE_KEY, JSON.stringify(cardSettings));
+}
+
+async function permissionKeys() {
+  try {
+    const user = JSON.parse(localStorage.getItem('pos_user') || 'null');
+    if (!user || !user.id) return [];
+    const response = await window.api.perms_get_for_user(user.id);
+    const permissions = response && response.ok ? response.keys || [] : [];
+    if (response && response.ok) localStorage.setItem('pos_perms', JSON.stringify(permissions));
+    return permissions;
+  } catch (error) {
+    console.error('Error loading main screen permissions:', error);
+    return [];
+  }
+}
+
+async function mainScreenSettings() {
+  try {
+    const response = await window.api.settings_get();
+    const settings = response && response.ok && response.item ? response.item : {};
+    if (response && response.ok) cacheMainCardSettings(settings);
+    return settings;
+  } catch (error) {
+    console.error('Error loading main screen settings:', error);
+    return {};
+  }
+}
+
+function applyCardVisibility(visibleCards) {
+  window.MainCardVisibility.cardIds.forEach(cardId => {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const isVisible = visibleCards.has(cardId);
+    card.classList.toggle('hidden', !isVisible);
+    card.setAttribute('aria-hidden', String(!isVisible));
   });
-  // Re-index visible cards so animations/delays are consistent
-  try{ reindexCards && reindexCards(); }catch(_){ }
 }
 
-// Apply settings-based visibility (for cards that can be toggled via DB)
-async function applySettingsVisibility(){
-  try{
-    const r = await window.api.settings_get();
-    if(!r || !r.ok || !r.item) return;
-    const s = r.item;
-    
-    // Hide/show appointments card based on show_appointments setting
-    const cardAppointments = document.getElementById('cardAppointments');
-    if(cardAppointments){
-      if(s.show_appointments === 0 || s.show_appointments === false){
-        cardAppointments.classList.add('hidden');
-        cardAppointments.setAttribute('aria-hidden','true');
-      } else {
-        cardAppointments.classList.remove('hidden');
-        cardAppointments.removeAttribute('aria-hidden');
-      }
-    }
-    // Hide/show shifts card based on show_shifts setting
-    const cardShifts = document.getElementById('cardShifts');
-    if(cardShifts){
-      if(s.show_shifts === 0 || s.show_shifts === false){
-        cardShifts.classList.add('hidden');
-        cardShifts.setAttribute('aria-hidden','true');
-      } else {
-        cardShifts.classList.remove('hidden');
-        cardShifts.removeAttribute('aria-hidden');
-      }
-    }
-  }catch(e){ console.error('Error applying settings visibility:', e); }
+async function refreshMainCardVisibility() {
+  const [permissions, settings] = await Promise.all([
+    permissionKeys(),
+    mainScreenSettings()
+  ]);
+  const visibleCards = window.MainCardVisibility.visibleCardIds(permissions, settings);
+  applyCardVisibility(visibleCards);
+  reindexCards();
 }
 
-// Initial load
-applyPermissions();
-applySettingsVisibility();
+let mainScreenReady = false;
 
-// Re-apply permissions when window gains focus (to pick up DB changes)
+function revealMainScreen() {
+  requestAnimationFrame(() => {
+    document.body.classList.remove('main-screen-loading');
+    document.body.removeAttribute('aria-busy');
+    mainScreenReady = true;
+  });
+}
+
+async function initializeMainScreen() {
+  const cachedState = cachedMainCardState();
+  if (cachedState) {
+    const visibleCards = window.MainCardVisibility.visibleCardIds(cachedState.permissions, cachedState.settings);
+    applyCardVisibility(visibleCards);
+    reindexCards();
+    await window.api.zoom_ready();
+    revealMainScreen();
+    return;
+  }
+  await Promise.all([
+    refreshMainCardVisibility(),
+    window.api.zoom_ready()
+  ]);
+  revealMainScreen();
+}
+
+initializeMainScreen();
+
 window.addEventListener('focus', () => {
-  applyPermissions();
-  applySettingsVisibility();
+  if (mainScreenReady) refreshMainCardVisibility();
 });
 
 const cardTypes = document.getElementById('cardTypes');
@@ -332,11 +336,6 @@ function reindexCards(){
   }
 }
 
-// إضافة تأثير الظهور التدريجي للبطاقات
-document.addEventListener('DOMContentLoaded', function() {
-  reindexCards();
-});
-
 // POS button in header - navigate to sales
 const posBtn = document.getElementById('posBtn');
 if (posBtn) {
@@ -419,5 +418,31 @@ document.addEventListener('keydown', (e) => {
         updateLabel(saved);
       }
     } catch (_) {}
+  })();
+})();
+// تنبيه شهادة الربط المباشر مع ZATCA (انتهاء/قرب انتهاء/تعذر فك الأسرار) — US5
+(function zatcaDirectCertAlert(){
+  (async () => {
+    try{
+      const st = await window.electronAPI.zatcaDirect.getStatus();
+      if(!st || !st.success || st.mode !== 'direct') return;
+      let msg = null, color = '#b45309';
+      if(st.certificateExpired){
+        msg = 'شهادة الربط الإلكتروني (ZATCA) منتهية الصلاحية — الإرسال للهيئة متوقف حتى إعادة خطوات الربط. البيع والطباعة مستمران طبيعيًا.';
+        color = '#b91c1c';
+      } else if(st.certificateExpiresSoon){
+        msg = `شهادة الربط الإلكتروني (ZATCA) تنتهي خلال ${st.certificateDaysLeft} يومًا — جدّد الربط من شاشة الربط المباشر قبل انتهائها.`;
+      }
+      if(!msg) return;
+      const bar = document.createElement('div');
+      bar.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;padding:10px 44px 10px 16px;font-size:14px;text-align:center;`;
+      bar.textContent = msg;
+      const close = document.createElement('button');
+      close.textContent = '✕';
+      close.style.cssText = 'position:absolute;top:6px;left:12px;background:transparent;border:none;color:#fff;font-size:16px;cursor:pointer;';
+      close.onclick = () => bar.remove();
+      bar.appendChild(close);
+      document.body.appendChild(bar);
+    }catch(_){ }
   })();
 })();

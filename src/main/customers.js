@@ -4,6 +4,22 @@ const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
 
 function registerCustomersIPC(){
+  // أعمدة عنوان الفاتورة الضريبية (الربط الإلكتروني المباشر) — idempotent
+  async function ensureZatcaAddressColumns(conn){
+    const cols = [
+      ['zatca_street', 'VARCHAR(200) NULL'],
+      ['zatca_building', 'VARCHAR(20) NULL'],
+      ['zatca_district', 'VARCHAR(120) NULL'],
+      ['zatca_city', 'VARCHAR(100) NULL'],
+    ];
+    for(const [col, def] of cols){
+      try{
+        const [existing] = await conn.query(`SHOW COLUMNS FROM customers LIKE '${col}'`);
+        if(!existing.length){ await conn.query(`ALTER TABLE customers ADD COLUMN ${col} ${def}`); }
+      }catch(_){ }
+    }
+  }
+
   async function ensureTable(conn){
     await conn.query(`
       CREATE TABLE IF NOT EXISTS customers (
@@ -117,19 +133,20 @@ function registerCustomersIPC(){
 
   // add
   ipcMain.handle('customers:add', async (_evt, payload) => {
-    const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes } = payload || {};
+    const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes, zatca_street, zatca_building, zatca_district, zatca_city } = payload || {};
     if(!phone || String(phone).trim()==='') return { ok:false, error:'رقم الجوال مطلوب' };
     const safeName = (name && String(name).trim()!=='') ? String(name).trim() : String(phone).trim();
     try{
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTable(conn);
+        await ensureZatcaAddressColumns(conn);
         // منع تكرار رقم الجوال
         const [[dup]] = await conn.query('SELECT id FROM customers WHERE phone=? LIMIT 1', [String(phone).trim()]);
         if(dup){ return { ok:false, error:'رقم الجوال موجود بالفعل' }; }
         const [res] = await conn.query(
-          'INSERT INTO customers (name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-          [safeName, String(phone).trim(), email||null, address||null, vat_number||null, cr_number||null, national_address||null, postal_code||null, street_number||null, sub_number||null, notes||null]
+          'INSERT INTO customers (name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes, zatca_street, zatca_building, zatca_district, zatca_city) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+          [safeName, String(phone).trim(), email||null, address||null, vat_number||null, cr_number||null, national_address||null, postal_code||null, street_number||null, sub_number||null, notes||null, zatca_street||null, zatca_building||null, zatca_district||null, zatca_city||null]
         );
         return { ok:true, id: res.insertId };
       } finally { conn.release(); }
@@ -226,17 +243,18 @@ function registerCustomersIPC(){
   ipcMain.handle('customers:update', async (_e, id, payload) => {
     const cid = (id && id.id) ? id.id : id;
     if(!cid) return { ok:false, error:'معرّف مفقود' };
-    const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes } = payload || {};
+    const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number, notes, zatca_street, zatca_building, zatca_district, zatca_city } = payload || {};
     if(!phone || String(phone).trim()==='') return { ok:false, error:'رقم الجوال مطلوب' };
     const safeName = (name && String(name).trim()!=='') ? String(name).trim() : String(phone).trim();
     try{
       const conn = await dbAdapter.getConnection();
       try{
         await ensureTable(conn);
+        await ensureZatcaAddressColumns(conn);
         // منع تكرار رقم الجوال لغير نفس السجل
         const [[dup]] = await conn.query('SELECT id FROM customers WHERE phone=? AND id<>? LIMIT 1', [String(phone).trim(), cid]);
         if(dup){ return { ok:false, error:'رقم الجوال موجود بالفعل' }; }
-        await conn.query('UPDATE customers SET name=?, phone=?, email=?, address=?, vat_number=?, cr_number=?, national_address=?, postal_code=?, street_number=?, sub_number=?, notes=? WHERE id=?', [safeName, String(phone).trim(), email||null, address||null, vat_number||null, cr_number||null, national_address||null, postal_code||null, street_number||null, sub_number||null, notes||null, cid]);
+        await conn.query('UPDATE customers SET name=?, phone=?, email=?, address=?, vat_number=?, cr_number=?, national_address=?, postal_code=?, street_number=?, sub_number=?, notes=?, zatca_street=?, zatca_building=?, zatca_district=?, zatca_city=? WHERE id=?', [safeName, String(phone).trim(), email||null, address||null, vat_number||null, cr_number||null, national_address||null, postal_code||null, street_number||null, sub_number||null, notes||null, zatca_street||null, zatca_building||null, zatca_district||null, zatca_city||null, cid]);
         return { ok:true };
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'فشل التعديل' }; }

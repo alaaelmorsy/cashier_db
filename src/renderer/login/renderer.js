@@ -263,7 +263,10 @@ async function doLogin() {
     }
 
     // Save logged-in user for later (waiter name in kitchen tickets)
-    try { localStorage.setItem('pos_user', JSON.stringify(res.user || {})); } catch (_) { }
+    try {
+      localStorage.setItem('pos_user', JSON.stringify(res.user || {}));
+      localStorage.removeItem('pos_perms');
+    } catch (_) { }
 
     // Fetch and store user permissions for UI control, then redirect accordingly
     let userPerms = [];
@@ -276,6 +279,12 @@ async function doLogin() {
     try {
       const settingsRes = await window.api.settings_get();
       const st = settingsRes && settingsRes.ok ? (settingsRes.item || {}) : {};
+      if (settingsRes && settingsRes.ok) {
+        localStorage.setItem('pos_main_card_settings', JSON.stringify({
+          show_appointments: st.show_appointments,
+          show_shifts: st.show_shifts
+        }));
+      }
       if (st.show_shifts === 0 || st.show_shifts === false) {
         window.location.href = '../sales/index.html';
         return;
@@ -392,5 +401,3 @@ function showUpdateAvailableNotification(updateInfo) {
     }, 500);
   }, 6000);
 }
-
-

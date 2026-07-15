@@ -541,6 +541,10 @@ async function loadSettings(){
   const r = await window.api.settings_get();
   if(!r.ok){ setError(r.error || __t('تعذر تحميل الإعدادات', 'Failed to load settings')); return; }
   const s = r.item || {};
+  localStorage.setItem('pos_main_card_settings', JSON.stringify({
+    show_appointments: s.show_appointments,
+    show_shifts: s.show_shifts
+  }));
   // fCompanyName removed: show legal name at the top instead
   fCompanySite.value = s.company_site || '';
   fCompanyLocation.value = s.company_location || '';

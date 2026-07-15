@@ -1357,12 +1357,15 @@ async function createMainWindow() {
         case 'zatca':
           targetPath = '../renderer/zatca/index.html';
           break;
+        case 'zatca-direct':
+          targetPath = '../renderer/zatca/direct/index.html';
+          break;
         default:
           targetPath = '../renderer/main/index.html';
       }
       
       win.loadFile(path.join(__dirname, targetPath));
-      if (page === 'main' || page === 'zatca') {
+      if (page === 'main' || page === 'zatca' || page === 'zatca-direct') {
         win.setResizable(true);
         win.maximize();
       }
@@ -1503,6 +1506,12 @@ app.whenReady().then(async () => {
   registerSettingsIPC();
   try { customerDisplay.setupIPCHandlers(); } catch (_) {}
   try { require('./customer-display').setupLegacyIPCHandlers(); } catch (_) {}
+  try {
+    const { registerZatcaDirectIPC } = require('./zatca/ipc');
+    registerZatcaDirectIPC();
+  } catch (error) {
+    console.error('خطأ في تسجيل قنوات الربط المباشر مع ZATCA:', error);
+  }
 
   try{
     createMainWindow();
@@ -1732,6 +1741,15 @@ app.whenReady().then(async () => {
         console.log('تم تفعيل نظام ZATCA بنجاح (الرسمي + المحلي)');
       } catch (error) {
         console.error('خطأ في تفعيل نظام ZATCA:', error);
+      }
+
+      // تثبيت وضع التكامل بعد اكتمال تهيئة قاعدة البيانات؛ قنوات IPC مسجلة قبل فتح النافذة.
+      try {
+        const zatcaRouter = require('./zatca/router');
+        await zatcaRouter.detectModeOnce();
+        console.log('تم تهيئة الربط المباشر مع ZATCA — الوضع:', await zatcaRouter.getMode());
+      } catch (error) {
+        console.error('خطأ في تهيئة الربط المباشر مع ZATCA:', error);
       }
     }catch(e){
       console.error('Error initializing backend:', e);

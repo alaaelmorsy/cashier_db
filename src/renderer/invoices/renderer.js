@@ -5,12 +5,65 @@ let __perms = new Set();
 const __permsReady = (async()=>{ try{ const u=JSON.parse(localStorage.getItem('pos_user')||'null'); if(u&&u.id){ const r=await window.api.perms_get_for_user(u.id); if(r&&r.ok){ __perms = new Set(r.keys||[]); } } }catch(_){ __perms = new Set(); } })();
 function hasInvoice(k){ return __perms.has(k); }
 const tbody = document.getElementById('tbody');
-const errorDiv = document.getElementById('error');
 const q = document.getElementById('q');
 const q2 = document.getElementById('q2');
-// const refreshBtn = document.getElementById('refreshBtn'); // removed button
 
-function setError(m){ errorDiv.textContent = m || ''; }
+function isArabic(){ return (document.documentElement.lang || 'ar') !== 'en'; }
+
+function showNotice(icon, title, message){
+  return window.Swal.fire({
+    icon,
+    title,
+    text: String(message || ''),
+    confirmButtonText: isArabic() ? 'حسنًا' : 'OK',
+    confirmButtonColor: icon === 'error' ? '#dc2626' : '#2563eb',
+    heightAuto: false,
+    customClass: {
+      popup: `invoice-swal-popup${isArabic() ? ' invoice-swal-rtl' : ''}`,
+      title: 'invoice-swal-title',
+      htmlContainer: 'invoice-swal-text',
+      confirmButton: 'invoice-swal-confirm',
+    },
+  });
+}
+
+function showLoadingNotice(title, message){
+  return window.Swal.fire({
+    title,
+    text: message,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    heightAuto: false,
+    didOpen: () => window.Swal.showLoading(),
+    customClass: { popup: `invoice-swal-popup${isArabic() ? ' invoice-swal-rtl' : ''}` },
+  });
+}
+
+function formatZatcaResponse(rawResponse){
+  if(typeof rawResponse !== 'string') return JSON.stringify(rawResponse || {}, null, 2);
+  try{
+    return JSON.stringify(JSON.parse(rawResponse), null, 2);
+  }catch(_){
+    return rawResponse;
+  }
+}
+
+function showZatcaResponseNotice(rawResponse){
+  return window.Swal.fire({
+    icon: 'info',
+    title: isArabic() ? 'تفاصيل رد هيئة الزكاة' : 'ZATCA response details',
+    text: formatZatcaResponse(rawResponse),
+    width: 760,
+    confirmButtonText: isArabic() ? 'إغلاق' : 'Close',
+    confirmButtonColor: '#2563eb',
+    heightAuto: false,
+    customClass: {
+      popup: `invoice-swal-popup${isArabic() ? ' invoice-swal-rtl' : ''}`,
+      htmlContainer: 'zatca-response-text',
+    },
+  });
+}
 function fmtDate(s){
   try{
     // Force Gregorian calendar to match printed invoice format
@@ -32,7 +85,18 @@ let __cursors = {};
 // default print format from settings (thermal | a4)
 let __defPrintFormat = 'thermal';
 let __zatcaEnabled = false;
+let __zatcaMode = 'unlinked'; // legacy | direct | unlinked — يحدد مسار الإرسال اليدوي
 let __showEmpSelector = true;
+// وضع الربط المباشر: أزرار الإرسال تستخدم القناة المباشرة بدل الوسيط المحلي
+const __zatcaModeReady = (async()=>{
+  try{
+    const st = await window.electronAPI.zatcaDirect.getStatus();
+    if(st && st.success){
+      __zatcaMode = st.mode || 'unlinked';
+      if(__zatcaMode === 'direct') __zatcaEnabled = true;
+    }
+  }catch(_){ }
+})();
 // Batch screen-init: settings + total in ONE request (faster on remote/VPN)
 const __settingsReady = (async()=>{
   try{
@@ -40,7 +104,7 @@ const __settingsReady = (async()=>{
     if(r && r.ok){
       const s = r.settings || r.item || {};
       __defPrintFormat = (s.default_print_format === 'a4') ? 'a4' : 'thermal';
-      __zatcaEnabled = !!(s.zatca_enabled);
+      __zatcaEnabled = !!(s.zatca_enabled) || __zatcaMode === 'direct';
       __showEmpSelector = s.show_employee_selector == null ? true : !!(s.show_employee_selector);
       if(r.total_invoices != null){ __totalInvoices = Number(r.total_invoices || 0); renderInvPager(); }
       const statsBox = document.getElementById('zatcaStats');
@@ -180,6 +244,71 @@ function openInvoiceView(row){
   window.open(url, 'PRINT_VIEW', `width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no`);
 }
 
+function showZatcaSubmissionSuccess(isAr){
+  const title = isAr ? 'تم إرسال الفاتورة بنجاح' : 'Invoice sent successfully';
+  const message = isAr
+    ? 'تم استلام الفاتورة بنجاح لدى هيئة الزكاة والضريبة والجمارك.'
+    : 'The invoice was successfully received by ZATCA.';
+  return window.Swal.fire({
+    icon: 'success',
+    title,
+    text: message,
+    confirmButtonText: isAr ? 'حسنًا' : 'OK',
+    confirmButtonColor: '#2563eb',
+    heightAuto: false,
+    customClass: {
+      popup: `invoice-swal-popup${isAr ? ' invoice-swal-rtl' : ''}`,
+      title: 'invoice-swal-title',
+      htmlContainer: 'invoice-swal-text',
+      confirmButton: 'invoice-swal-confirm',
+    },
+  });
+}
+
+async function sendInvoiceToZatca(saleId, triggerButton){
+  const arabic = isArabic();
+  const originalLabel = triggerButton?.textContent;
+  if(triggerButton){
+    triggerButton.disabled = true;
+    triggerButton.textContent = arabic ? '⏳ جاري الإرسال...' : '⏳ Sending...';
+  }
+  showLoadingNotice(
+    arabic ? 'جاري إرسال الفاتورة' : 'Sending invoice',
+    arabic ? 'يرجى الانتظار أثناء الاتصال بهيئة الزكاة والضريبة والجمارك.' : 'Please wait while connecting to ZATCA.'
+  );
+  try{
+    await __zatcaModeReady;
+    const submission = (__zatcaMode === 'direct')
+      ? await window.electronAPI.zatcaDirect.submitSale(saleId)
+      : await window.electronAPI.localZatca.submitBySaleId(saleId);
+    const rawResponse = submission?.data;
+    const responseText = typeof rawResponse === 'string' ? rawResponse : JSON.stringify(rawResponse || '');
+    const parsedResponse = (()=>{ try{ return typeof rawResponse === 'string' ? JSON.parse(rawResponse) : rawResponse; }catch(_){ return null; } })();
+    const notReported = /NOT[_\s-]?REPORTED/i.test(responseText)
+      || (parsedResponse && (parsedResponse.statusCode === 'NOT_REPORTED' || parsedResponse.status === 'NOT_REPORTED' || parsedResponse?.data?.status === 'NOT_REPORTED'));
+    window.Swal.close();
+    if(submission?.success && !notReported){
+      await showZatcaSubmissionSuccess(arabic);
+    }else{
+      const failureMessage = submission?.message || responseText || (arabic ? 'غير معروف' : 'Unknown');
+      await showNotice('error', arabic ? 'فشل إرسال الفاتورة' : 'Invoice send failed', failureMessage);
+    }
+    await load(false);
+  }catch(error){
+    window.Swal.close();
+    await showNotice(
+      'error',
+      arabic ? 'تعذر إرسال الفاتورة' : 'Unable to send invoice',
+      error?.message || String(error)
+    );
+  }finally{
+    if(triggerButton?.isConnected){
+      triggerButton.disabled = false;
+      triggerButton.textContent = originalLabel;
+    }
+  }
+}
+
 function onTableAction(e){
   const b = e.target.closest('button'); if(!b) return;
   const act = b.getAttribute('data-act');
@@ -190,44 +319,12 @@ function onTableAction(e){
   }
   if(act==='send'){
     const id = Number(b.getAttribute('data-id'));
-    const isAr = (document.documentElement.lang || 'ar') !== 'en';
-    const oldLabel = b.textContent;
-    b.disabled = true; b.textContent = isAr ? '⏳ جاري الإرسال...' : '⏳ Sending...'; b.className = 'px-3 py-1.5 bg-gray-400 text-white rounded-lg text-sm font-medium cursor-wait'; setError(isAr ? '⏳ جاري الإرسال...' : '⏳ Sending...');
-    (async () => {
-      try{
-        const resp = await window.electronAPI.localZatca.submitBySaleId(id);
-        const raw = resp?.data;
-        // Try detect rejection in success payload (e.g., NOT_REPORTED)
-        const asStr = (typeof raw==='string') ? raw : JSON.stringify(raw||'');
-        const obj = (()=>{ try{ return (typeof raw==='string')? JSON.parse(raw) : raw; }catch(_){ return null; } })();
-        const notReported = /NOT[_\s-]?REPORTED/i.test(asStr) || (obj && (obj.statusCode==='NOT_REPORTED' || obj.status==='NOT_REPORTED' || obj?.data?.status==='NOT_REPORTED'));
-        if(resp && resp.success && !notReported){
-          const msg = (typeof resp.data === 'string') ? resp.data : JSON.stringify(resp.data);
-          setError(isAr ? '✅ تم الإرسال بنجاح' : '✅ Sent successfully');
-          // عرض رد الهيئة تلقائياً في نافذة منبثقة صغيرة
-          try{ showZatcaResponseModal(raw || msg); }catch(_){ }
-        } else {
-          const msg = resp?.message || asStr || (isAr ? 'غير معروف' : 'Unknown');
-          setError(isAr ? '❌ فشل الإرسال' : '❌ Send failed');
-          // عرض رد الهيئة/الرسالة تلقائياً في نفس النافذة المنبثقة
-          try{ showZatcaResponseModal(msg); }catch(_){ }
-        }
-        // Refresh list to reflect status/tooltip/button state
-        await load(false);
-      }catch(e){
-        const emsg = (e?.message || String(e));
-        setError((isAr ? '❌ تعذر الإرسال: ' : '❌ Failed to send: ') + emsg);
-        try{ showZatcaResponseModal(emsg); }catch(_){ }
-      } finally {
-        // Restore button quickly if still present (list may rerender)
-        try{ b.disabled = false; b.textContent = oldLabel; }catch(_){ }
-      }
-    })();
+    sendInvoiceToZatca(id, b);
   }
   if(act==='show_zresp'){
     const id = Number(b.getAttribute('data-id'));
     const row = __allInvoices.find(x=>Number(x.id)===id) || {};
-    showZatcaResponseModal(row.zatca_response || row.zatca_rejection_reason || '');
+    showZatcaResponseNotice(row.zatca_response || row.zatca_rejection_reason || '');
   }
   if(act==='editEmp'){
     if(!hasInvoice('invoices.view')) return;
@@ -236,164 +333,118 @@ function onTableAction(e){
   }
 }
 
-(function(){
-  const modal = document.getElementById('zatcaModal');
-  const closeBtn = document.getElementById('zatcaClose');
-  if(closeBtn){ closeBtn.onclick = ()=>{ if(modal) modal.style.display='none'; }; }
-  if(modal){ modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; } }); }
-})();
-
-// ─── Failed ZATCA Invoices Modal ───
+// ─── Failed ZATCA invoices ───
 let __failedZatcaPage = 1;
 const __failedZatcaPageSize = 20;
-let __failedZatcaTotal = 0;
+let __failedZatcaItems = [];
 
-function renderFailedZatcaPager(){
-  const pager = document.getElementById('failedZatcaPager');
-  if(!pager) return;
-  const pages = Math.max(1, Math.ceil(__failedZatcaTotal / __failedZatcaPageSize));
-  if(pages <= 1){ pager.innerHTML = ''; return; }
-  const btn = (l,d,g) => `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" ${d?'disabled':''} data-go="${g}">${l}</button>`;
-  pager.innerHTML = [
-    btn('⏮️', __failedZatcaPage<=1, 'first'),
-    btn('◀️', __failedZatcaPage<=1, 'prev'),
-    `<span class="text-gray-600 font-medium px-2 text-sm">صفحة ${__failedZatcaPage} من ${pages}</span>`,
-    btn('▶️', __failedZatcaPage>=pages, 'next'),
-    btn('⏭️', __failedZatcaPage>=pages, 'last'),
-  ].join(' ');
-  pager.onclick = (e) => {
-    const b = e.target.closest('button'); if(!b) return;
-    const act = b.getAttribute('data-go');
-    if(act==='first') __failedZatcaPage = 1;
-    else if(act==='prev') __failedZatcaPage = Math.max(1, __failedZatcaPage-1);
-    else if(act==='next') __failedZatcaPage = Math.min(pages, __failedZatcaPage+1);
-    else if(act==='last') __failedZatcaPage = pages;
-    loadFailedZatcaPage();
-  };
+function escapeHtml(text){
+  return String(text ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
-async function openFailedZatcaModal(){
-  const modal = document.getElementById('failedZatcaModal');
-  if(!modal) return;
-  modal.style.display = 'flex';
-  __failedZatcaPage = 1;
-  await loadFailedZatcaPage();
+function failedInvoiceRowMarkup(invoice, paymentMethods){
+  const invoiceId = Number(invoice.id);
+  const responseButton = (invoice.zatca_response || invoice.zatca_rejection_reason)
+    ? `<button class="px-2 py-1 bg-purple-600 text-white rounded-md" data-failed-action="response" data-id="${invoiceId}">📄 ${isArabic() ? 'الرد' : 'Response'}</button>`
+    : '';
+  const viewButton = hasInvoice('invoices.view')
+    ? `<button class="px-2 py-1 bg-blue-600 text-white rounded-md" data-failed-action="view" data-id="${invoiceId}">${isArabic() ? 'عرض' : 'View'}</button>`
+    : '';
+  const paymentMethod = paymentMethods[String(invoice.payment_method || '').toLowerCase()] || invoice.payment_method || '';
+  return `<tr>
+    <td>${escapeHtml(invoice.invoice_no)}</td><td>${escapeHtml(invoice.disp_customer_phone || invoice.customer_phone)}</td>
+    <td>${escapeHtml(fmtDate(invoice.created_at))}</td><td>${escapeHtml(paymentMethod)}</td>
+    <td><div class="flex gap-1 justify-center">${viewButton}<button class="px-2 py-1 bg-green-600 text-white rounded-md" data-failed-action="send" data-id="${invoiceId}">📤 ${isArabic() ? 'إرسال' : 'Send'}</button>${responseButton}</div></td>
+  </tr>`;
+}
+
+function failedInvoiceRowsMarkup(invoices){
+  const paymentMethods = isArabic()
+    ? {cash:'كاش', card:'شبكة', credit:'آجل', mixed:'مختلط', tamara:'تمارا', tabby:'تابي'}
+    : {cash:'Cash', card:'Network', credit:'Credit', mixed:'Mixed', tamara:'Tamara', tabby:'Tabby'};
+  return invoices.map(invoice => failedInvoiceRowMarkup(invoice, paymentMethods)).join('');
+}
+
+function failedInvoicePagerMarkup(totalInvoices){
+  const pageCount = Math.max(1, Math.ceil(totalInvoices / __failedZatcaPageSize));
+  if(pageCount <= 1) return '';
+  const previousDisabled = __failedZatcaPage <= 1 ? 'disabled' : '';
+  const nextDisabled = __failedZatcaPage >= pageCount ? 'disabled' : '';
+  return `<div class="flex justify-center items-center gap-2 mt-4">
+    <button class="px-3 py-1 bg-blue-600 text-white rounded-md disabled:opacity-40" data-failed-page="prev" ${previousDisabled}>◀</button>
+    <span>${isArabic() ? 'صفحة' : 'Page'} ${__failedZatcaPage} ${isArabic() ? 'من' : 'of'} ${pageCount}</span>
+    <button class="px-3 py-1 bg-blue-600 text-white rounded-md disabled:opacity-40" data-failed-page="next" ${nextDisabled}>▶</button>
+  </div>`;
+}
+
+function showFailedInvoicesList(totalInvoices){
+  return window.Swal.fire({
+    icon: 'error',
+    title: isArabic() ? 'الفواتير التي فشل إرسالها' : 'Failed ZATCA invoices',
+    html: `<div class="failed-invoices-list"><table><thead><tr><th>${isArabic() ? 'الفاتورة' : 'Invoice'}</th><th>${isArabic() ? 'الجوال' : 'Phone'}</th><th>${isArabic() ? 'التاريخ' : 'Date'}</th><th>${isArabic() ? 'الدفع' : 'Payment'}</th><th>${isArabic() ? 'الإجراءات' : 'Actions'}</th></tr></thead><tbody>${failedInvoiceRowsMarkup(__failedZatcaItems)}</tbody></table>${failedInvoicePagerMarkup(totalInvoices)}</div>`,
+    width: 1050,
+    confirmButtonText: isArabic() ? 'إغلاق' : 'Close',
+    confirmButtonColor: '#475569',
+    heightAuto: false,
+    customClass: { popup: `invoice-swal-popup${isArabic() ? ' invoice-swal-rtl' : ''}` },
+    didOpen: () => window.Swal.getPopup().addEventListener('click', onFailedInvoiceAction),
+  });
+}
+
+async function onFailedInvoiceAction(event){
+  const button = event.target.closest('button');
+  if(!button) return;
+  const pageAction = button.getAttribute('data-failed-page');
+  if(pageAction){
+    __failedZatcaPage += pageAction === 'next' ? 1 : -1;
+    window.Swal.close();
+    await loadFailedZatcaPage();
+    return;
+  }
+  const invoice = __failedZatcaItems.find(row => Number(row.id) === Number(button.getAttribute('data-id')));
+  if(!invoice) return;
+  const action = button.getAttribute('data-failed-action');
+  window.Swal.close();
+  if(action === 'view') openInvoiceView(invoice);
+  if(action === 'response') showZatcaResponseNotice(invoice.zatca_response || invoice.zatca_rejection_reason || '');
+  if(action === 'send') await sendInvoiceToZatca(Number(invoice.id), button);
 }
 
 async function loadFailedZatcaPage(){
-  const loading = document.getElementById('failedZatcaLoading');
-  const empty = document.getElementById('failedZatcaEmpty');
-  const table = document.getElementById('failedZatcaTable');
-  const tbody = document.getElementById('failedZatcaTbody');
-  const countEl = document.getElementById('failedZatcaCount');
-  const pager = document.getElementById('failedZatcaPager');
-
-  loading.style.display = 'block';
-  empty.style.display = 'none';
-  table.style.display = 'none';
-  pager.innerHTML = '';
-
+  showLoadingNotice(
+    isArabic() ? 'جاري تحميل الفواتير الفاشلة' : 'Loading failed invoices',
+    isArabic() ? 'يرجى الانتظار قليلًا.' : 'Please wait.'
+  );
   try{
-    const r = await window.api.sales_list({ type: 'invoice', zatca_status: 'rejected', page: __failedZatcaPage, pageSize: __failedZatcaPageSize });
-    loading.style.display = 'none';
-    if(!r || !r.ok){
-      empty.textContent = r?.error || 'تعذر تحميل الفواتير';
-      empty.style.display = 'block';
+    const response = await window.api.sales_list({ type: 'invoice', zatca_status: 'rejected', page: __failedZatcaPage, pageSize: __failedZatcaPageSize });
+    if(!response?.ok) throw new Error(response?.error || (isArabic() ? 'تعذر تحميل الفواتير' : 'Failed to load invoices'));
+    window.Swal.close();
+    __failedZatcaItems = response.items || [];
+    if(!__failedZatcaItems.length){
+      await showNotice('success', isArabic() ? 'لا توجد فواتير فاشلة' : 'No failed invoices', isArabic() ? 'جميع الفواتير بحالة جيدة.' : 'All invoices are in good standing.');
       return;
     }
-    const items = r.items || [];
-    __failedZatcaTotal = r.total || 0;
-    countEl.textContent = __failedZatcaTotal;
-    if(!items.length){
-      empty.textContent = 'لا توجد فواتير فاشلة الإرسال 🎉';
-      empty.style.display = 'block';
-      return;
-    }
-    table.style.display = 'table';
-    const canView = hasInvoice('invoices.view');
-    const isAr = (document.documentElement.lang || 'ar') !== 'en';
-    const PMETH = isAr
-      ? {cash:'كاش',card:'شبكة',credit:'آجل',mixed:'مختلط',tamara:'تمارا',tabby:'تابي'}
-      : {cash:'Cash',card:'Network',credit:'Credit',mixed:'Mixed',tamara:'Tamara',tabby:'Tabby'};
-    tbody.innerHTML = items.map((row, idx) => {
-      const bg = idx % 2 === 0 ? '#fff' : '#fef2f2';
-      const hasResp = !!(row.zatca_response || row.zatca_rejection_reason);
-      const pmeth = PMETH[String(row.payment_method||'').toLowerCase()] || (row.payment_method||'');
-      return `<tr style="background:${bg};">
-        <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#1e293b;border-bottom:1px solid #f1f5f9;">${row.invoice_no}</td>
-        <td style="padding:12px 16px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">${row.disp_customer_phone || row.customer_phone || ''}</td>
-        <td style="padding:12px 16px;font-size:13px;color:#64748b;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${fmtDate(row.created_at)}</td>
-        <td style="padding:12px 16px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">${pmeth}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;text-align:center;">
-          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-            ${canView ? `<button class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium" data-act="view" data-id="${row.id}">عرض الفاتورة</button>` : ''}
-            <button class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium" data-act="send" data-id="${row.id}">📤 إرسال يدوي</button>
-            ${hasResp ? `<button class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium" data-act="show_zresp_failed" data-id="${row.id}">📄 الرد</button>` : ''}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-    __failedZatcaItems = items;
-    renderFailedZatcaPager();
-  }catch(e){
-    loading.style.display = 'none';
-    empty.textContent = 'حدث خطأ: ' + (e.message || String(e));
-    empty.style.display = 'block';
+    await showFailedInvoicesList(Number(response.total || __failedZatcaItems.length));
+  }catch(error){
+    window.Swal.close();
+    await showNotice('error', isArabic() ? 'تعذر تحميل الفواتير الفاشلة' : 'Unable to load failed invoices', error?.message || String(error));
   }
 }
 
-let __failedZatcaItems = [];
-
-(function(){
-  const card = document.getElementById('zatcaCardFailed');
-  const modal = document.getElementById('failedZatcaModal');
-  const closeBtn = document.getElementById('failedZatcaClose');
-  const closeBtn2 = document.getElementById('failedZatcaCloseBtn');
-  const tbody = document.getElementById('failedZatcaTbody');
-  if(card) card.addEventListener('click', openFailedZatcaModal);
-  if(closeBtn) closeBtn.onclick = ()=>{ modal.style.display='none'; };
-  if(closeBtn2) closeBtn2.onclick = ()=>{ modal.style.display='none'; };
-  if(modal) modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
-  if(tbody){
-    tbody.addEventListener('click', (e)=>{
-      const b = e.target.closest('button'); if(!b) return;
-      const act = b.getAttribute('data-act');
-      if(act === 'show_zresp_failed'){
-        const id = Number(b.getAttribute('data-id'));
-        const row = __failedZatcaItems.find(x=>Number(x.id)===id) || {};
-        showZatcaResponseModal(row.zatca_response || row.zatca_rejection_reason || '');
-        return;
-      }
-      if(act === 'view'){
-        const id = Number(b.getAttribute('data-id'));
-        const row = __failedZatcaItems.find(x=>Number(x.id)===id) || {};
-        openInvoiceView(row);
-        return;
-      }
-      // reuse the same 'send' logic as the main table, then refresh this modal's current page
-      onTableAction(e);
-      if(act === 'send'){
-        setTimeout(()=>{ loadFailedZatcaPage(); }, 600);
-      }
-    });
-  }
-})();
-
-function showZatcaResponseModal(raw){
-  const modal = document.getElementById('zatcaModal');
-  const pre = document.getElementById('zatcaContent');
-  if(modal) modal.style.zIndex = '1100';
-  let text = raw;
-  try{
-    const obj = (typeof raw==='string') ? JSON.parse(raw) : raw;
-    text = JSON.stringify(obj, null, 2);
-  }catch(_){ text = String(raw||''); }
-  if(pre) pre.textContent = text;
-  if(modal) modal.style.display = 'flex';
+const failedZatcaCard = document.getElementById('zatcaCardFailed');
+if(failedZatcaCard){
+  failedZatcaCard.addEventListener('click', () => {
+    __failedZatcaPage = 1;
+    loadFailedZatcaPage();
+  });
 }
 
 async function load(resetPage = true, beforeId = null){
-  setError('');
   await Promise.all([__settingsReady, __permsReady]);
 
   if(resetPage){ __invPage=1; __cursors={}; beforeId=null; }
@@ -408,14 +459,18 @@ async function load(resetPage = true, beforeId = null){
   query.pageSize = __invPageSize;
   if(beforeId){ query.before_id = beforeId; }
 
-  const r = await window.api.sales_list(query);
-  if(!r.ok){ setError(r.error || ((document.documentElement.lang||'ar')!=='en' ? 'تعذر تحميل الفواتير' : 'Failed to load invoices')); return; }
-  __allInvoices = r.items || [];
-  __totalInvoices = r.total || 0;
-  __invPage = r.page || __invPage;
-  __invPageSize = (r.pageSize !== undefined) ? r.pageSize : __invPageSize;
-  __lastId = r.last_id || null;
-  renderRows(__allInvoices);
+  try{
+    const response = await window.api.sales_list(query);
+    if(!response?.ok) throw new Error(response?.error || (isArabic() ? 'تعذر تحميل الفواتير' : 'Failed to load invoices'));
+    __allInvoices = response.items || [];
+    __totalInvoices = response.total || 0;
+    __invPage = response.page || __invPage;
+    __invPageSize = response.pageSize !== undefined ? response.pageSize : __invPageSize;
+    __lastId = response.last_id || null;
+    renderRows(__allInvoices);
+  }catch(error){
+    await showNotice('error', isArabic() ? 'تعذر تحميل الفواتير' : 'Unable to load invoices', error?.message || String(error));
+  }
 }
 
 // live search with debounce for both fields
@@ -437,6 +492,14 @@ if(pageSizeSel){
 
 load();
 
+let __zatcaStatusRefreshTimer = null;
+window.api.on_sales_changed((event) => {
+  if(event && event.action === 'zatca_status_changed'){
+    clearTimeout(__zatcaStatusRefreshTimer);
+    __zatcaStatusRefreshTimer = setTimeout(() => load(false), 250);
+  }
+});
+
 // Re-render rows when language changes so dynamic content updates immediately
 try {
   window.api.app_on_locale_changed(() => {
@@ -455,21 +518,6 @@ let __allEmployees = [];
   } catch (_) {}
 })();
 
-function showEmpToast(msg, type = 'success') {
-  const t = document.getElementById('empToast');
-  if (!t) return;
-  const styles = {
-    success: { bg: 'linear-gradient(135deg,#059669,#10b981)', icon: '✓', shadow: 'rgba(5,150,105,0.4)' },
-    error:   { bg: 'linear-gradient(135deg,#dc2626,#ef4444)', icon: '✕', shadow: 'rgba(220,38,38,0.4)' },
-    info:    { bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', icon: 'ℹ', shadow: 'rgba(29,78,216,0.4)' },
-  };
-  const s = styles[type] || styles.info;
-  t.innerHTML = `<span style="margin-left:8px;font-size:16px;">${s.icon}</span>${msg}`;
-  t.style.cssText = `display:block;position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9999;min-width:280px;max-width:420px;padding:14px 22px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;box-shadow:0 8px 32px ${s.shadow};background:${s.bg};color:#fff;pointer-events:none;animation:empToastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);`;
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.4s'; setTimeout(() => { t.style.display = 'none'; t.style.opacity = ''; t.style.transition = ''; }, 400); }, 2800);
-}
-
 function openEmpEditModal(saleId) {
   const modal = document.getElementById('empEditModal');
   const loading = document.getElementById('empEditLoading');
@@ -477,21 +525,19 @@ function openEmpEditModal(saleId) {
   const tbody = document.getElementById('empEditTbody');
   const title = document.getElementById('empEditInvoiceNo');
   const saveBtn = document.getElementById('empEditSave');
-  const errDiv = document.getElementById('empEditError');
 
   modal.style.display = 'flex';
   loading.style.display = 'block';
   content.style.display = 'none';
   saveBtn.disabled = true;
-  errDiv.style.display = 'none';
 
   (async () => {
     try {
       const r = await window.api.sales_get(saleId);
       if (!r || !r.ok) {
-        errDiv.textContent = r?.error || 'فشل تحميل بيانات الفاتورة';
-        errDiv.style.display = 'block';
         loading.style.display = 'none';
+        modal.style.display = 'none';
+        showNotice('error', 'تعذر تحميل بيانات الفاتورة', r?.error || 'فشل تحميل بيانات الفاتورة');
         return;
       }
       const { sale, items } = r;
@@ -518,9 +564,9 @@ function openEmpEditModal(saleId) {
       saveBtn.disabled = false;
       saveBtn._saleId = saleId;
     } catch (e) {
-      errDiv.textContent = 'حدث خطأ: ' + (e.message || String(e));
-      errDiv.style.display = 'block';
       loading.style.display = 'none';
+      modal.style.display = 'none';
+      showNotice('error', 'تعذر تحميل بيانات الفاتورة', e?.message || String(e));
     }
   })();
 }
@@ -530,7 +576,6 @@ function openEmpEditModal(saleId) {
   const closeBtn = document.getElementById('empEditClose');
   const cancelBtn = document.getElementById('empEditCancel');
   const saveBtn = document.getElementById('empEditSave');
-  const errDiv = document.getElementById('empEditError');
 
   if (closeBtn) closeBtn.onclick = () => { if(modal) modal.style.display = 'none'; };
   if (cancelBtn) cancelBtn.onclick = () => { if(modal) modal.style.display = 'none'; };
@@ -547,21 +592,21 @@ function openEmpEditModal(saleId) {
       }));
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:empSpin 0.7s linear infinite;vertical-align:middle;margin-left:6px;"></span> جاري الحفظ...';
-      if(errDiv) errDiv.style.display = 'none';
+      showLoadingNotice('جاري حفظ التعديلات', 'يرجى الانتظار أثناء تحديث موظفي الفاتورة.');
       try {
         const r = await window.api.sales_update_employee_items({ sale_id: saleId, items });
+        window.Swal.close();
         if (r && r.ok) {
           if(modal) modal.style.display = 'none';
-          showEmpToast('تم حفظ التعديلات بنجاح', 'success');
+          await showNotice('success', 'تم الحفظ بنجاح', 'تم حفظ تعديلات موظفي الفاتورة بنجاح.');
         } else {
           const msg = r?.error || 'فشل حفظ التعديلات';
-          if(errDiv){ errDiv.textContent = msg; errDiv.style.display = 'block'; }
-          showEmpToast(msg, 'error');
+          await showNotice('error', 'فشل حفظ التعديلات', msg);
         }
       } catch (e) {
+        window.Swal.close();
         const msg = 'حدث خطأ: ' + (e.message || String(e));
-        if(errDiv){ errDiv.textContent = msg; errDiv.style.display = 'block'; }
-        showEmpToast(msg, 'error');
+        await showNotice('error', 'تعذر حفظ التعديلات', msg);
       } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '✓ حفظ التعديلات';

@@ -10,7 +10,6 @@ let __lastConfigKey = '';
 let __timerBackup = null;
 let __timerBackupLocal = null;
 let __unsentInvoicesInterval = null;
-let __unsentInvoicesTimeout = null;
 
 async function readSettings(conn){
   const [[s]] = await conn.query('SELECT * FROM app_settings WHERE id=1');
@@ -248,6 +247,18 @@ async function submitUnsentInvoicesHourly(){
     if(running) return;
     running = true;
     try{
+      // الوضع المباشر: دورة إعادة المحاولة تُدار بالكامل عبر قائمة انتظار ZATCA
+      // المباشرة مع الحفاظ على ترتيب السلسلة. الوضع القديم يكمل الحلقة أدناه كما هي.
+      try{
+        const zatcaRouter = require('./zatca/router');
+        const mode = await zatcaRouter.getMode();
+        if(mode === 'direct'){
+          const { outcomes } = await zatcaRouter.retryUnsent(500);
+          if(outcomes.length) console.log(`[ZATCA Scheduler] direct retry: ${outcomes.length} document(s) processed.`);
+          return;
+        }
+        if(mode === 'unlinked'){ return; }
+      }catch(e){ console.error('[ZATCA Scheduler] router check failed', e && e.message); return; }
       const conn = await dbAdapter.getConnection();
       try{
         // respect ZATCA toggle
@@ -299,17 +310,14 @@ async function submitUnsentInvoicesHourly(){
     finally { running = false; }
   }
 
-  // run once 30 seconds after app start (allow DB + ZATCA bridge to initialize), then every 15 minutes
-  try { if (__unsentInvoicesTimeout) clearTimeout(__unsentInvoicesTimeout); } catch (_) {}
+  // Start with the application, then keep reconciling ZATCA documents every 15 minutes.
   try { if (__unsentInvoicesInterval) clearInterval(__unsentInvoicesInterval); } catch (_) {}
-  __unsentInvoicesTimeout = setTimeout(runOnce, 30000);
+  void runOnce();
   __unsentInvoicesInterval = setInterval(runOnce, 15*60*1000);
 }
 
 function stopUnsentInvoicesScheduler(){
-  try { if (__unsentInvoicesTimeout) clearTimeout(__unsentInvoicesTimeout); } catch (_) {}
   try { if (__unsentInvoicesInterval) clearInterval(__unsentInvoicesInterval); } catch (_) {}
-  __unsentInvoicesTimeout = null;
   __unsentInvoicesInterval = null;
 }
 

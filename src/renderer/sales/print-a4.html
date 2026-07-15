@@ -317,6 +317,10 @@
             <div class="cust-row" id="a4cCR" style="display:none;">السجل التجاري: <span></span></div>
             <div class="cust-row" id="a4cNat" style="display:none;">العنوان الوطني: <span></span></div>
             <div class="cust-row" id="a4cPostal" style="display:none;">الرمز البريدي: <span></span></div>
+            <div class="cust-row" id="a4cZatcaStreet" style="display:none;">الشارع: <span></span></div>
+            <div class="cust-row" id="a4cZatcaBuilding" style="display:none;">رقم المبنى: <span></span></div>
+            <div class="cust-row" id="a4cZatcaDistrict" style="display:none;">الحي: <span></span></div>
+            <div class="cust-row" id="a4cZatcaCity" style="display:none;">المدينة: <span></span></div>
             <div class="cust-row" id="a4cStreet" style="display:none;">رقم المبنى: <span></span></div>
             <div class="cust-row" id="a4cSub" style="display:none;">الرقم الفرعي: <span></span></div>
             <div class="cust-row" id="a4cNotes" style="display:none;">ملاحظات: <span></span></div>
@@ -765,7 +769,7 @@
               if(title) title.style.display = 'none';
               if(box){
                 box.style.display = 'none';
-                const ids = ['a4cName','a4cPhone','a4cEmail','a4cAddress','a4cVat','a4cCR','a4cNat','a4cNotes'];
+                const ids = ['a4cName','a4cPhone','a4cEmail','a4cAddress','a4cVat','a4cCR','a4cNat','a4cPostal','a4cZatcaStreet','a4cZatcaBuilding','a4cZatcaDistrict','a4cZatcaCity','a4cStreet','a4cSub','a4cNotes'];
                 ids.forEach(id => {
                   const el = document.getElementById(id);
                   if(!el) return;
@@ -800,6 +804,10 @@
                   cr_number: sale.customer_cr_number,
                   national_address: sale.customer_national_address,
                   postal_code: sale.customer_postal_code,
+                  zatca_street: sale.customer_zatca_street,
+                  zatca_building: sale.customer_zatca_building,
+                  zatca_district: sale.customer_zatca_district,
+                  zatca_city: sale.customer_zatca_city,
                   street_number: sale.customer_street_number,
                   sub_number: sale.customer_sub_number,
                   customer_notes: sale.customer_notes
@@ -807,7 +815,7 @@
               }
               
               if(customerData){
-                const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, street_number, sub_number } = customerData;
+                const { name, phone, email, address, vat_number, cr_number, national_address, postal_code, zatca_street, zatca_building, zatca_district, zatca_city, street_number, sub_number } = customerData;
                 const custNotes = customerData.notes || customerData.customer_notes || null;
                 window.__CUST_PHONE__ = (phone || '').trim(); // Cache for WhatsApp
                 vatNo = vat_number || '';
@@ -820,6 +828,10 @@
                 const cCR = document.getElementById('a4cCR');
                 const cNat = document.getElementById('a4cNat');
                 const cPostal = document.getElementById('a4cPostal');
+                const cZatcaStreet = document.getElementById('a4cZatcaStreet');
+                const cZatcaBuilding = document.getElementById('a4cZatcaBuilding');
+                const cZatcaDistrict = document.getElementById('a4cZatcaDistrict');
+                const cZatcaCity = document.getElementById('a4cZatcaCity');
                 const cStreet = document.getElementById('a4cStreet');
                 const cSub = document.getElementById('a4cSub');
                 const cNotes = document.getElementById('a4cNotes');
@@ -831,10 +843,14 @@
                 if(cr_number){ cCR.style.display='block'; cCR.querySelector('span').textContent = cr_number; }
                 if(national_address){ cNat.style.display='block'; cNat.querySelector('span').textContent = national_address; }
                 if(postal_code){ cPostal.style.display='block'; cPostal.querySelector('span').textContent = postal_code; }
+                if(zatca_street){ cZatcaStreet.style.display='block'; cZatcaStreet.querySelector('span').textContent = zatca_street; }
+                if(zatca_building){ cZatcaBuilding.style.display='block'; cZatcaBuilding.querySelector('span').textContent = zatca_building; }
+                if(zatca_district){ cZatcaDistrict.style.display='block'; cZatcaDistrict.querySelector('span').textContent = zatca_district; }
+                if(zatca_city){ cZatcaCity.style.display='block'; cZatcaCity.querySelector('span').textContent = zatca_city; }
                 if(street_number){ cStreet.style.display='block'; cStreet.querySelector('span').textContent = street_number; }
                 if(sub_number){ cSub.style.display='block'; cSub.querySelector('span').textContent = sub_number; }
                 if(custNotes){ cNotes.style.display='block'; cNotes.querySelector('span').textContent = custNotes; }
-                const hasAny = (name||phone||email||address||vat_number||cr_number||national_address||postal_code||street_number||sub_number||custNotes);
+                const hasAny = (name||phone||email||address||vat_number||cr_number||national_address||postal_code||zatca_street||zatca_building||zatca_district||zatca_city||street_number||sub_number||custNotes);
                 if(hasAny){ box.style.display = 'grid'; }
                 const title = document.getElementById('customerTitle');
                 if(hasAny && title){ title.style.display = 'block'; }
@@ -1328,7 +1344,11 @@
               const issueISO = new Date(sale.created_at).toISOString();
               let b64 = '';
               if(__vatEnabled && __canZatca){
-                b64 = genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
+                // فاتورة مقبولة لدى الهيئة (الربط المباشر): QR المرحلة الثانية المخزن،
+                // وإلا QR المرحلة الأولى المولد محليًا.
+                b64 = (sale.zatca_qr && String(sale.zatca_qr).length > 0)
+                  ? String(sale.zatca_qr)
+                  : genZatcaBase64(settings.seller_legal_name, settings.seller_vat_number, issueISO, sale.grand_total, sale.vat_total);
               } else {
                 const seller = String(settings?.seller_legal_name || settings?.branch_name || settings?.company_location || '').slice(0, 40);
                 const inv = String(sale.invoice_no || '').slice(0, 32);

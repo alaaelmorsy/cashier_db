@@ -13,16 +13,11 @@ function registerSalesIPC(){
   let __saleColumnsEnsured = false;
   
   async function autoSubmitZatcaIfEnabled(saleId){
+    // نقطة الإرسال الوحيدة بعد حفظ المستند: الراوتر يقرر المسار —
+    // legacy (الوسيط المحلي كما قبل التحديث) / direct (الربط المباشر) / unlinked (لا شيء).
     try{
-      const conn = await dbAdapter.getConnection();
-      try{
-        const [[s]] = await conn.query('SELECT zatca_enabled FROM app_settings WHERE id=1');
-        if(!s || !s.zatca_enabled) return;
-      } finally { conn.release(); }
-      try{
-        const bridge = LocalZatcaBridge.getInstance ? LocalZatcaBridge.getInstance() : new LocalZatcaBridge();
-        setImmediate(async()=>{ try{ await bridge.submitSaleById(saleId); }catch(_){ } });
-      }catch(_){ }
+      const zatcaRouter = require('./zatca/router');
+      setImmediate(async()=>{ try{ await zatcaRouter.submitSale(saleId); }catch(_){ } });
     }catch(_){ }
   }
   

@@ -1,6 +1,6 @@
 {
   "name": "pos1",
-  "version": "1.0.134",
+  "version": "1.0.135",
   "description": "POS Desktop App for KSA - Login skeleton (Electron + Node.js + MySQL)",
   "main": "src/main/main.js",
   "scripts": {
@@ -8,12 +8,14 @@
     "dev": "electron .",
     "test": "jest",
     "test:watch": "jest --watch",
+    "postinstall": "patch-package",
     "build:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --minify",
+    "build:zatca-worker": "node scripts/build-zatca-worker.js",
     "watch:css": "npx tailwindcss -i ./src/renderer/tailwind-input.css -o ./src/renderer/tailwind-output.css --watch",
-    "dist:win": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis --publish never",
-    "dist:msi": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win msi --publish never",
-    "dist:win:all": "node scripts/clean-dist.js && node scripts/gen-ico.js && electron-builder --win nsis msi --publish never",
-    "dist:portable": "electron-builder --win portable"
+    "dist:win": "node scripts/clean-dist.js && node scripts/gen-ico.js && npm run build:zatca-worker && electron-builder --win nsis --publish never",
+    "dist:msi": "node scripts/clean-dist.js && node scripts/gen-ico.js && npm run build:zatca-worker && electron-builder --win msi --publish never",
+    "dist:win:all": "node scripts/clean-dist.js && node scripts/gen-ico.js && npm run build:zatca-worker && electron-builder --win nsis msi --publish never",
+    "dist:portable": "npm run build:zatca-worker && electron-builder --win portable"
   },
   "build": {
     "appId": "com.alrabt.cashier",
@@ -32,6 +34,10 @@
       {
         "from": "assets",
         "to": "assets"
+      },
+      {
+        "from": "node_modules/node-win-x64/bin/node.exe",
+        "to": "runtime/node.exe"
       }
     ],
     "win": {
@@ -73,6 +79,7 @@
   "author": "مؤسسة تعلم التقنيات",
   "license": "ISC",
   "dependencies": {
+    "@talha7k/zatca": "0.11.1",
     "@whiskeysockets/baileys": "6.6.0",
     "axios": "^1.12.1",
     "bcryptjs": "^2.4.3",
@@ -91,6 +98,7 @@
     "nodemailer": "^6.9.8",
     "qrcode": "^1.5.4",
     "serialport": "^13.0.0",
+    "sweetalert2": "^11.26.24",
     "systeminformation": "^5.27.16",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5",
@@ -101,7 +109,10 @@
     "electron": "^28.3.3",
     "electron-builder": "^24.13.1",
     "electron-rebuild": "^3.2.9",
+    "esbuild": "0.25.6",
     "jest": "^30.2.0",
+    "node-win-x64": "22.23.1",
+    "patch-package": "8.0.0",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.3",
     "tailwindcss": "^4.1.17"
