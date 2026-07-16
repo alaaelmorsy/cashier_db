@@ -1014,7 +1014,7 @@ async function exportPeriodReportPDF() {
         const html = '<!doctype html>' + clone.outerHTML;
         await window.api.print_html(html, {
           silent: true,
-          // طبق نفس إعدادات الفاتورة بالضبط (80mm x 297mm وبدون هوامش)
+          autoHeight: true,
           pageSize: { width: 80000, height: 297000 },
           margins: { marginType: 'none' },
           printBackground: true,

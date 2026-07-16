@@ -75,6 +75,7 @@ const setupQuotationsIPC = require('./quotations');
 const whatsappService = require('./whatsapp-service');
 const { registerDailyEmailScheduler, submitUnsentInvoicesHourly, stopDailyEmailScheduler, stopUnsentInvoicesScheduler } = require('./scheduler');
 const { startAppointmentReminderService, stopAppointmentReminderService } = require('./appointment-reminder');
+const { thermalPageSizeForContent } = require('./report-print');
 const { updateConfig, getConfig, testConnection } = require('../db/connection');
 // const ZatcaIntegration = require('./zatca');
 // const ZatcaSalesIntegration = require('./zatca-sales-integration');
@@ -1134,10 +1135,22 @@ async function createMainWindow() {
         printBackground = true,
         copies = 1,
         pageSize: customPageSize = null,
+        autoHeight = false,
       } = options || {};
 
       // Minimal delay for thermal printer speed
       await new Promise((resolve) => setTimeout(resolve, 10));
+
+      let pageSize = customPageSize || { width: 80000, height: 297000 };
+      if(autoHeight){
+        const contentHeightPx = await tmpWin.webContents.executeJavaScript(`
+          document.fonts.ready.then(() => Math.ceil(Math.max(
+            document.documentElement.scrollHeight,
+            document.body ? document.body.scrollHeight : 0
+          )))
+        `);
+        pageSize = thermalPageSizeForContent(contentHeightPx, pageSize.width);
+      }
 
       await new Promise((resolve, reject) => {
         const baseOptions = {
@@ -1146,14 +1159,11 @@ async function createMainWindow() {
           printBackground,
           margins: { marginType: 'none' },
           landscape: false,
-          pageSize: { width: 80000, height: 297000 }, // default microns: 80mm x 297mm
+          pageSize,
           copies,
         };
-        const finalOptions = customPageSize
-          ? { ...baseOptions, pageSize: customPageSize }
-          : baseOptions;
 
-        tmpWin.webContents.print(finalOptions, (ok, err) => {
+        tmpWin.webContents.print(baseOptions, (ok, err) => {
           if(!ok && err){ reject(new Error(err)); } else { resolve(true); }
         });
       });
