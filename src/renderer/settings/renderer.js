@@ -359,6 +359,11 @@ const fWhatsAuto = document.getElementById('f_whatsapp_auto');
 const fWhatsAutoConnect = document.getElementById('f_whatsapp_auto_connect');
 const fWhatsFooterText = document.getElementById('f_whatsapp_footer_text');
 const fZatcaEnabled = document.getElementById('f_zatca_enabled');
+const fInternationalTransportZeroRate = document.getElementById('f_international_transport_zero_rate');
+const internationalTransportSetting = document.getElementById('internationalTransportSetting');
+const internationalTransportSettingReadOnly = document.getElementById('internationalTransportSettingReadOnly');
+let internationalTransportSettingOriginal = false;
+let internationalTransportSettingCanMutate = false;
 // Weight mode toggle
 const fWeightModeEnabled = document.getElementById('f_weight_mode_enabled');
 // Electronic scale settings
@@ -452,6 +457,12 @@ function applyPerms(){
     if(sb) sb.style.display = canSet('settings.update') ? '' : 'none';
     if(rb) rb.style.display = canSet('settings.reload') ? '' : 'none';
     if(rs) rs.style.display = canSet('settings.reset_sales') ? '' : 'none';
+    if(internationalTransportSetting){
+      internationalTransportSetting.style.display = canSet('settings.update') ? '' : 'none';
+    }
+    if(fInternationalTransportZeroRate){
+      fInternationalTransportZeroRate.disabled = !internationalTransportSettingCanMutate;
+    }
   }catch(_){ }
 }
 
@@ -469,6 +480,14 @@ function applyPerms(){
 
 // Apply initial state (visible by default)
 applyPerms();
+
+window.api.on_settings_changed?.((payload) => {
+  if (!payload || typeof payload.international_transport_zero_rate_enabled === 'undefined') return;
+  internationalTransportSettingOriginal = !!payload.international_transport_zero_rate_enabled;
+  if (fInternationalTransportZeroRate) {
+    fInternationalTransportZeroRate.checked = internationalTransportSettingOriginal;
+  }
+});
 const fInvoiceFooterNote = document.getElementById('f_invoice_footer_note');
 
 // Recovery controls (hidden by query)
@@ -604,6 +623,16 @@ async function loadSettings(){
   if (fWhatsAutoConnect) fWhatsAutoConnect.checked = !!s.whatsapp_auto_connect;
   if (fWhatsFooterText) fWhatsFooterText.value = s.whatsapp_message || '';
   if (fZatcaEnabled) fZatcaEnabled.checked = !!s.zatca_enabled;
+  internationalTransportSettingOriginal = !!s.international_transport_zero_rate_enabled;
+  internationalTransportSettingCanMutate = !!s.international_transport_zero_rate_can_mutate;
+  if (fInternationalTransportZeroRate) {
+    fInternationalTransportZeroRate.checked = internationalTransportSettingOriginal;
+    fInternationalTransportZeroRate.disabled = !internationalTransportSettingCanMutate;
+  }
+  if (internationalTransportSettingReadOnly) {
+    internationalTransportSettingReadOnly.style.display = internationalTransportSettingCanMutate ? 'none' : 'block';
+  }
+  applyPerms();
   if (fCartSeparateDup) fCartSeparateDup.checked = !!s.cart_separate_duplicate_lines;
   if (fWeightModeEnabled) fWeightModeEnabled.checked = !!s.weight_mode_enabled;
   if (fElectronicScaleEnabled) fElectronicScaleEnabled.checked = !!s.electronic_scale_enabled;
@@ -1118,6 +1147,20 @@ saveBtn.addEventListener('click', async () => {
   if(defProdImgRemoved){ payload.default_product_img_clear = true; }
   const r = await window.api.settings_save(payload);
   if(!r.ok){ setError(r.error || __t('فشل حفظ الإعدادات', 'Failed to save settings')); return; }
+  if (internationalTransportSettingCanMutate && fInternationalTransportZeroRate &&
+      fInternationalTransportZeroRate.checked !== internationalTransportSettingOriginal) {
+    const toggleResult = await window.api.settings_set_international_transport_zero_rate(
+      fInternationalTransportZeroRate.checked
+    );
+    if (!toggleResult || !toggleResult.ok) {
+      setError(__t(
+        'تعذر حفظ إعداد النقل الدولي. تحقق من الصلاحية وأنك تعمل على الجهاز الرئيسي.',
+        'Failed to save the international transport setting.'
+      ));
+      return;
+    }
+    internationalTransportSettingOriginal = fInternationalTransportZeroRate.checked;
+  }
   try{
     // rearm schedulers to pick latest settings immediately
     await window.api.scheduler_trigger_daily_email();

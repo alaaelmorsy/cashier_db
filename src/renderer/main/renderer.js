@@ -256,8 +256,9 @@ if (cardEmployees) {
 
 const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
-  logoutBtn.addEventListener('click', () => {
+  logoutBtn.addEventListener('click', async () => {
     // خروج من الجلسة وإرجاع إلى شاشة الدخول بدون إغلاق التطبيق
+    try{ await window.api.auth_logout(); }catch(error){ console.error('Logout IPC failed', error); }
     try{ localStorage.removeItem('pos_user'); localStorage.removeItem('pos_perms'); }catch(_){ }
     window.location.replace('../login/index.html');
   });

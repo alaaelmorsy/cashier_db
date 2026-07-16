@@ -320,6 +320,7 @@ const f_stock = document.getElementById('f_stock');
 const f_category = document.getElementById('f_category');
 const f_is_tobacco = document.getElementById('f_is_tobacco');
 const f_is_vat_exempt = document.getElementById('f_is_vat_exempt');
+const f_is_international_transport_service = document.getElementById('f_is_international_transport_service');
 const f_hide_from_sales = document.getElementById('f_hide_from_sales');
 const f_allow_manual_price = document.getElementById('f_allow_manual_price');
 
@@ -524,7 +525,7 @@ function renderProdVariants(){
   });
 }
 
-function clearDialog(){ f_name.value=''; f_name_en.value=''; if(f_barcode) f_barcode.value=''; f_price.value=''; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el) f_min_price_el.value=''; f_cost.value=''; f_stock.value=''; f_category.value=''; f_description.value=''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el) f_expiry_date_el.value=''; pickedImagePath=null; f_thumb.src=''; prodOps=[]; renderProdOps(); prodUnits=[]; renderProdUnits(); prodVariants=[]; renderProdVariants(); if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value='0'; if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked=false; refreshVatPriceVisibility(); if(f_hide_from_sales) f_hide_from_sales.checked=false; if(f_allow_manual_price) f_allow_manual_price.checked=false; try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; delete window.__removeImage; }catch(_){ } }
+function clearDialog(){ f_name.value=''; f_name_en.value=''; if(f_barcode) f_barcode.value=''; f_price.value=''; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el) f_min_price_el.value=''; f_cost.value=''; f_stock.value=''; f_category.value=''; f_description.value=''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el) f_expiry_date_el.value=''; pickedImagePath=null; f_thumb.src=''; prodOps=[]; renderProdOps(); prodUnits=[]; renderProdUnits(); prodVariants=[]; renderProdVariants(); if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value='0'; if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked=false; if(f_is_international_transport_service) f_is_international_transport_service.checked=false; refreshVatPriceVisibility(); if(f_hide_from_sales) f_hide_from_sales.checked=false; if(f_allow_manual_price) f_allow_manual_price.checked=false; try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; delete window.__removeImage; }catch(_){ } }
 
 function openAddDialog(){ editId=null; dlgTitle.textContent=t('إضافة منتج'); clearDialog(); setBarcodeVisible(true); populateCategories(); loadAllOps(); applySellingUnitsVisibility(); safeShowModal(dlg); focusFirstField(); }
 async function openEditDialog(item){
@@ -532,7 +533,7 @@ async function openEditDialog(item){
   setBarcodeVisible(true);
   try{ delete window.__pickedImageBase64; delete window.__pickedImageMime; }catch(_){ }
   window.__removeImage = false;
-  f_name.value=item.name||''; f_name_en.value=item.name_en||''; if(f_barcode) f_barcode.value=item.barcode||''; f_price.value=item.price; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el){ if(item.min_price!=null && item.min_price!==''){ const mp=Number(item.min_price); f_min_price_el.value = isNaN(mp) ? '' : String(mp.toFixed(2)); } else { f_min_price_el.value=''; } } f_cost.value=item.cost; f_stock.value=item.stock; f_description.value=item.description||''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el){ if(item.expiry_date){ const dt=new Date(item.expiry_date); if(!isNaN(dt.getTime())){ const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); f_expiry_date_el.value=`${y}-${m}-${d}`; } else { f_expiry_date_el.value=''; } } else { f_expiry_date_el.value=''; } } if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value = (item.is_tobacco ? '1' : '0'); if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked = !!item.is_vat_exempt; if(f_hide_from_sales) f_hide_from_sales.checked = (item.hide_from_sales === 1); if(f_allow_manual_price) f_allow_manual_price.checked = (item.allow_manual_price === 1);
+  f_name.value=item.name||''; f_name_en.value=item.name_en||''; if(f_barcode) f_barcode.value=item.barcode||''; f_price.value=item.price; const f_min_price_el=document.getElementById('f_min_price'); if(f_min_price_el){ if(item.min_price!=null && item.min_price!==''){ const mp=Number(item.min_price); f_min_price_el.value = isNaN(mp) ? '' : String(mp.toFixed(2)); } else { f_min_price_el.value=''; } } f_cost.value=item.cost; f_stock.value=item.stock; f_description.value=item.description||''; const f_expiry_date_el=document.getElementById('f_expiry_date'); if(f_expiry_date_el){ if(item.expiry_date){ const dt=new Date(item.expiry_date); if(!isNaN(dt.getTime())){ const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); f_expiry_date_el.value=`${y}-${m}-${d}`; } else { f_expiry_date_el.value=''; } } else { f_expiry_date_el.value=''; } } if(typeof f_is_tobacco!== 'undefined' && f_is_tobacco) f_is_tobacco.value = (item.is_tobacco ? '1' : '0'); if(typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) f_is_vat_exempt.checked = !!item.is_vat_exempt; if(f_is_international_transport_service) f_is_international_transport_service.checked = !!item.is_international_transport_service; if(f_hide_from_sales) f_hide_from_sales.checked = (item.hide_from_sales === 1); if(f_allow_manual_price) f_allow_manual_price.checked = (item.allow_manual_price === 1);
   
 updateVatPriceDisplay();
   refreshVatPriceVisibility();
@@ -1089,6 +1090,7 @@ dlgSave.addEventListener('click', async () => {
       expiry_date: (function(){ const el=document.getElementById('f_expiry_date'); return (el && el.value) ? el.value : null; })(),
       is_tobacco: (typeof f_is_tobacco!== 'undefined' && f_is_tobacco) ? (f_is_tobacco.value==='1' ? 1 : 0) : 0,
       is_vat_exempt: (typeof f_is_vat_exempt!=='undefined' && f_is_vat_exempt) ? (f_is_vat_exempt.checked ? 1 : 0) : 0,
+      is_international_transport_service: f_is_international_transport_service?.checked ? 1 : 0,
       hide_from_sales: (f_hide_from_sales && f_hide_from_sales.checked) ? 1 : 0,
       allow_manual_price: (f_allow_manual_price && f_allow_manual_price.checked) ? 1 : 0,
     };

@@ -3,13 +3,14 @@
 // router: كشف الوضع وقواعد FR-002/FR-003/FR-004
 
 jest.mock('../../src/db/db-adapter', () => {
-  const state = { zatcaEnabled: 0 };
+  const state = { zatcaEnabled: 0, taxTreatment: 'standard' };
   return {
     __state: state,
     dbAdapter: {
       getConnection: async () => ({
         query: async (sql) => {
           if (/zatca_enabled/.test(sql)) return [[{ zatca_enabled: state.zatcaEnabled }]];
+          if (/tax_treatment/.test(sql)) return [[{ tax_treatment: state.taxTreatment }]];
           return [[]];
         },
         release: () => {},
@@ -43,6 +44,7 @@ const router = require('../../src/main/zatca/router');
 describe('zatca router — كشف الوضع', () => {
   beforeEach(() => {
     adapter.__state.zatcaEnabled = 0;
+    adapter.__state.taxTreatment = 'standard';
     zatcaDb.__state.integrationMode = 'unlinked';
     jest.clearAllMocks();
   });
@@ -103,5 +105,14 @@ describe('zatca router — كشف الوضع', () => {
     zatcaDb.__state.integrationMode = 'direct';
     expect((await router.retryUnsent()).outcomes).toHaveLength(1);
     expect(mockRetryEligibleSales).toHaveBeenCalled();
+  });
+
+  test('legacy fails closed for an international zero-rate document before submission', async () => {
+    adapter.__state.zatcaEnabled = 1;
+    adapter.__state.taxTreatment = 'international_transport_zero_rate';
+    await expect(router.submitSale(43)).rejects.toMatchObject({
+      code: 'LEGACY_ZATCA_ZERO_RATE_UNSUPPORTED',
+    });
+    expect(mockSubmitSaleById).not.toHaveBeenCalled();
   });
 });

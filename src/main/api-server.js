@@ -362,6 +362,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       const sql = `SELECT si.product_id, si.name,
                           SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END) AS qty_total,
                           SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END) AS amount_total,
+                          SUM(CASE WHEN COALESCE(s.tax_treatment,'standard')='standard' THEN CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END ELSE 0 END) AS standard_amount_total,
+                          SUM(CASE WHEN s.tax_treatment='international_transport_zero_rate' THEN CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END ELSE 0 END) AS international_transport_zero_rate_amount_total,
                           COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
                           COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
                    FROM sales_items si 
@@ -399,7 +401,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       if (product_id) { terms.push('si.product_id = ?'); params.push(Number(product_id)); }
       const where = terms.length ? ('WHERE ' + terms.join(' AND ')) : '';
       const sql = `
-        SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
+        SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method, COALESCE(s.tax_treatment,'standard') AS tax_treatment,
                si.product_id, si.name, si.description, si.operation_name, si.unit_multiplier, si.price, si.qty, si.line_total,
                p.category, p.is_tobacco,
                COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
@@ -448,7 +450,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { q, active, hide_from_sales, category, sort, limit = 500, offset = 0, skip_count, starts_with } = req.query;
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_vat_exempt,is_international_transport_service,is_active,hide_from_sales,expiry_date,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
       const where = [];
       const whereParams = [];
       const orderParams = [];
@@ -777,6 +779,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
           item.payment_methods = [];
         }
       } catch (_) { item.payment_methods = []; }
+      item.international_transport_zero_rate_enabled = item.international_transport_zero_rate_enabled ? 1 : 0;
+      item.international_transport_zero_rate_can_mutate = false;
       res.json({ ok: true, settings: item });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -1041,7 +1045,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     try {
       const { sort = 'custom', limit = 48, category } = req.query;
       conn = await dbAdapter.getConnection();
-      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_active,hide_from_sales,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
+      const SELECT_COLS = `id,name,name_en,barcode,price,min_price,cost,stock,category,is_tobacco,is_international_transport_service,is_active,hide_from_sales,sort_order,allow_manual_price,(image_blob IS NOT NULL OR (image_path IS NOT NULL AND image_path != '')) AS has_image`;
       const prodWhere = ['is_active=1', 'hide_from_sales=0'];
       const prodParams = [];
       if (category) { prodWhere.push('category=?'); prodParams.push(category); }
@@ -1061,6 +1065,8 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
         conn.query(`SELECT * FROM offers WHERE is_global=1 AND is_active=1 AND ${nowCond} ORDER BY id DESC LIMIT 1`),
       ]);
       const settings = (settingsRow && settingsRow[0]) || {};
+      settings.international_transport_zero_rate_enabled = settings.international_transport_zero_rate_enabled ? 1 : 0;
+      settings.international_transport_zero_rate_can_mutate = false;
       try {
         if (typeof settings.payment_methods === 'string') settings.payment_methods = JSON.parse(settings.payment_methods);
         if (!Array.isArray(settings.payment_methods)) settings.payment_methods = [];
@@ -1088,6 +1094,9 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
     const p = req.body || {};
     if (!Array.isArray(p.items) || p.items.length === 0) return res.status(400).json({ ok: false, error: 'لا توجد عناصر' });
     if (!p.payment_method) return res.status(400).json({ ok: false, error: 'طريقة الدفع مطلوبة' });
+    if (p.tax_treatment === 'international_transport_zero_rate') {
+      return res.status(403).json({ ok: false, error: 'PRIMARY_DEVICE_REQUIRED' });
+    }
     let conn;
     try {
       conn = await dbAdapter.getConnection();
@@ -1719,7 +1728,7 @@ function startAPIServer(port = DEFAULT_API_PORT, host = DEFAULT_API_HOST) {
       conn = await dbAdapter.getConnection();
       const [[settingsRow], [products], [types], [operations], [cntRow]] = await Promise.all([
         conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1'),
-        conn.query('SELECT id, name, name_en, barcode, price, cost, stock, category, is_tobacco, is_active, sort_order FROM products ORDER BY sort_order ASC, name ASC LIMIT 100'),
+        conn.query('SELECT id, name, name_en, barcode, price, cost, stock, category, is_tobacco, is_vat_exempt, is_international_transport_service, is_active, sort_order FROM products ORDER BY sort_order ASC, name ASC LIMIT 100'),
         conn.query('SELECT * FROM main_types WHERE is_active=1 ORDER BY sort_order ASC, name ASC'),
         conn.query('SELECT * FROM operations ORDER BY id'),
         conn.query('SELECT COUNT(*) AS total FROM products'),

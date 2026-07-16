@@ -1,11 +1,34 @@
 // App Settings IPC: read/save settings like company info, VAT, pricing mode, location, payment methods, currency
 const fs = require('fs');
 const path = require('path');
-const { ipcMain, app } = require('electron');
+const { ipcMain, app, BrowserWindow } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI, postToAPI } = require('./api-client');
+const { authenticatedUserForEvent } = require('./auth');
+const { assertEventPermission } = require('./permissions');
+const { createInternationalTransportSettingService } = require('./international-transport-settings');
 
 const BRANCHES_PATH = path.join(app.getPath('userData'), 'branches.json');
+
+async function ensureInternationalTransportSettingsSchema(conn) {
+  if (!(await dbAdapter.columnExists('app_settings', 'international_transport_zero_rate_enabled'))) {
+    await conn.query('ALTER TABLE app_settings ADD COLUMN international_transport_zero_rate_enabled TINYINT NOT NULL DEFAULT 0');
+  }
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS settings_audit_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      setting_key VARCHAR(100) NOT NULL,
+      old_value VARCHAR(255) NOT NULL,
+      new_value VARCHAR(255) NOT NULL,
+      created_by_user_id INT NULL,
+      created_by_user_name VARCHAR(255) NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+      INDEX idx_settings_audit_key_created (setting_key, created_at),
+      INDEX idx_settings_audit_user (created_by_user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+}
 
 function safeReadJSON(p){
   try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (_){ return null; }
@@ -475,6 +498,7 @@ function registerSettingsIPC(){
     if(await missing('one_time_barcode')){
       await conn.query("ALTER TABLE app_settings ADD COLUMN one_time_barcode TINYINT NOT NULL DEFAULT 0 AFTER app_theme");
     }
+    await ensureInternationalTransportSettingsSchema(conn);
   }
 
   async function ensureSingleton(conn){
@@ -521,6 +545,8 @@ function registerSettingsIPC(){
             item[key] = Buffer.from(value.data);
           }
         }
+        item.international_transport_zero_rate_enabled = item.international_transport_zero_rate_enabled ? 1 : 0;
+        item.international_transport_zero_rate_can_mutate = false;
         return { ok:true, item };
       }catch(e){ return { ok:false, error:e.message }; }
     }
@@ -531,6 +557,8 @@ function registerSettingsIPC(){
         await ensureSingleton(conn);
         const [rows] = await conn.query('SELECT * FROM app_settings WHERE id=1 LIMIT 1');
         const item = rows[0] || {};
+        item.international_transport_zero_rate_enabled = item.international_transport_zero_rate_enabled ? 1 : 0;
+        item.international_transport_zero_rate_can_mutate = true;
         // English fields passthrough defaults
         item.seller_legal_name_en = item.seller_legal_name_en || '';
         item.company_location_en = item.company_location_en || '';
@@ -736,6 +764,33 @@ function registerSettingsIPC(){
       } finally { conn.release(); }
     }catch(e){ console.error(e); return { ok:false, error:'خطأ في الجلب' }; }
   });
+
+  const internationalTransportSetting = createInternationalTransportSettingService({
+    isSecondaryDevice,
+    authenticatedUserForEvent,
+    assertPermission: assertEventPermission,
+    getConnection: async () => {
+      const conn = await dbAdapter.getConnection();
+      try {
+        await ensureTable(conn);
+        await ensureSingleton(conn);
+        return conn;
+      } catch (error) {
+        conn.release();
+        throw error;
+      }
+    },
+    broadcast: (payload) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) win.webContents.send('ui:settings_changed', payload);
+      }
+    },
+    logger: console,
+  });
+
+  ipcMain.handle('settings:set_international_transport_zero_rate', (event, payload) => (
+    internationalTransportSetting.set(event, payload && payload.enabled)
+  ));
 
   // Save settings. Supports both legacy logo_path and new logo_blob/logo_mime (base64 from renderer)
   ipcMain.handle('settings:save', async (_e, payload) => {
@@ -1082,6 +1137,7 @@ function registerSettingsIPC(){
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+      await ensureInternationalTransportSettingsSchema(conn);
       // Progressive ensure of new fields
       const missing = async (name) => {
         return !(await dbAdapter.columnExists('app_settings', name));

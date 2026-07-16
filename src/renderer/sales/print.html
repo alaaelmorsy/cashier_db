@@ -335,7 +335,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
   <body>
     <button class="close-btn" onclick="window.close()">إغلاق (Esc)</button>
     <script>document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ window.close(); } });</script>
-    <button class="reprint-btn" id="reprintBtn" onclick="window.print()">طباعة</button>
+    <button class="reprint-btn" id="reprintBtn" onclick="if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){ alert('تعذر إنشاء رمز QR؛ لا يمكن طباعة الفاتورة.'); return; } window.print()">طباعة</button>
     <button class="export-btn" id="exportBtn" title="تصدير PDF"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="28" viewBox="0 0 26 28"><polygon points="0,0 17,0 26,9 26,28 0,28" fill="#f0f0f0" stroke="#ccc" stroke-width="0.5"/><polygon points="17,0 17,9 26,9" fill="#ccc"/><rect x="0" y="17" width="26" height="11" rx="1" fill="#e53e3e"/><text x="13" y="25.5" text-anchor="middle" font-size="6.5" font-weight="bold" fill="#fff" font-family="Arial,sans-serif" letter-spacing="0.5">PDF</text></svg></button>
     <button class="whats-btn" id="whatsBtn" title="إرسال واتساب"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg></button>
     <div class="ticket">
@@ -616,23 +616,6 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           autoshrinkNumericCells();
           autoshrinkProductNames();
         });
-        // helper to safely inject footer note
-        function setFooterNote(settings){
-          try{
-            const note = (settings && settings.invoice_footer_note || '').trim();
-            if(!note) return;
-            const box = document.getElementById('qrBox');
-            if(!box) return;
-            const p = document.createElement('div');
-            p.className = 'muted';
-            p.style.margin = '8px 0';
-            p.style.whiteSpace = 'pre-wrap';
-            p.style.overflowWrap = 'anywhere';
-            p.style.wordBreak = 'break-word';
-            p.textContent = note;
-            box.insertAdjacentElement('beforebegin', p);
-          }catch(_){ /* ignore */ }
-        }
         // إزالة تنبيه انخفاض المخزون من شاشة المعاينة/الطباعة بناءً على طلب العميل
         function showLowStockBanner(){ /* لم يعد هناك تنبيه في شاشة الطباعة */ }
         // data is expected in window.__PRINT_DATA injected via query or preload
@@ -824,7 +807,6 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           document.getElementById('companyInfo').textContent = infoLines.join('\n');
 
           // insert persistent footer note before QR
-          setFooterNote(settings);
 
           // logo (already loaded in parallel) + apply size
           const logoEl = document.getElementById('logo');
@@ -874,6 +856,10 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
             const exportBtn = document.getElementById('exportBtn');
             if(exportBtn){
               exportBtn.addEventListener('click', async () => {
+                if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+                  showThermalNotification('error', 'تعذر إنشاء رمز QR؛ لا يمكن تصدير الفاتورة.');
+                  return;
+                }
                 try{
                   // Clone current DOM, strip scripts/buttons to keep static values
                   const root = document.documentElement.cloneNode(true);
@@ -946,6 +932,10 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                 whatsBtn.addEventListener('click', () => {
                   (async () => {
                     try{
+                      if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+                        showThermalNotification('error', 'تعذر إنشاء رمز QR؛ لا يمكن إرسال الفاتورة.');
+                        return;
+                      }
                       if(window.__WA_SENDING__){
                         showThermalNotification('warning', '⏳ جاري إرسال الفاتورة... الرجاء الانتظار');
                         return;
@@ -1548,6 +1538,9 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           }catch(_){}
           document.getElementById('vat').innerHTML = fmt(isCredit ? Math.abs(Number(sale.vat_total||0)) : Number(sale.vat_total||0));
           document.getElementById('grand').innerHTML = fmt(isCredit ? Math.abs(Number(sale.grand_total||0)) : Number(sale.grand_total||0));
+          if(sale.tax_treatment === 'international_transport_zero_rate'){
+            window.__INTERNATIONAL_QR_REQUIRED__ = true;
+          }
 
           // بعد تعبئة الجدول بالكامل، تأكد من ضبط كافة الخلايا الرقمية وأسماء المنتجات
           autoshrinkNumericCells(document);
@@ -1696,7 +1689,7 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           // ZATCA QR for thermal as well (offline generation)
           try{
             // Fast path: no VAT → skip QR generation and mark as ready
-            try{ if(Number(settings?.vat_percent||0) === 0){ window.__QR_READY = true; window.__NO_VAT_FAST__ = true; } }catch(_){ }
+            try{ if(Number(settings?.vat_percent||0) === 0){ window.__QR_READY__ = true; window.__NO_VAT_FAST__ = true; } }catch(_){ }
             const qrBox = document.getElementById('qr');
             if(Number(settings?.vat_percent||0) > 0 && settings.seller_legal_name && settings.seller_vat_number){
               function toTLV(tag, value){
@@ -1733,28 +1726,25 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
                   div.style.width='120px'; div.style.height='120px';
                   div.innerHTML = svg;
                   qrBox.appendChild(div);
-                  window.__QR_READY = true;
+                  window.__QR_READY__ = true;
                 } else {
                   const dataUrl = await api.qr_to_data_url(b64, { errorCorrectionLevel: 'M', width: 120, margin: 1 });
                   if(dataUrl){
                     const img = document.createElement('img'); img.width=120; img.height=120; img.alt='QR';
                     img.src = dataUrl; qrBox.appendChild(img);
                     // image load event will be awaited by main, but mark as ready too
-                    img.addEventListener('load', () => { window.__QR_READY = true; }, { once: true });
+                    img.addEventListener('load', () => { window.__QR_READY__ = true; }, { once: true });
                   } else {
                     throw new Error('QR generation failed');
                   }
                 }
               }catch(e){
-                const pre = document.createElement('pre');
-                pre.textContent = 'ZATCA QR (Base64):\n' + b64;
-                pre.style.fontSize = '10px';
-                pre.style.direction = 'ltr';
-                qrBox.appendChild(pre);
-                window.__QR_READY = true;
+                window.__QR_READY__ = false;
+                window.__QR_ERROR = e?.message || 'QR generation failed';
+                qrBox.textContent = 'تعذر إنشاء رمز QR — لا يمكن طباعة أو إرسال الفاتورة';
               }
             }
-          }catch(_){ /* ignore */ }
+          }catch(error){ window.__QR_READY__ = false; window.__QR_ERROR = error?.message || 'QR generation failed'; }
 
           const __FAST_NO_VAT__ = Number(settings?.vat_percent||0) === 0;
           
@@ -1825,6 +1815,10 @@ tr.item-desc-row td{ border-bottom:2px solid #64748b; padding-bottom: 0.5mm; }
           const startTime = Date.now();
           
           function executePrint(){
+            if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+              alert('تعذر إنشاء رمز QR؛ لا يمكن طباعة الفاتورة.');
+              return;
+            }
             const elapsed = Date.now() - startTime;
             false && console.log(`🖨️ [${Date.now()}] Data ready after ${elapsed}ms`);
             

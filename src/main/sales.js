@@ -4,6 +4,33 @@ const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI, postToAPI, putToAPI } = require('./api-client');
 const LocalZatcaBridge = require('./local-zatca');
 const { buildReportDateFilter } = require('../shared/report-date-filter');
+const {
+  TAX_TREATMENTS,
+  VALIDATION_ERRORS,
+  normalizeTaxTreatment,
+  validateInternationalTransportSale,
+  createTaxSnapshot,
+  zeroRateTotalsMatch,
+} = require('../shared/international-transport-tax');
+
+async function addColumnWhenMissing(conn, tableName, columnName, alterSql) {
+  if (!(await dbAdapter.columnExists(tableName, columnName))) await conn.query(alterSql);
+}
+
+async function ensureInternationalTransportSalesSchema(conn) {
+  const columns = [
+    ['sales', 'tax_treatment', "ALTER TABLE sales ADD COLUMN tax_treatment ENUM('standard','international_transport_zero_rate') NOT NULL DEFAULT 'standard'"],
+    ['sales', 'tax_percent_applied', 'ALTER TABLE sales ADD COLUMN tax_percent_applied DECIMAL(5,2) NOT NULL DEFAULT 15.00'],
+    ['sales', 'zero_rate_reason_code', 'ALTER TABLE sales ADD COLUMN zero_rate_reason_code VARCHAR(32) NULL'],
+    ['sales', 'zero_rate_reason', 'ALTER TABLE sales ADD COLUMN zero_rate_reason VARCHAR(255) NULL'],
+    ['sales_items', 'is_international_transport_service_snapshot', 'ALTER TABLE sales_items ADD COLUMN is_international_transport_service_snapshot TINYINT NOT NULL DEFAULT 0'],
+  ];
+  for (const [tableName, columnName, alterSql] of columns) {
+    await addColumnWhenMissing(conn, tableName, columnName, alterSql);
+  }
+  const [indexes] = await conn.query("SHOW INDEX FROM sales WHERE Key_name='idx_tax_treatment_created_at'");
+  if (!indexes.length) await conn.query('CREATE INDEX idx_tax_treatment_created_at ON sales(tax_treatment, created_at)');
+}
 
 function registerSalesIPC(){
   // Cache flag: check invoice counter only once per session
@@ -17,7 +44,25 @@ function registerSalesIPC(){
     // legacy (الوسيط المحلي كما قبل التحديث) / direct (الربط المباشر) / unlinked (لا شيء).
     try{
       const zatcaRouter = require('./zatca/router');
-      setImmediate(async()=>{ try{ await zatcaRouter.submitSale(saleId); }catch(_){ } });
+      setImmediate(async()=>{
+        try{
+          await zatcaRouter.submitSale(saleId);
+        }catch(error){
+          if(error?.code !== 'LEGACY_ZATCA_ZERO_RATE_UNSUPPORTED') return;
+          let statusConn;
+          try{
+            statusConn = await dbAdapter.getConnection();
+            await statusConn.query(
+              "UPDATE sales SET zatca_status='rejected', zatca_rejection_reason=? WHERE id=?",
+              [error.code, Number(saleId)]
+            );
+          }catch(statusError){
+            console.error('Failed to persist ZATCA zero-rate routing error', statusError);
+          }finally{
+            if(statusConn) statusConn.release();
+          }
+        }
+      });
     }catch(_){ }
   }
   
@@ -347,6 +392,7 @@ function registerSalesIPC(){
       if(!colDrvPhone.length){ await conn.query("ALTER TABLE sales ADD COLUMN driver_phone VARCHAR(64) NULL AFTER driver_name"); }
     }catch(_){ }
 
+    await ensureInternationalTransportSalesSchema(conn);
     __tablesEnsured = true;
   }
 
@@ -551,6 +597,9 @@ function registerSalesIPC(){
     if(!Array.isArray(p.items) || p.items.length===0){ return { ok:false, error:'لا توجد عناصر' }; }
     if(!p.payment_method){ return { ok:false, error:'طريقة الدفع مطلوبة' }; }
     if(isSecondaryDevice()){
+      if(normalizeTaxTreatment(p.tax_treatment) === TAX_TREATMENTS.INTERNATIONAL_TRANSPORT_ZERO_RATE){
+        return { ok:false, error:VALIDATION_ERRORS.PRIMARY_REQUIRED };
+      }
       try{ return await postToAPI('/invoices', p); }
       catch(err){ return { ok:false, error: err.message || 'فشل الاتصال بالجهاز الرئيسي' }; }
     }
@@ -567,6 +616,11 @@ function registerSalesIPC(){
         }catch(_){ allowZero = 0; }
         // قفل/بدء معاملة لضمان سلامة المخزون
         await conn.beginTransaction();
+        const taxTreatment = normalizeTaxTreatment(p.tax_treatment);
+        const [[taxSettings]] = await conn.query(
+          'SELECT vat_percent, international_transport_zero_rate_enabled FROM app_settings WHERE id=1 FOR UPDATE'
+        );
+        const eligibilityByProductId = new Map();
 
         // تحقق من توافر مخزون المنتج ثم خصمه — دعم الوحدات (qty_display * multiplier)
         // عند وجود صنف (variant_id) يتم ضرب كمية الخصم في معامل خصم مخزون الصنف stock_deduct_multiplier
@@ -593,8 +647,9 @@ function registerSalesIPC(){
           const qtyBase = Number((qtyDisplay * unitMult * variantMult).toFixed(3));
           if(!pid || qtyBase<=0) continue;
           // احجز الصف أثناء القراءة لضمان الدقة في التوازي
-          const [[prod]] = await conn.query('SELECT id, name, stock FROM products WHERE id=? FOR UPDATE', [pid]);
+          const [[prod]] = await conn.query('SELECT id, name, stock, is_international_transport_service FROM products WHERE id=? FOR UPDATE', [pid]);
           if(!prod){ await conn.rollback(); return { ok:false, error:`المنتج غير موجود (ID ${pid})` }; }
+          eligibilityByProductId.set(pid, Number(prod.is_international_transport_service || 0));
           const cur = Number(prod.stock||0);
           const after = cur - qtyBase;
           // إذا كان السماح بالبيع عند الصفر غير مُفعّل، امنع عندما يصبح المخزون < 0
@@ -602,6 +657,29 @@ function registerSalesIPC(){
           // خصم المخزون (يسمح بالسالب فقط إذا allowZero مفعّل ويجوز أن ينزل تحت الصفر)
           await conn.query('UPDATE products SET stock = stock - ? WHERE id=?', [qtyBase, pid]);
         }
+
+        const taxValidationErrors = validateInternationalTransportSale({
+          tax_treatment: taxTreatment,
+          feature_enabled: !!taxSettings?.international_transport_zero_rate_enabled,
+          can_mutate: true,
+          products: p.items.map(item => ({
+            is_international_transport_service: eligibilityByProductId.get(Number(item.product_id || 0)) || 0,
+          })),
+        });
+        if(taxValidationErrors.length){
+          await conn.rollback();
+          return { ok:false, error:taxValidationErrors[0] };
+        }
+        if(taxTreatment === TAX_TREATMENTS.INTERNATIONAL_TRANSPORT_ZERO_RATE){
+          if(!zeroRateTotalsMatch(p)){
+            await conn.rollback();
+            return { ok:false, error:VALIDATION_ERRORS.TOTAL_MISMATCH };
+          }
+        }
+        const taxSnapshot = createTaxSnapshot({
+          tax_treatment: taxTreatment,
+          standard_vat_percent: Number(taxSettings?.vat_percent || 0),
+        });
 
         if(!__saleColumnsEnsured){
           const _sc = [
@@ -695,7 +773,7 @@ function registerSalesIPC(){
           }catch(_){}
         }
 
-        const [res] = await conn.query(`INSERT INTO sales (shift_id, invoice_no, order_no, created_by_user_id, created_by_username, customer_id, customer_name, customer_phone, customer_vat, customer_email, customer_address, customer_cr_number, customer_national_address, customer_postal_code, customer_street_number, customer_sub_number, customer_notes, driver_id, driver_name, driver_phone, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, global_offer_mode, global_offer_value, cust_discount_id, cust_discount_mode, cust_discount_value, pay_cash_amount, pay_card_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+        const [res] = await conn.query(`INSERT INTO sales (shift_id, invoice_no, order_no, created_by_user_id, created_by_username, customer_id, customer_name, customer_phone, customer_vat, customer_email, customer_address, customer_cr_number, customer_national_address, customer_postal_code, customer_street_number, customer_sub_number, customer_notes, driver_id, driver_name, driver_phone, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, global_offer_mode, global_offer_value, cust_discount_id, cust_discount_mode, cust_discount_value, pay_cash_amount, pay_card_amount, tax_treatment, tax_percent_applied, zero_rate_reason_code, zero_rate_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
           shiftId,
           finalInvoiceNo,
           Number(orderNo||1),
@@ -737,7 +815,11 @@ function registerSalesIPC(){
           (p.customer_discount?.mode || null),
           (p.customer_discount?.value != null ? Number(p.customer_discount.value) : null),
           (p.pay_cash_amount != null ? Number(p.pay_cash_amount) : null),
-          (p.pay_card_amount != null ? Number(p.pay_card_amount) : null)
+          (p.pay_card_amount != null ? Number(p.pay_card_amount) : null),
+          taxSnapshot.tax_treatment,
+          taxSnapshot.tax_percent_applied,
+          taxSnapshot.zero_rate_reason_code,
+          taxSnapshot.zero_rate_reason
         ]);
         const saleId = res.insertId;
         const items = p.items.map(it => [
@@ -753,10 +835,11 @@ function registerSalesIPC(){
           (Number(it.is_vat_exempt||0) === 1 ? 1 : 0),
           (it.operation_id || null),
           (it.operation_name || null),
-          (it.employee_id || null)
+          (it.employee_id || null),
+          eligibilityByProductId.get(Number(it.product_id || 0)) || 0
         ]);
         if(items.length){
-          await conn.query(`INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, is_vat_exempt, operation_id, operation_name, employee_id) VALUES ?`, [items]);
+          await conn.query(`INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, is_vat_exempt, operation_id, operation_name, employee_id, is_international_transport_service_snapshot) VALUES ?`, [items]);
         }
 
         // لا يوجد BOM: لا نستخدم product_bom أو inventory_items هنا
@@ -792,6 +875,7 @@ function registerSalesIPC(){
         }
 
         await conn.commit();
+        try{ await autoSubmitZatcaIfEnabled(saleId); }catch(_){ }
         // Notify all windows that sales changed (new invoice)
         try{
           const { BrowserWindow } = require('electron');
@@ -1690,6 +1774,8 @@ function registerSalesIPC(){
         const sql = `SELECT si.product_id, si.name,
                             SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.qty) ELSE ABS(si.qty) END) AS qty_total,
                             SUM(CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END) AS amount_total,
+                            SUM(CASE WHEN COALESCE(s.tax_treatment,'standard')='standard' THEN CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END ELSE 0 END) AS standard_amount_total,
+                            SUM(CASE WHEN s.tax_treatment='international_transport_zero_rate' THEN CASE WHEN s.doc_type='credit_note' THEN -ABS(si.line_total) ELSE ABS(si.line_total) END ELSE 0 END) AS international_transport_zero_rate_amount_total,
                             COALESCE(p.cost, 0) AS cost_price, COALESCE(si.price, p.price, 0) AS sale_price,
                             COALESCE(p.stock, 0) AS stock_qty, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
                      FROM sales_items si INNER JOIN sales s ON s.id = si.sale_id
@@ -1740,7 +1826,7 @@ function registerSalesIPC(){
       try{
         await ensureTables(conn);
         const sql = `
-          SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method,
+          SELECT si.id, si.sale_id, s.invoice_no, s.created_at, s.doc_type, s.payment_method, COALESCE(s.tax_treatment,'standard') AS tax_treatment,
                  si.product_id, si.name, si.description, si.operation_name, si.unit_multiplier, si.price, si.qty, si.line_total,
                  p.category, p.is_tobacco,
                  COALESCE(p.cost, 0) AS cost_price, COALESCE(p.is_vat_exempt, 0) AS is_vat_exempt
@@ -1872,8 +1958,8 @@ function registerSalesIPC(){
         const [colDocType] = await conn.query("SHOW COLUMNS FROM sales LIKE 'doc_type'");
         if(!colDocType.length){ await conn.query("ALTER TABLE sales ADD COLUMN doc_type ENUM('invoice','credit_note') NOT NULL DEFAULT 'invoice' AFTER invoice_no"); }
 
-        const [ins] = await conn.query(`INSERT INTO sales (invoice_no, doc_type, ref_base_sale_id, ref_base_invoice_no, shift_id, customer_id, customer_name, customer_phone, customer_vat, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, settled_at, settled_method, pay_cash_amount, pay_card_amount)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+        const [ins] = await conn.query(`INSERT INTO sales (invoice_no, doc_type, ref_base_sale_id, ref_base_invoice_no, shift_id, customer_id, customer_name, customer_phone, customer_vat, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, total_after_discount, notes, discount_type, discount_value, discount_amount, coupon_code, coupon_mode, coupon_value, settled_at, settled_method, pay_cash_amount, pay_card_amount, tax_treatment, tax_percent_applied, zero_rate_reason_code, zero_rate_reason)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
           'CN-' + cnNo,
           'credit_note',
           Number(sale.id||id),
@@ -1892,7 +1978,11 @@ function registerSalesIPC(){
           sale.coupon_code||null, sale.coupon_mode||null, (sale.coupon_value!=null ? -Number(sale.coupon_value||0) : null),
           new Date(), 'refund',
           (sale.pay_cash_amount!=null ? -Number(sale.pay_cash_amount||0) : null),
-          (sale.pay_card_amount!=null ? -Number(sale.pay_card_amount||0) : null)
+          (sale.pay_card_amount!=null ? -Number(sale.pay_card_amount||0) : null),
+          sale.tax_treatment || 'standard',
+          Number(sale.tax_percent_applied ?? 15),
+          sale.zero_rate_reason_code || null,
+          sale.zero_rate_reason || null
         ]);
         const newId = ins.insertId;
         if(items.length){
@@ -1908,14 +1998,16 @@ function registerSalesIPC(){
             -Number(it.line_total||0),
             (it.operation_id||null),
             (it.operation_name||null),
-            (it.employee_id||null)
+            (it.employee_id||null),
+            Number(it.is_vat_exempt || 0),
+            Number(it.is_international_transport_service_snapshot || 0)
           ]);
           // تأكد من أعمدة العملية
           const [colOpId] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_id'");
           if(!colOpId.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_id INT NULL AFTER line_total"); }
           const [colOpName] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_name'");
           if(!colOpName.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"); }
-          await conn.query('INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, operation_id, operation_name, employee_id) VALUES ?', [rows]);
+          await conn.query('INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, operation_id, operation_name, employee_id, is_vat_exempt, is_international_transport_service_snapshot) VALUES ?', [rows]);
         }
 
         await conn.commit();
@@ -2022,7 +2114,9 @@ function registerSalesIPC(){
             vatPercentSetting = Number(settingsRow.vat_percent);
           }
         }catch(_){}
-        const vatPercent = vatPercentSetting;
+        const vatPercent = sale.tax_percent_applied == null
+          ? vatPercentSetting
+          : Number(sale.tax_percent_applied);
 
         let totalExclusiveRefund = 0;
         const itemsToInsert = [];
@@ -2080,7 +2174,9 @@ function registerSalesIPC(){
             -Number((pricePerUnit * qtyToRefund).toFixed(2)),
             (origItem.operation_id||null),
             (origItem.operation_name||null),
-            (origItem.employee_id||null)
+            (origItem.employee_id||null),
+            Number(origItem.is_vat_exempt || 0),
+            Number(origItem.is_international_transport_service_snapshot || 0)
           ]);
         }
 
@@ -2099,8 +2195,8 @@ function registerSalesIPC(){
         const [colDocType] = await conn.query("SHOW COLUMNS FROM sales LIKE 'doc_type'");
         if(!colDocType.length){ await conn.query("ALTER TABLE sales ADD COLUMN doc_type ENUM('invoice','credit_note') NOT NULL DEFAULT 'invoice' AFTER invoice_no"); }
 
-        const [ins] = await conn.query(`INSERT INTO sales (invoice_no, doc_type, ref_base_sale_id, ref_base_invoice_no, shift_id, customer_id, customer_name, customer_phone, customer_vat, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, notes, settled_at, settled_method)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+        const [ins] = await conn.query(`INSERT INTO sales (invoice_no, doc_type, ref_base_sale_id, ref_base_invoice_no, shift_id, customer_id, customer_name, customer_phone, customer_vat, payment_method, payment_status, sub_total, extra_value, tobacco_fee, vat_total, grand_total, notes, settled_at, settled_method, tax_treatment, tax_percent_applied, zero_rate_reason_code, zero_rate_reason)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
           'CN-' + cnNo,
           'credit_note',
           Number(sale.id||saleId),
@@ -2114,7 +2210,11 @@ function registerSalesIPC(){
           -vatForRefund,
           -grandTotalRefund,
           reason + (notes ? (' | ' + notes) : ''),
-          new Date(), 'refund'
+          new Date(), 'refund',
+          sale.tax_treatment || 'standard',
+          Number(sale.tax_percent_applied ?? vatPercent),
+          sale.zero_rate_reason_code || null,
+          sale.zero_rate_reason || null
         ]);
         
         const newId = ins.insertId;
@@ -2125,7 +2225,7 @@ function registerSalesIPC(){
         const [colOpName] = await conn.query("SHOW COLUMNS FROM sales_items LIKE 'operation_name'");
         if(!colOpName.length){ await conn.query("ALTER TABLE sales_items ADD COLUMN operation_name VARCHAR(128) NULL AFTER operation_id"); }
         
-        await conn.query('INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, operation_id, operation_name, employee_id) VALUES ?', [rowsWithSaleId]);
+        await conn.query('INSERT INTO sales_items (sale_id, product_id, name, description, unit_name, unit_multiplier, price, qty, line_total, operation_id, operation_name, employee_id, is_vat_exempt, is_international_transport_service_snapshot) VALUES ?', [rowsWithSaleId]);
 
         await conn.commit();
         try{ await autoSubmitZatcaIfEnabled(newId); }catch(_){ }
@@ -2433,6 +2533,7 @@ function registerSalesIPC(){
       if(!colDesc.length){
         await conn.query("ALTER TABLE sales_items ADD COLUMN description VARCHAR(255) NULL AFTER name");
       }
+      await ensureInternationalTransportSalesSchema(conn);
 
       // Renumber existing credit notes once to start from CN-1 sequentially
       try{

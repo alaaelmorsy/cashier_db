@@ -35,6 +35,8 @@ function translateDailyUI(isAr){
     sales: 'المبيعات',
     discounts: 'الخصومات',
     salesAfterDiscount: 'المبيعات بعد الخصم',
+    standardSupply: 'توريدات قياسية (شاملة إشعاراتها)',
+    zeroRateSupply: 'نقل دولي بنسبة صفر (شامل إشعاراته)',
     creditNotes: 'إشعارات الدائن (المرتجعات)',
     totalSalesAfterDiscountReturns: 'إجمالي المبيعات بعد الخصم بعد المرتجعات',
     purchases: 'المصروفات',
@@ -89,6 +91,8 @@ function translateDailyUI(isAr){
     sales: 'Sales',
     discounts: 'Discounts',
     salesAfterDiscount: 'Sales after discount',
+    standardSupply: 'Standard-rated supplies (including credit notes)',
+    zeroRateSupply: 'Zero-rated international transport (including credit notes)',
     creditNotes: 'Credit notes (returns)',
     totalSalesAfterDiscountReturns: 'Total sales after discount and returns',
     purchases: 'Purchases',
@@ -170,13 +174,15 @@ function translateDailyUI(isAr){
       }
       
       const rows = summaryTable.querySelectorAll('tbody tr');
-      if(rows.length >= 6){
+      if(rows.length >= 8){
         rows[0].querySelector('td').textContent = t.sales;
-        rows[1].querySelector('td').textContent = t.discounts;
-        rows[2].querySelector('td').textContent = t.salesAfterDiscount;
-        rows[3].querySelector('td').textContent = t.creditNotes;
-        rows[4].querySelector('td').textContent = t.totalSalesAfterDiscountReturns;
-        rows[5].querySelector('td').textContent = t.purchases;
+        rows[1].querySelector('td').textContent = t.standardSupply;
+        rows[2].querySelector('td').textContent = t.zeroRateSupply;
+        rows[3].querySelector('td').textContent = t.discounts;
+        rows[4].querySelector('td').textContent = t.salesAfterDiscount;
+        rows[5].querySelector('td').textContent = t.creditNotes;
+        rows[6].querySelector('td').textContent = t.totalSalesAfterDiscountReturns;
+        rows[7].querySelector('td').textContent = t.purchases;
       }
       
       const footerCells = summaryTable.querySelectorAll('tfoot th');
@@ -1118,6 +1124,16 @@ async function load(){
 
     try{
       const set = (id, val)=>{ const el=document.getElementById(id); if(el){ el.textContent = Number(val||0).toFixed(2); } };
+      const treatmentTotals = ReportAccounting.summarizeTaxTreatments(
+        [...normalSales, ...creditNotes],
+        { basis: 'collection', payments: (payRes && payRes.ok) ? (payRes.items || []) : [] }
+      );
+      set('standardSupplyPre', treatmentTotals.standard.pre);
+      set('standardSupplyVat', treatmentTotals.standard.vat);
+      set('standardSupplyAfter', treatmentTotals.standard.grand);
+      set('zeroRateSupplyPre', treatmentTotals.internationalTransportZeroRate.pre);
+      set('zeroRateSupplyVat', treatmentTotals.internationalTransportZeroRate.vat);
+      set('zeroRateSupplyAfter', treatmentTotals.internationalTransportZeroRate.grand);
       set('salesPre', salesPre);
       set('salesVat', salesVatBefore);
       // لم يعد هناك عمود رسوم تبغ في الواجهة

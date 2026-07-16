@@ -69,7 +69,7 @@ function invoicePriceDivisor(sale, items, taxRate, configuredInclusive) {
   return inclusiveDifference < exclusiveDifference ? inclusive : 1;
 }
 
-function extraLine(id, itemName, value, taxRate) {
+function extraLine(id, itemName, value, taxRate, taxCategoryId) {
   return {
     id,
     quantity: 1,
@@ -77,13 +77,13 @@ function extraLine(id, itemName, value, taxRate) {
     lineExtensionAmount: amount(value),
     taxAmount: amount(value * taxRate / 100),
     itemName,
-    taxCategoryId: 'S',
+    taxCategoryId,
     taxPercent: taxRate,
     priceAmount: amount(value),
   };
 }
 
-function invoiceLines(items, taxRate, totalDiscount, divisor, extras) {
+function invoiceLines(items, taxRate, taxCategoryId, totalDiscount, divisor, extras) {
   const netUnit = (item) => Number(item.price || 0) / divisor;
   const gross = items.reduce((sum, item) => sum + netUnit(item) * Number(item.qty || 1), 0);
   const lines = items.map((item, index) => {
@@ -98,7 +98,7 @@ function invoiceLines(items, taxRate, totalDiscount, divisor, extras) {
       lineExtensionAmount: lineNet,
       taxAmount: amount(lineNet * taxRate / 100),
       itemName: item.name || 'صنف',
-      taxCategoryId: 'S',
+      taxCategoryId,
       taxPercent: taxRate,
       priceAmount: amount(netUnit(item)),
     };
@@ -106,7 +106,7 @@ function invoiceLines(items, taxRate, totalDiscount, divisor, extras) {
   // الرسوم الإضافية مبالغ قبل الضريبة — تُبلَّغ كبنود مستقلة حتى يطابق
   // إجمالي المستند لدى الهيئة إجمالي الفاتورة الفعلي.
   for (const [name, value] of extras) {
-    if (value > 0) lines.push(extraLine(lines.length + 1, name, value, taxRate));
+    if (value > 0) lines.push(extraLine(lines.length + 1, name, value, taxRate, taxCategoryId));
   }
   return lines;
 }
@@ -137,10 +137,14 @@ function commonDocument(saleData, settings, submission, appSettings) {
   const { sale, items, customer: customerRow } = saleData;
   if (!items.length) throw new Error('لا يمكن إرسال مستند بدون بنود إلى الهيئة (BR-16)');
   const kind = classifyInvoice(sale);
-  const taxRate = Number(appSettings.vat_percent || 0);
+  const isInternationalTransport = sale.tax_treatment === 'international_transport_zero_rate';
+  const taxRate = isInternationalTransport
+    ? Number(sale.tax_percent_applied || 0)
+    : Number(appSettings.vat_percent || 0);
+  const taxCategoryId = isInternationalTransport ? 'Z' : 'S';
   // الفئة Z/E/O تتطلب رمز سبب إعفاء (BT-121) لا تدعمه المكتبة — والمنشأة
   // المسجلة في الهيئة ملزمة بنسبة ضريبة قياسية، فنسبة 0% تعني خطأ إعدادات.
-  if (taxRate <= 0) {
+  if (taxRate <= 0 && !isInternationalTransport) {
     throw new Error('لا يمكن الإرسال إلى الهيئة بنسبة ضريبة 0% — راجع إعداد نسبة الضريبة');
   }
   if (items.some((item) => Number(item.is_vat_exempt) === 1)) {
@@ -173,7 +177,7 @@ function commonDocument(saleData, settings, submission, appSettings) {
   if (totalDiscount < 0) {
     throw new Error(`إجمالي بنود المستند أقل من صافي الفاتورة المحفوظ — لن يتم الإرسال (فرق ${Math.abs(totalDiscount).toFixed(2)})`);
   }
-  const lines = invoiceLines(items, taxRate, totalDiscount, divisor, [
+  const lines = invoiceLines(items, taxRate, taxCategoryId, totalDiscount, divisor, [
     ['رسوم إضافية', extra],
     ['رسوم التبغ', tobacco],
   ]);
@@ -203,7 +207,14 @@ function commonDocument(saleData, settings, submission, appSettings) {
     taxInclusiveAmount: total,
     payableAmount: total,
     taxAmount: tax,
-    taxSubtotals: [{ taxableAmount: net, taxAmount: tax, percent: taxRate, taxCategoryId: 'S' }],
+    taxSubtotals: [{
+      taxableAmount: net,
+      taxAmount: tax,
+      percent: taxRate,
+      taxCategoryId,
+      taxExemptionReasonCode: isInternationalTransport ? sale.zero_rate_reason_code : undefined,
+      taxExemptionReason: isInternationalTransport ? sale.zero_rate_reason : undefined,
+    }],
     invoiceLines: lines,
   };
 }

@@ -135,6 +135,26 @@ describe('zatca mapper — فواتير الكاشير', () => {
       .toThrow(/0%/);
   });
 
+  test('international transport uses persisted Z/0/VATEX-SA-34-1 snapshot', () => {
+    const zeroSale = sale({
+      tax_treatment: 'international_transport_zero_rate',
+      tax_percent_applied: 0,
+      zero_rate_reason_code: 'VATEX-SA-34-1',
+      zero_rate_reason: 'The international transport of Goods',
+      sub_total: 100,
+      vat_total: 0,
+      grand_total: 100,
+    });
+    const doc = mapSale({ sale: zeroSale, items: [item()], customer: null }, settings, submission, appExclusive);
+
+    expect(doc.taxAmount).toBe(0);
+    expect(doc.payableAmount).toBe(100);
+    expect(doc.taxSubtotals[0]).toMatchObject({
+      taxCategoryId: 'Z', percent: 0, taxExemptionReasonCode: 'VATEX-SA-34-1',
+    });
+    expect(doc.invoiceLines[0]).toMatchObject({ taxCategoryId: 'Z', taxPercent: 0, taxAmount: 0 });
+  });
+
   test('صنف معفى من الضريبة يرفض برسالة واضحة', () => {
     expect(() => mapSale({ sale: sale(), items: [item({ is_vat_exempt: 1 })], customer: null }, settings, submission, appExclusive))
       .toThrow(/معفاة/);

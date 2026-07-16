@@ -347,6 +347,11 @@ class LocalZatcaBridge {
     try {
       const [[sale]] = await conn.query('SELECT * FROM sales WHERE id=?', [Number(saleId)]);
       if (!sale) throw new Error('الفاتورة غير موجودة');
+      if (sale.tax_treatment === 'international_transport_zero_rate') {
+        const error = new Error('Legacy ZATCA route does not support international transport zero-rate invoices');
+        error.code = 'LEGACY_ZATCA_ZERO_RATE_UNSUPPORTED';
+        throw error;
+      }
       const [items] = await conn.query('SELECT * FROM sales_items WHERE sale_id=?', [Number(saleId)]);
 
       // Load company/branch data from ZATCA config if available

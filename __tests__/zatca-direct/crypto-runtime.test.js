@@ -74,6 +74,18 @@ function selfSignedCertificate(privateKeyPem, publicKeyPem) {
   return `-----BEGIN CERTIFICATE-----\n${base64}\n-----END CERTIFICATE-----`;
 }
 
+function decodeTlv(base64) {
+  const buffer = Buffer.from(base64, 'base64');
+  const fields = {};
+  for (let offset = 0; offset + 2 <= buffer.length;) {
+    const tag = buffer[offset];
+    const length = buffer[offset + 1];
+    fields[tag] = buffer.subarray(offset + 2, offset + 2 + length).toString('utf8');
+    offset += length + 2;
+  }
+  return fields;
+}
+
 test('production CSR generation runs in the bundled Node crypto runtime', async () => {
   const generated = await runCryptoAction('generateCSR', {
     params: validCsrInput,
@@ -158,4 +170,23 @@ test('production runtime signs all six compliance documents and creates the invo
     },
   });
   expect(artifacts.qrCodeBase64).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+
+  const zeroRateArtifacts = await runCryptoAction('signingArtifacts', {
+    signParams: {
+      xml: firstSigned,
+      privateKeyPem: generated.privateKey,
+      certificatePem,
+      qrData: {
+        sellerName: 'Test Company', vatNumber: '300000000000003',
+        timestamp: '2026-07-15T12:00:00', totalWithVat: '100.00', vatTotal: '0.00',
+      },
+    },
+    qrParams: {
+      sellerName: 'Test Company', vatNumber: '300000000000003',
+      timestamp: '2026-07-15T12:00:00', totalWithVat: '100.00', vatTotal: '0.00',
+    },
+  });
+  const zeroRateQr = decodeTlv(zeroRateArtifacts.qrCodeBase64);
+  expect(zeroRateQr[4]).toBe('100.00');
+  expect(zeroRateQr[5]).toBe('0.00');
 });

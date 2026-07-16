@@ -17,7 +17,7 @@ const { dbAdapter } = require('../../db/db-adapter');
 const { decryptSecret } = require('./vault');
 const { classifyInvoice } = require('./index');
 const { mapCreditNote, mapSale } = require('./mapper');
-const { ensureRequiredCustomerParty } = require('./xml');
+const { ensureRequiredCustomerParty, injectZeroRateReason } = require('./xml');
 const { runCryptoAction } = require('./crypto-runtime');
 
 const ACCEPTED_STATUSES = new Set(['reported', 'cleared', 'accepted_with_warnings']);
@@ -100,8 +100,17 @@ async function submitMappedDocument(document, settings, submission) {
   const generatedXml = isCreditNoteData(invoice)
     ? generateCreditNoteXml(invoice)
     : generateInvoiceXml(invoice);
+  let compatibleXml = ensureRequiredCustomerParty(generatedXml);
+  const zeroSubtotal = invoice.taxSubtotals?.find((subtotal) => subtotal.taxCategoryId === 'Z');
+  if (zeroSubtotal) {
+    compatibleXml = injectZeroRateReason(
+      compatibleXml,
+      zeroSubtotal.taxExemptionReasonCode,
+      zeroSubtotal.taxExemptionReason
+    );
+  }
   const xml = injectDeliveryDate(
-    ensureRequiredCustomerParty(generatedXml),
+    compatibleXml,
     deliveryDate
   );
   const timestamp = `${invoice.issueDate}T${invoice.issueTime.replace(/Z$/, '')}`;

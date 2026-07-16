@@ -265,7 +265,7 @@
   <body>
     <button class="close-btn" onclick="window.close()">إغلاق (Esc)</button>
     <script>document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ window.close(); } });</script>
-    <button class="reprint-btn" id="reprintBtn" onclick="window.print()">إعادة طباعة</button>
+    <button class="reprint-btn" id="reprintBtn" onclick="if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){ alert('تعذر إنشاء رمز QR؛ لا يمكن طباعة الفاتورة.'); return; } window.print()">إعادة طباعة</button>
     <button class="export-btn" id="exportBtn">تصدير PDF</button>
     <button class="whats-btn" id="whatsBtn">إرسال واتساب</button>
     
@@ -372,11 +372,6 @@
         </div>
         
         <div class="qr"><img id="qrImg" alt="QR" style="max-width:100%; max-height:100%;"/></div>
-      </div>
-
-      <div id="generalNotesContainer" style="display:none; margin-top:8px; border:3px solid #000; border-radius:8px; padding:6px 8px; width:100%; box-sizing:border-box;">
-        <div style="font-weight:900; margin-bottom:4px; color:#000; font-size:11px;">ملاحظات عامة</div>
-        <div id="generalNotesContent" style="white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; color:#000; font-weight:700; font-size:10px; line-height:1.3;"></div>
       </div>
 
       <div class="footer">
@@ -669,9 +664,8 @@
             if(lh>0){ logoEl.style.height = lh + 'px'; }
           }catch(_){ logoEl.style.display='none'; }
 
-          // footer note from settings + invoice notes from the sale
+          // invoice notes from the sale
           try{
-            const settingsNote = (settings && settings.invoice_footer_note || '').trim();
             const saleNote = (sale && sale.notes || '').trim();
             
             // عرض ملاحظات الفاتورة في المربع الجديد أسفل بيانات العميل
@@ -685,14 +679,6 @@
             }
             
             // عرض الملاحظات العامة في مربع منفصل بعرض الورقة
-            const generalNotesContainer = document.getElementById('generalNotesContainer');
-            const generalNotesContent = document.getElementById('generalNotesContent');
-            if(settingsNote){
-              generalNotesContent.textContent = settingsNote;
-              generalNotesContainer.style.display = 'block';
-            } else {
-              generalNotesContainer.style.display = 'none';
-            }
           }catch(_){}
 
           document.getElementById('invNo').textContent = sale.invoice_no;
@@ -888,11 +874,13 @@
           document.getElementById('invPay').textContent = payLabels2[payKey2] || payKey2;
 
           const tbody = document.getElementById('items');
+          const isInternationalZeroRate = sale.tax_treatment === 'international_transport_zero_rate';
           // اضبط حالة العمود (العملية) حسب البيانات
           try{
             const itemsTable = document.getElementById('itemsTable');
             const hasOp = Array.isArray(items) && items.some(it => String(it.operation_name||'').trim() !== '');
             const vatPercent = Number(settings?.vat_percent || 0);
+            const showDetailedTaxColumns = vatPercent > 0 || isInternationalZeroRate;
             const showBarcode = (settings?.show_barcode_in_a4 === 1);
             if(itemsTable){
               // لا تُطبق no-op تلقائيًا عند عدم وجود ضريبة حتى لا يختفي عمود "عدد"
@@ -900,8 +888,8 @@
               itemsTable.classList.toggle('hide-barcode', !showBarcode);
               // تطبيق has-op/no-op دائمًا لتنسيق الأعمدة الصحيح
               itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
-              itemsTable.classList.toggle('no-vat', vatPercent === 0);
-              if(vatPercent === 0){
+              itemsTable.classList.toggle('no-vat', !showDetailedTaxColumns);
+              if(!showDetailedTaxColumns){
                 const thead = itemsTable.querySelector('thead');
                 if(thead){
                   const headerRows = thead.querySelectorAll('tr');
@@ -958,7 +946,8 @@
             }
           }catch(_){ pricesInclVat = true; }
           const vatRate = Number(settings?.vat_percent || 0) / 100;
-          const effectiveVatRate = (String(sale.price_mode||'') === 'zero_vat') ? 0 : vatRate;
+          window.__INTERNATIONAL_QR_REQUIRED__ = isInternationalZeroRate;
+          const effectiveVatRate = (String(sale.price_mode||'') === 'zero_vat' || isInternationalZeroRate) ? 0 : vatRate;
 
           // مجموع line_total لجميع البنود (للتوزيع النسبي)
           const sumLineTotalsAll = items.reduce((s, it) => s + Math.abs(Number(it.line_total || (Number(it.price||0) * Number(it.qty||1)))), 0);
@@ -1028,13 +1017,14 @@
 
             // Quantity text: no decimals if integer; otherwise 3 decimals
             const qtyTxt = Number.isInteger(qtyNum) ? String(qtyNum) : qtyNum.toFixed(3);
-            const vatRateTxt = (itemVatRate>0) ? (itemVatRate*100).toFixed(0) : '0';
+            const vatRateTxt = (itemVatRate>0) ? (itemVatRate*100).toFixed(0) : (isInternationalZeroRate ? '0%' : '0');
             const empName = it.employee_name ? `<div style='font-size:12px; color:#64748b; margin-top:2px; font-weight:700;'>الموظف: ${it.employee_name}</div>` : '';
 
             // الإجمالي بدون الضريبة = صافي السطر دائمًا (لا نعرض سعر القطعة هنا)
             const displayNet = net;
             // Render cells based on VAT presence: with VAT → 8 columns; no VAT → 4 or 5 columns (with Operation if present)
-            if(effectiveVatRate > 0){
+            const showDetailedTaxColumns = effectiveVatRate > 0 || isInternationalZeroRate;
+            if(showDetailedTaxColumns){
               tr.innerHTML = `
                 <td class="num" style="text-align:center">${rowNum}</td>
                 <td class="barcode-cell">${it.barcode||''}</td>
@@ -1162,7 +1152,7 @@
           document.getElementById('vat').innerHTML = fmtTotal(effectiveVatTotal);
           // إخفاء صف الضريبة بالكامل إذا كانت نسبة الضريبة = 0 في الإعدادات أو إذا كانت الفاتورة zero_vat
           try{
-            if(Number(settings?.vat_percent||0) === 0 || effectiveVatRate === 0){
+            if(!isInternationalZeroRate && (Number(settings?.vat_percent||0) === 0 || effectiveVatRate === 0)){
               const vatRow = document.getElementById('vat')?.closest('tr');
               if(vatRow){ vatRow.style.display = 'none'; }
             }
@@ -1170,7 +1160,6 @@
           const afterDiscForGrand = Number(sale.total_after_discount ?? (Number(sale.sub_total||0) - Number(sale.discount_amount||0) + Number(sale.tobacco_fee||0)));
           const computedGrand = Number(sale.grand_total ?? (afterDiscForGrand + effectiveVatTotal));
           document.getElementById('grand').innerHTML = fmtTotal(isCreditAbs ? Math.abs(computedGrand) : computedGrand);
-
           // عند عدم وجود ضريبة: أعِد تسمية الصفوف وأخفِ صف "بعد الخصم"
           try{
             if(Number(settings?.vat_percent||0) === 0){
@@ -1364,25 +1353,22 @@
                   wrapper.style.width='120px'; wrapper.style.height='120px';
                   wrapper.innerHTML = svg;
                   qrImg.replaceWith(wrapper);
-                  window.__QR_READY = true;
+                  window.__QR_READY__ = true;
                 } else {
                   const dataUrl = await api.qr_to_data_url(b64, { errorCorrectionLevel: 'M', width: 120, margin: 1 });
                   if(dataUrl){
                     qrImg.alt = (__vatEnabled && __canZatca) ? 'ZATCA QR' : 'INFO QR';
                     qrImg.src = dataUrl;
-                    qrImg.addEventListener('load', () => { window.__QR_READY = true; }, { once: true });
+                    qrImg.addEventListener('load', () => { window.__QR_READY__ = true; }, { once: true });
                   }else{
                     throw new Error('QR generation failed');
                   }
                 }
               }catch(e){
                 qrImg.remove();
-                const pre = document.createElement('pre');
-                pre.textContent = 'ZATCA QR (Base64):\n' + b64;
-                pre.style.fontSize = '10px';
-                pre.style.direction = 'ltr';
-                qrBox.appendChild(pre);
-                window.__QR_READY = true;
+                window.__QR_READY__ = false;
+                window.__QR_ERROR = e?.message || 'QR generation failed';
+                qrBox.textContent = 'تعذر إنشاء رمز QR — لا يمكن طباعة أو إرسال الفاتورة';
               }
             } else {
               qrImg.remove();
@@ -1394,6 +1380,10 @@
             const exportBtn = document.getElementById('exportBtn');
             if(exportBtn){
               exportBtn.addEventListener('click', async () => {
+                if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+                  showA4Notification('error', 'تعذر إنشاء رمز QR؛ لا يمكن تصدير الفاتورة.');
+                  return;
+                }
                 try{
                   const root = document.documentElement.cloneNode(true);
                   Array.from(root.querySelectorAll('script')).forEach(s=>s.remove());
@@ -1465,6 +1455,10 @@
               whatsBtn.addEventListener('click', () => {
                 (async () => {
                   try{
+                    if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+                      showA4Notification('error', 'تعذر إنشاء رمز QR؛ لا يمكن إرسال الفاتورة.');
+                      return;
+                    }
                     if(window.__WA_SENDING__){
                       showA4Notification('warning', '⏳ جاري إرسال الفاتورة... الرجاء الانتظار');
                       return;
@@ -1731,6 +1725,10 @@
           }
           
           function executePrint(){
+            if(window.__INTERNATIONAL_QR_REQUIRED__ && window.__QR_READY__ !== true){
+              alert('تعذر إنشاء رمز QR؛ لا يمكن طباعة الفاتورة.');
+              return;
+            }
             const elapsed = Date.now() - startTime;
             false && console.log(`🖨️ [${Date.now()}] Data ready after ${elapsed}ms`);
             

@@ -1158,6 +1158,7 @@ if(btnQuotation){
       __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); 
       return; 
     }
+    if(!validateInternationalTransportForm()) return;
     // تجميع بيانات السلة
     const cartData = cart.map(it => {
       const empId = it.employee_id;
@@ -1178,6 +1179,7 @@ if(btnQuotation){
         unit_multiplier: it.unit_multiplier || 1,
         category: it.category || null,
         is_tobacco: it.is_tobacco || 0,
+        is_international_transport_service: Number(it.is_international_transport_service || 0),
         employee_id: it.employee_id || null,
         employee_name: emp ? emp.name : '',
         image_path: it.image_path || null,
@@ -1196,7 +1198,8 @@ if(btnQuotation){
       discount_amount: calcs.discount_amount || 0,
       total_after_discount: calcs.sub_after_discount || calcs.sub_total || 0,
       extra_value: calcs.extra_value || 0,
-      tobacco_fee: calcs.tobacco_fee || 0
+      tobacco_fee: calcs.tobacco_fee || 0,
+      tax_treatment: selectedTaxTreatment()
     };
     
     // حفظ البيانات في sessionStorage لاستخدامها في صفحة العرض
@@ -1219,6 +1222,7 @@ if(btnQuotation){
     
     // تفريغ السلة بعد طباعة عرض السعر
     cart = [];
+    resetInternationalTransportForm();
     if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); }
     renderCart();
     
@@ -1321,6 +1325,7 @@ async function __loadRoomCart(id){
       if(notes && typeof s.notes === 'string'){ notes.value = s.notes; }
       if(typeof s.customer_id !== 'undefined' && s.customer_id){ __selectedCustomerId = String(s.customer_id); }
       if(typeof s.driver_id !== 'undefined' && s.driver_id){ __selectedDriverId = String(s.driver_id); }
+      restoreInternationalTransportState(s);
       return Array.isArray(c) ? c : [];
     }
   }catch(_){ }
@@ -1338,6 +1343,7 @@ async function __saveRoomCart(id, c){
       notes: notes ? (notes.value||'') : '',
       customer_id: __selectedCustomerId ? Number(__selectedCustomerId) : null,
       driver_id: __selectedDriverId ? Number(__selectedDriverId) : null,
+      ...internationalTransportPayload(),
     };
     await window.api.rooms_save_cart(id, c, state);
   }catch(_){ }
@@ -1687,6 +1693,78 @@ allowOnlyNumbersSales(acmCr);
 const DEFAULT_PAYMENT_METHODS = ['cash','card','mixed'];
 let settings = { vat_percent: 15, prices_include_vat: 1, currency_code: 'SAR', currency_symbol:'\ue900', currency_symbol_position:'after', payment_methods: DEFAULT_PAYMENT_METHODS, op_price_manual: 0, tobacco_fee_percent: 100, tobacco_min_invoice_sub: 25, tobacco_min_fee_amount: 25, low_stock_threshold: 5, show_low_stock_alerts: false, weight_mode_enabled: 0, show_employee_selector: 1, show_cart_item_description: 1, require_phone_min_10: false, update_product_price_on_edit: false };
 let cart = []; // {id, name, price, qty, image_path}
+
+function selectedTaxTreatment() {
+  return document.getElementById('internationalTransportToggle')?.checked
+    ? 'international_transport_zero_rate'
+    : 'standard';
+}
+
+function internationalTransportProductFlag(product) {
+  return Number(product?.is_international_transport_service || 0) ? 1 : 0;
+}
+
+function effectiveVatPercent() {
+  return selectedTaxTreatment() === 'international_transport_zero_rate'
+    ? 0
+    : Number(settings.vat_percent || 0);
+}
+
+function internationalTransportErrorMessage(errorCode) {
+  const messages = {
+    INTERNATIONAL_TRANSPORT_DISABLED: 'خيار النقل الدولي بنسبة صفر غير مفعّل من الإعدادات.',
+    PRIMARY_DEVICE_REQUIRED: 'إنشاء فاتورة النقل الدولي متاح من الجهاز الرئيسي فقط.',
+    INELIGIBLE_INTERNATIONAL_TRANSPORT_ITEM: 'تحتوي السلة على منتج غير مؤهل لخدمة النقل الدولي بنسبة صفر.',
+    INTERNATIONAL_TRANSPORT_TOTAL_MISMATCH: 'إجماليات الفاتورة لا تطابق احتساب الضريبة بنسبة صفر. أعد المحاولة.',
+  };
+  const code = String(errorCode || '').trim();
+  return messages[code] ? `${messages[code]} (${code})` : (code || _t('toastSaveInvoiceFailedDefault'));
+}
+
+function syncInternationalTransportUi() {
+  const container = document.getElementById('internationalTransportToggleContainer');
+  const toggle = document.getElementById('internationalTransportToggle');
+  const available = !!settings.international_transport_zero_rate_enabled &&
+    settings.international_transport_zero_rate_can_mutate !== false;
+  if (container) container.hidden = !available;
+  if (toggle) toggle.disabled = !available;
+  if (!available && toggle) toggle.checked = false;
+  scheduleComputeTotals();
+}
+
+function internationalTransportPayload() {
+  return {
+    tax_treatment: selectedTaxTreatment(),
+  };
+}
+
+function validateInternationalTransportForm() {
+  if (selectedTaxTreatment() !== 'international_transport_zero_rate') return true;
+  if (!cart.length || cart.some(item => !Number(item.is_international_transport_service))) {
+    setError('فاتورة النقل الدولي تقبل فقط خدمات النقل الدولي المؤهلة.');
+    return false;
+  }
+  return true;
+}
+
+function resetInternationalTransportForm() {
+  const toggle = document.getElementById('internationalTransportToggle');
+  if (toggle) toggle.checked = false;
+  syncInternationalTransportUi();
+}
+
+function restoreInternationalTransportState(state) {
+  const toggle = document.getElementById('internationalTransportToggle');
+  if (toggle) toggle.checked = state?.tax_treatment === 'international_transport_zero_rate';
+  syncInternationalTransportUi();
+}
+
+document.getElementById('internationalTransportToggle')?.addEventListener('change', syncInternationalTransportUi);
+window.api.on_settings_changed?.((payload) => {
+  if (!payload || typeof payload.international_transport_zero_rate_enabled === 'undefined') return;
+  settings.international_transport_zero_rate_enabled = payload.international_transport_zero_rate_enabled ? 1 : 0;
+  syncInternationalTransportUi();
+});
 let customerDisplayEnabled = false;
 let currencyCodeForDisplay = 'SAR';
 let activeTypes = new Set(); // أسماء الأنواع الرئيسية النشطة فقط
@@ -2144,7 +2222,7 @@ function fmt(amount){
 
 function computeTotals(){
   let sub = 0, vat = 0, grand = 0;
-  const vatPct = (Number(settings.vat_percent) || 0) / 100;
+  const vatPct = effectiveVatPercent() / 100;
 
   const __isVatExempt = (v) => {
     if(v === true) return true;
@@ -2451,7 +2529,7 @@ function computeTotals(){
   grandTotalEl.innerHTML = fmt(grand);
   // عند عدم وجود ضريبة: إخفِ صف الضريبة وعدّل التسميات لعرض "المجموع" و"الإجمالي"
   try{
-    const noVat = Number(settings.vat_percent||0) === 0;
+    const noVat = effectiveVatPercent() === 0;
     const isAr = document.documentElement.lang === 'ar';
     // إظهار/إخفاء صف الضريبة (السطر الذي يحتوي قيمة VAT)
     const vatRowEl = document.getElementById('vatTotal')?.closest('.row');
@@ -2778,6 +2856,7 @@ async function loadSettings(prefetchedSettings){
       delete incoming.payment_methods;
     }
     settings = { ...settings, ...incoming };
+    syncInternationalTransportUi();
     __oneTimeBarcodeMode = !!settings.one_time_barcode || __urlParams.get('one_time_barcode') === '1';
     customerDisplayEnabled = !!settings.customer_display_enabled;
     currencyCodeForDisplay = settings.currency_code || 'SAR';
@@ -3754,6 +3833,7 @@ async function addToCart(p){
     category: p.category || null,
     is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
     is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+    is_international_transport_service: internationalTransportProductFlag(p),
     unit_name: null,
     unit_multiplier: 1,
     operation_name: null,
@@ -3891,6 +3971,7 @@ async function __doScanCode(code){
         price: Number(p.price||0), qty: 1, image_path: p.image_path,
         category: p.category || null, is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
         is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+        is_international_transport_service: internationalTransportProductFlag(p),
         unit_name: null, unit_multiplier: 1, operation_name: null,
         product_min_price: (p.min_price!=null && p.min_price!=='') ? Number(p.min_price) : null,
         allow_manual_price: Number(p.allow_manual_price||0) ? 1 : 0
@@ -3936,6 +4017,7 @@ async function __doScanCode(code){
         price: Number(p.price||0), qty: 1, image_path: p.image_path,
         category: p.category || null, is_tobacco: Number(p.is_tobacco||0) ? 1 : 0,
         is_vat_exempt: Number(p.is_vat_exempt||0) ? 1 : 0,
+        is_international_transport_service: internationalTransportProductFlag(p),
         unit_name: null, unit_multiplier: 1,
         variant_id: p.variant_id, variant_name: p.variant_name,
         operation_id: p.variant_id, operation_name: p.variant_name,
@@ -4275,7 +4357,7 @@ try{
 // إعادة الحساب عند تغيير الخصم/الإضافى مع ضبط حدود الخصم
 function calcSubBeforeVAT(){
   let sub = 0;
-  const vatPct = (Number(settings.vat_percent) || 0) / 100;
+  const vatPct = effectiveVatPercent() / 100;
   cart.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 1);
@@ -4678,6 +4760,7 @@ btnClear.addEventListener('click', async () => {
   const onYes = async () => {
     doClose();
     cart = [];
+    resetInternationalTransportForm();
     if(__currentRoomId){
       await __saveRoomCart(__currentRoomId, cart);
       try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ }
@@ -4750,6 +4833,7 @@ acmSave.addEventListener('click', async () => {
 
 btnPay.addEventListener('click', async () => {
   if(cart.length === 0){ __showSalesToast(_t('toastAddProductsFirst'), { icon:'⚠️', danger:true, ms:5000 }); return; }
+  if(!validateInternationalTransportForm()) return;
 
   // مزامنة حقول الوصف من DOM قبل الدفع
   document.querySelectorAll('textarea.desc').forEach(ta => {
@@ -4792,7 +4876,7 @@ btnPay.addEventListener('click', async () => {
   
   setError('');
   // حساب المبالغ النهائية
-  let sub=0, vat=0, grand=0; const vatPct = (Number(settings.vat_percent)||0)/100;
+  let sub=0, vat=0, grand=0; const vatPct = effectiveVatPercent()/100;
   cart.forEach(it => {
     const price = Number(it.price||0), qty = Number(it.qty||1);
     if(settings.prices_include_vat){
@@ -4849,6 +4933,7 @@ btnPay.addEventListener('click', async () => {
       unit_multiplier: (it.unit_multiplier != null ? Number(it.unit_multiplier) : 1),
       line_total: Number(it.price||0) * Number(it.qty||1),
       category: (it.category || null),
+      is_international_transport_service: Number(it.is_international_transport_service || 0),
       employee_id: (typeof it.employee_id!=='undefined' && it.employee_id!=null) ? Number(it.employee_id) : null
     };
   });
@@ -4857,6 +4942,7 @@ btnPay.addEventListener('click', async () => {
   const calcs = window.__sale_calcs || {};
   const payload = {
     items: itemsPayload,
+    ...internationalTransportPayload(),
     payment_method: paymentMethod.value,
     sub_total: Number((calcs.sub_total ?? sub).toFixed(2)),
     extra_value: Number((calcs.extra_value ?? Number(extraValueEl?.value||0)).toFixed(2)),
@@ -4900,7 +4986,7 @@ btnPay.addEventListener('click', async () => {
   const r = await window.api.sales_create(payload);
   if(!r.ok){
     // إظهار توست علوي صغير يختفي خلال 5 ثوانٍ (أعلى يمين)
-    __showSalesToast(r.error || _t('toastSaveInvoiceFailedDefault'), { icon:'⚠️', danger:true, ms:5000 });
+    __showSalesToast(internationalTransportErrorMessage(r.error), { icon:'⚠️', danger:true, ms:5000 });
     setError('');
     return;
   }
@@ -5009,7 +5095,7 @@ btnPay.addEventListener('click', async () => {
     setTimeout(()=>{ __sendKitchenIfNeeded(); }, 1500);
   }
   
-  cart = []; if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();
+  cart = []; resetInternationalTransportForm(); if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();
   // إعادة خانة المبلغ إلى وضعها الطبيعي
   if(cashReceived){ cashReceived.value=''; cashReceived.placeholder='المبلغ المدفوع'; cashReceived.disabled=false; }
   if(notes){ notes.value=''; }
@@ -5211,6 +5297,7 @@ async function showPaymentMethodModal(){
 
 // دالة الطباعة الفعلية (نفس محتوى btnPay الأصلي)
 async function processPrint(){
+  if(!validateInternationalTransportForm()) return;
   // التحقق من وجود شفت مفتوح
   __currentShiftId = null;
   if (!(settings && (settings.show_shifts === 0 || settings.show_shifts === false))) {
@@ -5234,7 +5321,7 @@ async function processPrint(){
   
   setError('');
   // حساب المبالغ النهائية
-  let sub=0, vat=0, grand=0; const vatPct = (Number(settings.vat_percent)||0)/100;
+  let sub=0, vat=0, grand=0; const vatPct = effectiveVatPercent()/100;
   cart.forEach(it => {
     const price = Number(it.price||0), qty = Number(it.qty||1);
     if(settings.prices_include_vat){
@@ -5291,6 +5378,7 @@ async function processPrint(){
       unit_multiplier: (it.unit_multiplier != null ? Number(it.unit_multiplier) : 1),
       line_total: Number(it.price||0) * Number(it.qty||1),
       category: (it.category || null),
+      is_international_transport_service: Number(it.is_international_transport_service || 0),
       employee_id: (typeof it.employee_id!=='undefined' && it.employee_id!=null) ? Number(it.employee_id) : null
     };
   });
@@ -5299,6 +5387,7 @@ async function processPrint(){
   const calcs = window.__sale_calcs || {};
   const payload = {
     items: itemsPayload,
+    ...internationalTransportPayload(),
     payment_method: paymentMethod.value,
     sub_total: Number((calcs.sub_total ?? sub).toFixed(2)),
     extra_value: Number((calcs.extra_value ?? Number(extraValueEl?.value||0)).toFixed(2)),
@@ -5342,7 +5431,7 @@ async function processPrint(){
   const r = await window.api.sales_create(payload);
   if(!r.ok){
     // إظهار توست علوي صغير يختفي خلال 5 ثوانٍ (أعلى يمين)
-    __showSalesToast(r.error || _t('toastSaveInvoiceFailedDefault'), { icon:'⚠️', danger:true, ms:5000 });
+    __showSalesToast(internationalTransportErrorMessage(r.error), { icon:'⚠️', danger:true, ms:5000 });
     setError('');
     return;
   }
@@ -5451,7 +5540,7 @@ async function processPrint(){
     setTimeout(()=>{ __sendKitchenIfNeeded(); }, 1500);
   }
   
-  cart = []; if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();
+  cart = []; resetInternationalTransportForm(); if(__currentRoomId){ __saveRoomCart(__currentRoomId, cart); try{ await window.api.rooms_set_status(__currentRoomId, 'vacant'); }catch(_){ } } renderCart();
   // إعادة خانة المبلغ إلى وضعها الطبيعي
   if(cashReceived){ cashReceived.value=''; cashReceived.placeholder='المبلغ المدفوع'; cashReceived.disabled=false; }
   if(notes){ notes.value=''; }
@@ -5628,6 +5717,7 @@ async function populateCategories(){
           image_path: it.image_path || null,
           category: it.category || null,
           is_tobacco: it.is_tobacco || 0,
+          is_international_transport_service: Number(it.is_international_transport_service || 0),
           unit_name: it.unit_name || null,
           unit_multiplier: it.unit_multiplier || 1,
           operation_id: it.operation_id || null,
@@ -5650,6 +5740,7 @@ async function populateCategories(){
       if(discountTypeEl) discountTypeEl.value = totals.discount_type || 'none';
       if(discountValueEl) discountValueEl.value = totals.discount_value || 0;
       if(extraValueEl) extraValueEl.value = totals.extra_value || 0;
+      restoreInternationalTransportState(totals);
       sessionStorage.removeItem('restore_totals');
     }
     
@@ -5774,6 +5865,7 @@ function setupHeldInvoices(){
         coupon: __coupon ? JSON.parse(JSON.stringify(__coupon)) : null,
         notes: notes ? notes.value : '',
         couponCode: couponCodeEl ? couponCodeEl.value : '',
+        ...internationalTransportPayload(),
         // لقطة من الحسابات لعرضها في معاينة الفاتورة المعلقة بنفس أرقام شاشة البيع
         calcs: window.__sale_calcs ? JSON.parse(JSON.stringify(window.__sale_calcs)) : null
       };
@@ -5785,6 +5877,7 @@ function setupHeldInvoices(){
       }
       
       cart = [];
+      resetInternationalTransportForm();
       renderCart();
       __selectedCustomerId = '';
       __selectedDriverId = '';
@@ -5948,7 +6041,7 @@ function setupHeldInvoices(){
     // استخدم لقطة الحسابات المحفوظة عند التعليق؛ وإلا احسب أساسي (فواتير معلقة قديمة)
     let c = invoice.calcs || null;
     if(!c){
-      const vatPct = (Number(settings.vat_percent) || 0) / 100;
+      const vatPct = effectiveVatPercent() / 100;
       let sub = 0, taxable = 0;
       items.forEach(it => {
         const exempt = Number(it.is_vat_exempt||0) === 1;
@@ -6046,6 +6139,7 @@ function setupHeldInvoices(){
     const invoice = heldInvoices[index];
     
     cart = invoice.cart || [];
+    restoreInternationalTransportState(invoice);
     __selectedCustomerId = invoice.customer || '';
     __selectedDriverId = invoice.driver || '';
     

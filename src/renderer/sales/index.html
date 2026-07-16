@@ -1500,6 +1500,12 @@ table tr td, table tr th { vertical-align: middle; }
         color: #ffffff !important;
       }
 
+      .dark #internationalTransportToggleContainer {
+        background: #172554 !important;
+        border-color: #3b82f6 !important;
+        color: #dbeafe !important;
+      }
+
       /* Keep specific inline colors in dark mode */
       .dark [style*="color: #fff"],
       .dark [style*="color:#fff"],
@@ -2442,6 +2448,10 @@ table tr td, table tr th { vertical-align: middle; }
                         <button id="btnAddCustomer" class="btn" style="font-family:'Cairo',sans-serif; padding:5px 10px; background:#10b981; color:#fff; border-radius:4px; font-weight:800; white-space:nowrap; font-size:11px; height:32px; line-height:1.4;">
                           ➕ عميل
                         </button>
+                        <label id="internationalTransportToggleContainer" hidden for="internationalTransportToggle" title="تطبيق نسبة الضريبة صفر على خدمات النقل الدولي المؤهلة فقط" style="font-family:'Cairo',sans-serif; height:32px; display:inline-flex; align-items:center; gap:4px; padding:0 6px; border:1px solid #93c5fd; border-radius:4px; background:#eff6ff; color:#1e3a8a; font-size:10px; font-weight:800; white-space:nowrap; cursor:pointer; user-select:none;">
+                          <input id="internationalTransportToggle" type="checkbox" aria-label="نقل دولي بنسبة صفر" style="width:14px; height:14px; margin:0; accent-color:#2563eb; cursor:pointer;" />
+                          <span>نقل دولي 0%</span>
+                        </label>
                       </div>
                     </div>
                     

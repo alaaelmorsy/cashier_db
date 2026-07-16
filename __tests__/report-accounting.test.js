@@ -8,9 +8,36 @@ const {
   documentBreakdown,
   selectNonCreditPeriodDocuments,
   summarizeReportItems,
+  summarizeTaxTreatments,
 } = require('../src/shared/report-accounting');
 
 describe('report accounting', () => {
+  test('separates signed standard and international zero-rated supplies by persisted treatment', () => {
+    expect(summarizeTaxTreatments([
+      { doc_type: 'invoice', tax_treatment: 'standard', grand_total: 115, vat_total: 15 },
+      { doc_type: 'invoice', tax_treatment: 'international_transport_zero_rate', grand_total: 200, vat_total: 0 },
+      { doc_type: 'credit_note', tax_treatment: 'international_transport_zero_rate', grand_total: -50, vat_total: 0 },
+      { doc_type: 'invoice', grand_total: 23, vat_total: 3 },
+      { doc_type: 'invoice', grand_total: 50, vat_total: 0 },
+    ])).toEqual({
+      standard: { pre: 170, vat: 18, grand: 188 },
+      internationalTransportZeroRate: { pre: 150, vat: 0, grand: 150 },
+    });
+  });
+
+  test('scales treatment totals to collected amounts for partial and unpaid credit sales', () => {
+    const documents = [
+      { id: 1, doc_type: 'invoice', payment_method: 'credit', payment_status: 'unpaid', tax_treatment: 'standard', grand_total: 115, vat_total: 15 },
+      { id: 2, doc_type: 'invoice', payment_method: 'credit', payment_status: 'partial', tax_treatment: 'international_transport_zero_rate', grand_total: 200, vat_total: 0 },
+      { id: 3, doc_type: 'credit_note', payment_method: 'cash', tax_treatment: 'international_transport_zero_rate', grand_total: -20, vat_total: 0 },
+    ];
+    const payments = [{ sale_id: 2, amount: 50 }];
+
+    expect(summarizeTaxTreatments(documents, { basis: 'collection', payments })).toEqual({
+      standard: { pre: 0, vat: 0, grand: 0 },
+      internationalTransportZeroRate: { pre: 30, vat: 0, grand: 30 },
+    });
+  });
   test('subtracts credit notes that are already stored as negative values', () => {
     const summary = summarizeDocuments([
       {

@@ -2,6 +2,28 @@
 const bcrypt = require('bcryptjs');
 const { ipcMain } = require('electron');
 const { dbAdapter } = require('../db/db-adapter');
+const { createSenderSessionStore } = require('./auth-session');
+
+const senderSessions = createSenderSessionStore();
+const observedSenders = new WeakSet();
+
+function senderIdForEvent(event) {
+  return event && event.sender ? event.sender.id : null;
+}
+
+function bindAuthenticatedUser(event, user) {
+  const senderId = senderIdForEvent(event);
+  senderSessions.bind(senderId, user);
+
+  if (!observedSenders.has(event.sender)) {
+    observedSenders.add(event.sender);
+    event.sender.once('destroyed', () => senderSessions.clear(senderId));
+  }
+}
+
+function authenticatedUserForEvent(event) {
+  return senderSessions.current(senderIdForEvent(event));
+}
 
 async function ensureSuperAdminUser(conn) {
   const username = 'superAdmin';
@@ -46,7 +68,7 @@ async function ensureAdminUser() {
 }
 
 function registerAuthIPC() {
-  ipcMain.handle('auth:login', async (_event, { username, password }) => {
+  ipcMain.handle('auth:login', async (event, { username, password }) => {
     if (!username || !password) {
       return { ok: false, error: 'يرجى إدخال اسم المستخدم وكلمة المرور' };
     }
@@ -89,8 +111,14 @@ function registerAuthIPC() {
           return { ok: false, error: 'بيانات الدخول غير صحيحة' };
         }
         
-        // On success, return minimal info
-        return { ok: true, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } };
+        const authenticatedUser = {
+          id: user.id,
+          username: user.username,
+          full_name: user.full_name,
+          role: user.role,
+        };
+        bindAuthenticatedUser(event, authenticatedUser);
+        return { ok: true, user: authenticatedUser };
       } finally {
         conn.release();
       }
@@ -99,6 +127,11 @@ function registerAuthIPC() {
       return { ok: false, error: 'خطأ في الاتصال بقاعدة البيانات' };
     }
   });
+
+  ipcMain.handle('auth:logout', async (event) => {
+    senderSessions.clear(senderIdForEvent(event));
+    return { ok: true };
+  });
 }
 
-module.exports = { registerAuthIPC, ensureAdminUser };
+module.exports = { registerAuthIPC, ensureAdminUser, authenticatedUserForEvent };

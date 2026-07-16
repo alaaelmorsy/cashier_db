@@ -56,6 +56,8 @@ function translatePeriodUI(isAr){
     sales: 'المبيعات',
     discounts: 'الخصومات',
     salesAfterDiscount: 'المبيعات بعد الخصم',
+    standardSupply: 'توريدات قياسية (شاملة إشعاراتها)',
+    zeroRateSupply: 'نقل دولي بنسبة صفر (شامل إشعاراته)',
     creditNotes: 'إشعارات الدائن (المرتجعات)',
     totalSalesAfterDiscountReturns: 'إجمالي المبيعات بعد الخصم بعد المرتجعات',
     purchases: 'المصروفات',
@@ -114,6 +116,8 @@ function translatePeriodUI(isAr){
     sales: 'Sales',
     discounts: 'Discounts',
     salesAfterDiscount: 'Sales after discount',
+    standardSupply: 'Standard-rated supplies (including credit notes)',
+    zeroRateSupply: 'Zero-rated international transport (including credit notes)',
     creditNotes: 'Credit notes (returns)',
     totalSalesAfterDiscountReturns: 'Total sales after discount and returns',
     purchases: 'Purchases',
@@ -208,13 +212,15 @@ function translatePeriodUI(isAr){
       }
       
       const rows = summaryTable.querySelectorAll('tbody tr');
-      if(rows.length >= 6){
+      if(rows.length >= 8){
         rows[0].querySelector('td').textContent = t.sales;
-        rows[1].querySelector('td').textContent = t.discounts;
-        rows[2].querySelector('td').textContent = t.salesAfterDiscount;
-        rows[3].querySelector('td').textContent = t.creditNotes;
-        rows[4].querySelector('td').textContent = t.totalSalesAfterDiscountReturns;
-        rows[5].querySelector('td').textContent = t.purchases;
+        rows[1].querySelector('td').textContent = t.standardSupply;
+        rows[2].querySelector('td').textContent = t.zeroRateSupply;
+        rows[3].querySelector('td').textContent = t.discounts;
+        rows[4].querySelector('td').textContent = t.salesAfterDiscount;
+        rows[5].querySelector('td').textContent = t.creditNotes;
+        rows[6].querySelector('td').textContent = t.totalSalesAfterDiscountReturns;
+        rows[7].querySelector('td').textContent = t.purchases;
       }
       
       const footerCells = summaryTable.querySelectorAll('tfoot th');
@@ -1242,6 +1248,13 @@ async function loadRange(startStr, endStr){
     const purAfter = purPre + purVat;
 
     const set = (id, val)=>{ const el=document.getElementById(id); if(el){ el.textContent = Number(val||0).toFixed(2); } };
+    const treatmentTotals = ReportAccounting.summarizeTaxTreatments([...reportSales, ...reportCreditNotes]);
+    set('standardSupplyPre', treatmentTotals.standard.pre);
+    set('standardSupplyVat', treatmentTotals.standard.vat);
+    set('standardSupplyAfter', treatmentTotals.standard.grand);
+    set('zeroRateSupplyPre', treatmentTotals.internationalTransportZeroRate.pre);
+    set('zeroRateSupplyVat', treatmentTotals.internationalTransportZeroRate.vat);
+    set('zeroRateSupplyAfter', treatmentTotals.internationalTransportZeroRate.grand);
     set('salesPre', salesPre);
     set('salesVat', salesVatBefore);
     // تمت إزالة عمود رسوم التبغ من واجهة الملخص

@@ -107,6 +107,30 @@
     return { sub, discount: fromCents(toCents(sub + tobacco + vat - grand)), tobacco, vat, grand };
   }
 
+  function summarizeTaxTreatments(documents, options = {}) {
+    const groups = {
+      standard: { preCents: 0, vatCents: 0, grandCents: 0 },
+      internationalTransportZeroRate: { preCents: 0, vatCents: 0, grandCents: 0 },
+    };
+    const paidBySale = paymentAmountsBySale(options.payments);
+    for (const document of Array.isArray(documents) ? documents : []) {
+      const key = document?.tax_treatment === 'international_transport_zero_rate'
+        ? 'internationalTransportZeroRate'
+        : 'standard';
+      const scale = options.basis === 'collection' && !isCreditNote(document)
+        ? saleCollectionScale(document, paidBySale)
+        : 1;
+      groups[key].preCents += Math.round(signedPreTaxCents(document) * scale);
+      groups[key].vatCents += Math.round(signedCents(document, 'vat_total') * scale);
+      groups[key].grandCents += Math.round(signedCents(document, 'grand_total') * scale);
+    }
+    return Object.fromEntries(Object.entries(groups).map(([key, values]) => [key, {
+      pre: fromCents(values.preCents),
+      vat: fromCents(values.vatCents),
+      grand: fromCents(values.grandCents),
+    }]));
+  }
+
   function paymentAmountsBySale(payments) {
     const paid = new Map();
     for (const payment of Array.isArray(payments) ? payments : []) {
@@ -287,7 +311,7 @@
   }
 
   return {
-    isCreditNote, documentAmounts, documentBreakdown, summarizeDocuments, calculateReportTotals,
+    isCreditNote, documentAmounts, documentBreakdown, summarizeDocuments, summarizeTaxTreatments, calculateReportTotals,
     summarizeReportPayments, outstandingAmount, signedReportItem, selectNonCreditPeriodDocuments, summarizeReportItems,
   };
 });

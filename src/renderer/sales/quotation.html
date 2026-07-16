@@ -411,6 +411,7 @@
               <tr id="discRow" style="display:none"><td id="discLabel">خصم</td><td style="text-align:left" id="disc"></td></tr>
               <tr id="afterDiscRow" style="display:none"><td>الإجمالي بعد الخصم (قبل الضريبة)</td><td style="text-align:left" id="afterDisc"></td></tr>
               <tr id="tobaccoFeeRow" style="display:none"><td>رسوم التبغ</td><td style="text-align:left" id="tobaccoFee"></td></tr>
+              <tr id="taxTreatmentRow" style="display:none"><td>المعالجة الضريبية</td><td style="text-align:left" id="taxTreatment"></td></tr>
               <tr><td>ضريبة VAT</td><td style="text-align:left" id="vat"></td></tr>
               <tr><td><b>الإجمالي شامل الضريبة</b></td><td style="text-align:left" id="grand"></td></tr>
             </tbody>
@@ -510,6 +511,7 @@
           
           const items = JSON.parse(cartDataStr);
           const totals = JSON.parse(totalsDataStr);
+          const isInternationalZeroRate = totals.tax_treatment === 'international_transport_zero_rate';
 
           function fmt(a){
             const n = Number(a||0).toFixed(2);
@@ -690,15 +692,15 @@
           try{
             const itemsTable = document.getElementById('itemsTable');
             const hasOp = Array.isArray(items) && items.some(it => String(it.operation_name||'').trim() !== '');
-            const vatPercent = Number(settings?.vat_percent || 0);
+            const showDetailedTaxColumns = Number(settings?.vat_percent || 0) > 0 || isInternationalZeroRate;
             const showBarcode = (settings?.show_barcode_in_a4 === 1);
             if(itemsTable){
               itemsTable.classList.remove('has-op','no-op');
               itemsTable.classList.toggle('hide-barcode', !showBarcode);
               // تطبيق has-op/no-op دائمًا لتنسيق الأعمدة الصحيح
               itemsTable.classList.add(hasOp ? 'has-op' : 'no-op');
-              itemsTable.classList.toggle('no-vat', vatPercent === 0);
-              if(vatPercent === 0){
+              itemsTable.classList.toggle('no-vat', !showDetailedTaxColumns);
+              if(!showDetailedTaxColumns){
                 const thead = itemsTable.querySelector('thead');
                 if(thead){
                   const unitPriceLabel = settings.unit_price_label || 'سعر القطعة';
@@ -748,6 +750,7 @@
             }
           }catch(_){ pricesInclVat = true; }
           const vatRate = Number(settings?.vat_percent || 0) / 100;
+          const effectiveVatRate = isInternationalZeroRate ? 0 : vatRate;
 
           let rowNum = 0;
           items.forEach(it => {
@@ -764,14 +767,14 @@
             }
             
             let net = 0, vatAmt = 0, gross = 0;
-            if(vatRate > 0){
+            if(effectiveVatRate > 0){
               if(pricesInclVat){
                 gross = lineTotal;
-                net = gross / (1 + vatRate);
+                net = gross / (1 + effectiveVatRate);
                 vatAmt = gross - net;
               }else{
                 net = lineTotal;
-                vatAmt = net * vatRate;
+                vatAmt = net * effectiveVatRate;
                 gross = net + vatAmt;
               }
             }else{
@@ -781,11 +784,11 @@
             }
 
             const qtyTxt = Number.isInteger(qtyNum) ? String(qtyNum) : qtyNum.toFixed(3);
-            const vatRateTxt = (vatRate>0) ? (vatRate*100).toFixed(0) : '0';
+            const vatRateTxt = (effectiveVatRate>0) ? (effectiveVatRate*100).toFixed(0) : (isInternationalZeroRate ? '0%' : '0');
             const displayNet = net;
             const empName = it.employee_name ? `<div style='font-size:12px; color:#64748b; margin-top:2px; font-weight:700;'>الموظف: ${it.employee_name}</div>` : '';
 
-            if(vatRate > 0){
+            if(effectiveVatRate > 0 || isInternationalZeroRate){
               tr.innerHTML = `
                 <td class="num" style="text-align:center">${rowNum}</td>
                 <td class="barcode-cell">${it.barcode||''}</td>
@@ -896,6 +899,10 @@
           }catch(_){ }
           
           document.getElementById('vat').innerHTML = fmt(Number(totals.vat_total||0)) + __RSYM;
+          if(isInternationalZeroRate){
+            document.getElementById('taxTreatmentRow').style.display = '';
+            document.getElementById('taxTreatment').textContent = 'نقل دولي بنسبة صفر (0%)';
+          }
           try{
             if(Number(settings?.vat_percent||0) === 0){
               const vatRow = document.getElementById('vat')?.closest('tr');
@@ -1203,6 +1210,7 @@
                   discount_amount: totals.discount_amount || 0,
                   extra_amount: totals.extra_value || 0,
                   vat_amount: totals.vat_total || 0,
+                  tax_treatment: totals.tax_treatment || 'standard',
                   tobacco_fee: totals.tobacco_fee || 0,
                   total: totals.grand_total || 0,
                   // pass notes from session storage if any

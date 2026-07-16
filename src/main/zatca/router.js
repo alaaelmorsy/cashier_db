@@ -38,10 +38,27 @@ async function getMode() {
   return 'unlinked';
 }
 
+async function saleUsesInternationalZeroRate(saleId) {
+  const conn = await dbAdapter.getConnection();
+  try {
+    const [[sale]] = await conn.query('SELECT tax_treatment FROM sales WHERE id=? LIMIT 1', [Number(saleId)]);
+    return sale?.tax_treatment === 'international_transport_zero_rate';
+  } finally {
+    conn.release();
+  }
+}
+
+function legacyZeroRateError() {
+  const error = new Error('Legacy ZATCA route does not support international transport zero-rate invoices');
+  error.code = 'LEGACY_ZATCA_ZERO_RATE_UNSUPPORTED';
+  return error;
+}
+
 // إرسال مستند بعد حفظه (يُستدعى من sales.js بشكل غير محجوب).
 async function submitSale(saleId) {
   const mode = await getMode();
   if (mode === 'legacy') {
+    if (await saleUsesInternationalZeroRate(saleId)) throw legacyZeroRateError();
     const LocalZatcaBridge = require('../local-zatca');
     const bridge = LocalZatcaBridge.getInstance ? LocalZatcaBridge.getInstance() : new LocalZatcaBridge();
     return bridge.submitSaleById(saleId);

@@ -888,6 +888,7 @@ const savedZoomReady = (function () {
 
 contextBridge.exposeInMainWorld('api', {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username, password }),
+  auth_logout: () => ipcRenderer.invoke('auth:logout'),
 
   // DB config (link to primary)
   db_get_config: () => ipcRenderer.invoke('db:get_config'),
@@ -1143,6 +1144,15 @@ contextBridge.exposeInMainWorld('api', {
   // Settings
   settings_get: () => ipcRenderer.invoke('settings:get'),
   settings_save: (payload) => ipcRenderer.invoke('settings:save', payload),
+  settings_set_international_transport_zero_rate: (enabled) => ipcRenderer.invoke(
+    'settings:set_international_transport_zero_rate',
+    { enabled: Boolean(enabled) }
+  ),
+  on_settings_changed: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('ui:settings_changed', listener);
+    return () => ipcRenderer.removeListener('ui:settings_changed', listener);
+  },
 
   // Branches
   branches_get: () => ipcRenderer.invoke('branches:get'),

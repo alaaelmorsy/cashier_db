@@ -268,7 +268,8 @@ async function viewQuotation(id) {
       vat_total: q.vat_amount,
       grand_total: q.total,
       tobacco_fee: q.tobacco_fee || 0,
-      total_after_discount: (q.subtotal || 0) - (q.discount_amount || 0)
+      total_after_discount: (q.subtotal || 0) - (q.discount_amount || 0),
+      tax_treatment: q.tax_treatment || 'standard'
     };
 
     sessionStorage.setItem('quotation_cart', JSON.stringify(items));
@@ -348,7 +349,8 @@ async function restoreToInvoice(id) {
       vat_total: q.vat_amount,
       grand_total: q.total,
       tobacco_fee: q.tobacco_fee || 0,
-      total_after_discount: (q.subtotal || 0) - (q.discount_amount || 0)
+      total_after_discount: (q.subtotal || 0) - (q.discount_amount || 0),
+      tax_treatment: q.tax_treatment || 'standard'
     };
 
     sessionStorage.setItem('restore_cart', JSON.stringify(items));

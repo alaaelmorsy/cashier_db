@@ -27,6 +27,7 @@ module.exports = function setupQuotationsIPC() {
         discount_amount DECIMAL(12,2) DEFAULT 0,
         extra_amount DECIMAL(12,2) DEFAULT 0,
         vat_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+        tax_treatment VARCHAR(50) NOT NULL DEFAULT 'standard',
         tobacco_fee DECIMAL(12,2) DEFAULT 0,
         total DECIMAL(12,2) NOT NULL DEFAULT 0,
         notes TEXT DEFAULT NULL,
@@ -36,6 +37,10 @@ module.exports = function setupQuotationsIPC() {
         INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+    const [taxTreatmentColumns] = await conn.query("SHOW COLUMNS FROM quotations LIKE 'tax_treatment'");
+    if (!taxTreatmentColumns.length) {
+      await conn.query("ALTER TABLE quotations ADD COLUMN tax_treatment VARCHAR(50) NOT NULL DEFAULT 'standard' AFTER vat_amount");
+    }
   }
 
   // Generate next quotation number
@@ -85,9 +90,9 @@ module.exports = function setupQuotationsIPC() {
             customer_email, customer_address, customer_vat, customer_cr,
             customer_national_address, cashier_id, cashier_name,
             items_json, subtotal, discount_type, discount_value,
-            discount_amount, extra_amount, vat_amount, tobacco_fee, 
+            discount_amount, extra_amount, vat_amount, tax_treatment, tobacco_fee,
             total, notes, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             data.quotation_no,
             data.customer_id || null,
@@ -107,6 +112,9 @@ module.exports = function setupQuotationsIPC() {
             Number(data.discount_amount || 0),
             Number(data.extra_amount || 0),
             Number(data.vat_amount || 0),
+            data.tax_treatment === 'international_transport_zero_rate'
+              ? 'international_transport_zero_rate'
+              : 'standard',
             Number(data.tobacco_fee || 0),
             Number(data.total || 0),
             data.notes || null,

@@ -112,9 +112,13 @@ function renderRows(list){
     const title = tipSrc ? `title="${String(tipSrc).replace(/"/g,'&quot;')}`.slice(0, 2048) + '"' : '';
     const failBadge = rejected ? `<span class="text-red-600 mx-1">❌ فشل الإرسال</span>` : '';
     const viewBtn = (row.zatca_response||row.zatca_rejection_reason) ? `<button class="px-3 py-1.5 bg-slate-600 text-white rounded-lg text-xs font-medium" data-act="show_zresp" data-id="${row.id}">📄 رد الهيئة</button>` : '';
+    const isInternationalTransport = row.tax_treatment === 'international_transport_zero_rate';
+    const treatmentDetails = isInternationalTransport
+      ? '<div class="mt-1 text-xs font-semibold text-emerald-700">نقل دولي بنسبة صفر · ضريبة 0.00</div>'
+      : '';
     tr.innerHTML = `
       <td class="px-4 py-3">${((__page-1)*(__pageSize||list.length))+i+1}</td>
-      <td class="px-4 py-3 font-semibold text-blue-600">${row.invoice_no}</td>
+      <td class="px-4 py-3 font-semibold text-blue-600">${row.invoice_no}${treatmentDetails}</td>
       <td class="px-4 py-3">${row.ref_base_invoice_no || ''}</td>
       <td class="px-4 py-3">${row.customer_name || ''}</td>
       <td class="px-4 py-3">${row.customer_phone || ''}</td>

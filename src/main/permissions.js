@@ -2,6 +2,32 @@
 const { ipcMain } = require('electron');
 const { dbAdapter, DB_NAME } = require('../db/db-adapter');
 const { isSecondaryDevice, fetchFromAPI } = require('./api-client');
+const { authenticatedUserForEvent } = require('./auth');
+
+function permissionError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+async function assertEventPermission(event, permissionKey) {
+  const actor = authenticatedUserForEvent(event);
+  if (!actor) throw permissionError('AUTH_REQUIRED', 'Authenticated sender session required');
+  if (actor.role === 'admin') return actor;
+
+  const conn = await dbAdapter.getConnection();
+  try {
+    const parentKey = permissionKey.includes('.') ? permissionKey.split('.')[0] : permissionKey;
+    const [rows] = await conn.query(
+      'SELECT 1 FROM user_permissions WHERE user_id=? AND perm_key IN (?, ?) LIMIT 1',
+      [actor.id, permissionKey, parentKey]
+    );
+    if (!rows.length) throw permissionError('FORBIDDEN', 'Permission denied');
+    return actor;
+  } finally {
+    conn.release();
+  }
+}
 
 // Ensure required permission keys exist (idempotent)
 async function ensureDefaultPermissions() {
@@ -14,6 +40,10 @@ async function ensureDefaultPermissions() {
       const hasParent = await dbAdapter.columnExists('permissions', 'parent_key');
 
       const perms = [
+        { perm_key: 'settings', name: 'الإعدادات', parent: null },
+        { perm_key: 'settings.update', name: 'تعديل الإعدادات', parent: 'settings' },
+        { perm_key: 'settings.reload', name: 'إعادة تحميل الإعدادات', parent: 'settings' },
+        { perm_key: 'settings.reset_sales', name: 'تصفير المبيعات', parent: 'settings' },
         { perm_key: 'suppliers', name: 'الموردون', parent: null },
         { perm_key: 'suppliers.add', name: 'إضافة مورد', parent: 'suppliers' },
         { perm_key: 'suppliers.edit', name: 'تعديل مورد', parent: 'suppliers' },
@@ -180,4 +210,4 @@ function registerPermissionsIPC(){
   });
 }
 
-module.exports = { registerPermissionsIPC }; 
+module.exports = { registerPermissionsIPC, assertEventPermission };
